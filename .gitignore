@@ -1,0 +1,28 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.map
+
+# SDK config backups
+sdkconfig.old
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Dependencies (managed by idf.py)
+managed_components/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Clangd cache
+.cache/

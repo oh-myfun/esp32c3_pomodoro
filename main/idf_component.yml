@@ -1,0 +1,3 @@
+dependencies:
+  lvgl/lvgl: '*'
+  # esp_lcd_st7789 is now in components/ directory
