@@ -191,35 +191,43 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-// 编码器处理任务（20定位20脉冲，每个脉冲都响应）
+// 编码器处理任务（20定位20脉冲，每格触发一次）
 static void encoder_task(void *arg)
 {
-    ESP_LOGI(TAG, "Encoder task started (20/20 pulse)");
+    ESP_LOGI(TAG, "Encoder task started");
     
     while (1) {
         ec11_event_t event = encoder_get_event();
         
-        switch (event) {
-            case EC11_EVENT_CW:
-                ESP_LOGI(TAG, "Encoder: CW (next screen)");
-                ui_next_screen();
-                break;
-                
-            case EC11_EVENT_CCW:
-                ESP_LOGI(TAG, "Encoder: CCW (prev screen)");
-                ui_prev_screen();
-                break;
-                
-            case EC11_EVENT_PRESS:
-                ESP_LOGI(TAG, "Encoder: Button pressed");
-                // 按键可以执行确认操作
-                break;
-                
-            default:
-                break;
+        if (event != EC11_EVENT_NONE) {
+            ESP_LOGI(TAG, "Event: %d", event);
+            
+            // 获取锁以保护LVGL API
+            _lock_acquire(&lvgl_api_lock);
+            
+            switch (event) {
+                case EC11_EVENT_CW:
+                    ESP_LOGI(TAG, "-> CW");
+                    ui_next_screen();
+                    break;
+                    
+                case EC11_EVENT_CCW:
+                    ESP_LOGI(TAG, "-> CCW");
+                    ui_prev_screen();
+                    break;
+                    
+                case EC11_EVENT_PRESS:
+                    ESP_LOGI(TAG, "-> Button");
+                    break;
+                    
+                default:
+                    break;
+            }
+            
+            _lock_release(&lvgl_api_lock);
         }
         
-        vTaskDelay(5 / portTICK_PERIOD_MS);  // 5ms轮询
+        vTaskDelay(5 / portTICK_PERIOD_MS);
     }
 }
 
@@ -229,7 +237,11 @@ static void time_update_task(void *arg)
     ESP_LOGI(TAG, "Time update task started");
     
     while (1) {
+        // 获取锁以保护LVGL API
+        _lock_acquire(&lvgl_api_lock);
         ui_update_time();
+        _lock_release(&lvgl_api_lock);
+        
         vTaskDelay(1000 / portTICK_PERIOD_MS);  // 每秒更新一次
     }
 }

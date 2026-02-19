@@ -137,14 +137,14 @@ void ui_init(void)
 
 void ui_switch_screen(ui_screen_id_t screen_id)
 {
-    if (screen_id < 0 || screen_id >= UI_SCREEN_COUNT) return;
+    if (screen_id >= UI_SCREEN_COUNT) return;
     if (screen_id == current_screen) return;
     
     // 直接切换界面，不使用动画避免花屏
     lv_scr_load(screens[screen_id]);
     current_screen = screen_id;
     
-    ESP_LOGI(TAG, "Switched to screen %d", screen_id);
+    ESP_LOGI(TAG, "Switched to screen %d", (int)screen_id);
 }
 
 ui_screen_id_t ui_get_current_screen(void)
