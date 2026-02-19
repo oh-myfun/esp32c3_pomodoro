@@ -50,58 +50,36 @@ ec11_event_t encoder_get_event(void)
     
     ec11_event_t event = EC11_EVENT_NONE;
     
-    if (current_state != last_state) {
-        uint8_t sum = (last_state << 2) | current_state;
-        int8_t dir = 0;
-        
-        // 检测方向
-        if (sum == 0b0001 || sum == 0b0111 || sum == 0b1110 || sum == 0b1000) {
-            dir = 1;  // CW
-        } else if (sum == 0b0010 || sum == 0b1011 || sum == 0b1101 || sum == 0b0100) {
-            dir = -1; // CCW
+    // 只在状态为00时检测（编码器稳定位置）
+    if (current_state == 0 && last_state != 0) {
+        // 根据上一个状态判断方向
+        // 顺时针序列: 00->01->11->10->00 (回到00时，上一个应该是10)
+        // 逆时针序列: 00->10->11->01->00 (回到00时，上一个应该是01)
+        if (last_state == 0b10) {
+            encoder_count++;
+            event = EC11_EVENT_CW;
+        } else if (last_state == 0b01) {
+            encoder_count--;
+            event = EC11_EVENT_CCW;
         }
-        
+        last_state = 0;
+    } else if (current_state != last_state) {
+        // 记录中间状态
         last_state = current_state;
-        
-        // 方向改变或重新开始计数
-        if (dir != 0) {
-            if (dir != last_dir) {
-                step_count = 1;
-                last_dir = dir;
-            } else {
-                step_count++;
-            }
-            
-            // 每4步（一个完整周期）触发一次事件
-            if (step_count >= 4) {
-                step_count = 0;
-                if (dir > 0) {
-                    encoder_count++;
-                    event = EC11_EVENT_CW;
-                } else {
-                    encoder_count--;
-                    event = EC11_EVENT_CCW;
-                }
-            }
-        }
     }
     
-    // 检测按键
+    // 检测按键（简化消抖）
     uint8_t btn = gpio_get_level(EC11_K_GPIO);
-    static uint32_t last_btn_time = 0;
-    uint32_t now = xTaskGetTickCount();
-    
-    if (btn != last_button_state && (now - last_btn_time) > pdMS_TO_TICKS(50)) {
+    if (btn != last_button_state) {
         if (btn == 0) {
             button_pressed = true;
             event = EC11_EVENT_PRESS;
-            ESP_LOGI(TAG, "Button pressed");
         } else {
             button_pressed = false;
             event = EC11_EVENT_RELEASE;
         }
         last_button_state = btn;
-        last_btn_time = now;
+        vTaskDelay(pdMS_TO_TICKS(20));  // 简单消抖
     }
     
     return event;

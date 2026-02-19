@@ -191,7 +191,7 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-// 编码器处理任务（20定位20脉冲，每格触发一次）
+// 编码器处理任务
 static void encoder_task(void *arg)
 {
     ESP_LOGI(TAG, "Encoder task started");
@@ -200,24 +200,20 @@ static void encoder_task(void *arg)
         ec11_event_t event = encoder_get_event();
         
         if (event != EC11_EVENT_NONE) {
-            ESP_LOGI(TAG, "Event: %d", event);
-            
             // 获取锁以保护LVGL API
             _lock_acquire(&lvgl_api_lock);
             
             switch (event) {
                 case EC11_EVENT_CW:
-                    ESP_LOGI(TAG, "-> CW");
                     ui_next_screen();
                     break;
                     
                 case EC11_EVENT_CCW:
-                    ESP_LOGI(TAG, "-> CCW");
                     ui_prev_screen();
                     break;
                     
                 case EC11_EVENT_PRESS:
-                    ESP_LOGI(TAG, "-> Button");
+                    // 按键功能预留
                     break;
                     
                 default:
@@ -227,7 +223,7 @@ static void encoder_task(void *arg)
             _lock_release(&lvgl_api_lock);
         }
         
-        vTaskDelay(5 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);  // 增加延时避免看门狗
     }
 }
 
