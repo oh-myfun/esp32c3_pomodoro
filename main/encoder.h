@@ -1,0 +1,36 @@
+#ifndef ENCODER_H
+#define ENCODER_H
+
+#include "driver/gpio.h"
+#include <stdbool.h>
+
+// EC11编码器引脚定义
+#define EC11_A_GPIO     GPIO_NUM_4   // A相
+#define EC11_B_GPIO     GPIO_NUM_5   // B相  
+#define EC11_K_GPIO     GPIO_NUM_21  // K键 (TXD0 / GPIO21)
+
+// 编码器事件类型
+typedef enum {
+    EC11_EVENT_NONE = 0,
+    EC11_EVENT_CW,      // 顺时针旋转
+    EC11_EVENT_CCW,     // 逆时针旋转
+    EC11_EVENT_PRESS,   // 按键按下
+    EC11_EVENT_RELEASE  // 按键释放
+} ec11_event_t;
+
+// 初始化编码器
+void encoder_init(void);
+
+// 获取编码器事件（非阻塞，需定期调用）
+ec11_event_t encoder_get_event(void);
+
+// 获取旋转计数（累计值，可正可负）
+int32_t encoder_get_count(void);
+
+// 重置计数
+void encoder_reset_count(void);
+
+// 检查按键是否按下
+bool encoder_is_pressed(void);
+
+#endif
