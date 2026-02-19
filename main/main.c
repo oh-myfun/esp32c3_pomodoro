@@ -227,7 +227,7 @@ static void encoder_task(void *arg)
     }
 }
 
-// 时间更新任务
+// 时间更新任务（500ms更新一次，使秒数显示更流畅）
 static void time_update_task(void *arg)
 {
     ESP_LOGI(TAG, "Time update task started");
@@ -236,9 +236,12 @@ static void time_update_task(void *arg)
         // 获取锁以保护LVGL API
         _lock_acquire(&lvgl_api_lock);
         ui_update_time();
+        // 模拟温湿度更新（实际项目中从传感器读取）
+        ui_update_temp(25.5f);  // 固定值或传感器读取
+        ui_update_humidity(65.0f);  // 固定值或传感器读取
         _lock_release(&lvgl_api_lock);
         
-        vTaskDelay(1000 / portTICK_PERIOD_MS);  // 每秒更新一次
+        vTaskDelay(500 / portTICK_PERIOD_MS);  // 每500ms更新一次
     }
 }
 
