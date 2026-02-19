@@ -6,8 +6,11 @@
 
 // EC11编码器引脚定义
 #define EC11_A_GPIO     GPIO_NUM_4   // A相
-#define EC11_B_GPIO     GPIO_NUM_5   // B相  
+#define EC11_B_GPIO     GPIO_NUM_5   // B相
 #define EC11_K_GPIO     GPIO_NUM_21  // K键 (TXD0 / GPIO21)
+
+// 设置按键GPIO
+#define SETTINGS_BTN_GPIO   GPIO_NUM_9  // 设置按键
 
 // 编码器事件类型
 typedef enum {
@@ -32,5 +35,8 @@ void encoder_reset_count(void);
 
 // 检查按键是否按下
 bool encoder_is_pressed(void);
+
+// 检测设置按键是否被按下
+bool settings_button_get_event(void);
 
 #endif

@@ -222,35 +222,68 @@ static void lvgl_port_task(void *arg)
 static void encoder_task(void *arg)
 {
     ESP_LOGI(TAG, "Encoder task started");
-    
+
     while (1) {
         ec11_event_t event = encoder_get_event();
-        
+
         if (event != EC11_EVENT_NONE) {
-            // 获取锁以保护LVGL API
             _lock_acquire(&lvgl_api_lock);
-            
+
+            settings_mode_t mode = ui_get_settings_mode();
+
             switch (event) {
                 case EC11_EVENT_CW:
-                    ui_next_screen();
+                    if (mode == SETTINGS_MODE_SELECT) {
+                        ui_settings_select_next();
+                    } else if (mode == SETTINGS_MODE_ADJUST) {
+                        ui_settings_adjust_up();
+                    } else {
+                        // 正常模式 - 切换界面
+                        ui_switch_screen(UI_SCREEN_SETTINGS);
+                    }
                     break;
-                    
+
                 case EC11_EVENT_CCW:
-                    ui_prev_screen();
+                    if (mode == SETTINGS_MODE_SELECT) {
+                        ui_settings_select_prev();
+                    } else if (mode == SETTINGS_MODE_ADJUST) {
+                        ui_settings_adjust_down();
+                    } else {
+                        ui_switch_screen(UI_SCREEN_MAIN);
+                    }
                     break;
-                    
+
                 case EC11_EVENT_PRESS:
-                    // 按键功能预留
+                    // 编码器按键退出设置
+                    if (mode != SETTINGS_MODE_IDLE) {
+                        ui_exit_settings();
+                    }
                     break;
-                    
+
                 default:
                     break;
             }
-            
+
             _lock_release(&lvgl_api_lock);
         }
-        
-        vTaskDelay(10 / portTICK_PERIOD_MS);  // 增加延时避免看门狗
+
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+// 设置按键处理任务
+static void settings_button_task(void *arg)
+{
+    ESP_LOGI(TAG, "Settings button task started");
+
+    while (1) {
+        if (settings_button_get_event()) {
+            _lock_acquire(&lvgl_api_lock);
+            ui_enter_settings();
+            _lock_release(&lvgl_api_lock);
+        }
+
+        vTaskDelay(20 / portTICK_PERIOD_MS);
     }
 }
 
@@ -294,6 +327,7 @@ void app_main(void)
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
     xTaskCreate(encoder_task, "Encoder", 4096, NULL, 2, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
+    xTaskCreate(settings_button_task, "SettingsBtn", 4096, NULL, 2, NULL);
     
     ESP_LOGI(TAG, "All tasks created");
     
