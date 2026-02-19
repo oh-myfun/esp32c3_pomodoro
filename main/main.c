@@ -1,4 +1,5 @@
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -15,10 +16,12 @@
 
 static const char *TAG = "MAIN";
 
-// ===================== LCD引脚配置 =====================
-#define LCD_RS_GPIO GPIO_NUM_10  // DC/RS
-#define LCD_SCK_GPIO GPIO_NUM_6  // SCK
-#define LCD_SDA_GPIO GPIO_NUM_7  // SDA
+// ===================== LCD引脚配置 (硬件SPI) =====================
+#define LCD_RS_GPIO GPIO_NUM_10   // DC/RS
+#define LCD_SCK_GPIO GPIO_NUM_6   // SCK
+#define LCD_SDA_GPIO GPIO_NUM_7   // SDA (MOSI)
+#define LCD_SPI_HOST SPI2_HOST    // 使用SPI2
+#define LCD_SPI_FREQ_HZ 26000000  // 26MHz
 // =====================================================
 
 #define LCD_V_RES 240
@@ -32,63 +35,75 @@ static const char *TAG = "MAIN";
 
 static _lock_t lvgl_api_lock;
 static lv_display_t *display = NULL;
+static spi_device_handle_t lcd_spi = NULL;
 
-// GPIO初始化
+// GPIO初始化 (仅DC引脚)
 static void lcd_gpio_init(void)
 {
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << LCD_RS_GPIO) | (1ULL << LCD_SCK_GPIO) | (1ULL << LCD_SDA_GPIO),
+        .pin_bit_mask = (1ULL << LCD_RS_GPIO),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE};
     gpio_config(&io_conf);
-
-    gpio_set_level(LCD_SCK_GPIO, 0);
-    gpio_set_level(LCD_SDA_GPIO, 0);
     gpio_set_level(LCD_RS_GPIO, 0);
 }
 
-// 软件SPI写8位数据（1us延时）
-static void lcd_spi_write_byte(uint8_t data)
+// 硬件SPI初始化
+static void lcd_spi_init(void)
 {
-    for (int i = 0; i < 8; i++) {
-        gpio_set_level(LCD_SCK_GPIO, 0);
-        esp_rom_delay_us(1);
+    spi_bus_config_t buscfg = {
+        .miso_io_num = -1,  // 不使用MISO
+        .mosi_io_num = LCD_SDA_GPIO,
+        .sclk_io_num = LCD_SCK_GPIO,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 240 * 240 * 2 + 8,  // 最大传输240x240x2字节 + 指令开销
+    };
 
-        if (data & 0x80) {
-            gpio_set_level(LCD_SDA_GPIO, 1);
-        } else {
-            gpio_set_level(LCD_SDA_GPIO, 0);
-        }
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = LCD_SPI_FREQ_HZ,
+        .mode = 0,  // CPOL=0, CPHA=0
+        .spics_io_num = -1,  // 不使用CS
+        .queue_size = 7,
+        .pre_cb = NULL,
+    };
 
-        gpio_set_level(LCD_SCK_GPIO, 1);
-        esp_rom_delay_us(1);
+    ESP_ERROR_CHECK(spi_bus_initialize(LCD_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
+    ESP_ERROR_CHECK(spi_bus_add_device(LCD_SPI_HOST, &devcfg, &lcd_spi));
+    ESP_LOGI(TAG, "Hardware SPI initialized: %d MHz", LCD_SPI_FREQ_HZ / 1000000);
+}
 
-        data <<= 1;
-    }
-    gpio_set_level(LCD_SCK_GPIO, 0);
+// 硬件SPI发送数据
+static void lcd_spi_write_data(const uint8_t *data, size_t len, bool is_cmd)
+{
+    gpio_set_level(LCD_RS_GPIO, is_cmd ? 0 : 1);
+    
+    spi_transaction_t t = {
+        .length = len * 8,
+        .tx_buffer = data,
+    };
+    ESP_ERROR_CHECK(spi_device_polling_transmit(lcd_spi, &t));
 }
 
 // 写指令
 static void lcd_write_cmd(uint8_t cmd)
 {
-    gpio_set_level(LCD_RS_GPIO, 0);
-    lcd_spi_write_byte(cmd);
+    lcd_spi_write_data(&cmd, 1, true);
 }
 
 // 写数据
 static void lcd_write_data(uint8_t data)
 {
-    gpio_set_level(LCD_RS_GPIO, 1);
-    lcd_spi_write_byte(data);
+    lcd_spi_write_data(&data, 1, false);
 }
 
 // 写16位数据
 static void lcd_write_data_16(uint16_t data)
 {
-    lcd_write_data((data >> 8) & 0xFF);
-    lcd_write_data(data & 0xFF);
+    uint8_t buf[2] = {(data >> 8) & 0xFF, data & 0xFF};
+    lcd_spi_write_data(buf, 2, false);
 }
 
 // 设置显示窗口
@@ -109,6 +124,7 @@ static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, u
 static void lcd_init(void)
 {
     lcd_gpio_init();
+    lcd_spi_init();
 
     vTaskDelay(200 / portTICK_PERIOD_MS);
 
@@ -125,7 +141,7 @@ static void lcd_init(void)
 
     lcd_write_cmd(0x29);
 
-    ESP_LOGI(TAG, "LCD initialized");
+    ESP_LOGI(TAG, "LCD initialized with hardware SPI");
 }
 
 // LVGL flush回调
@@ -266,7 +282,7 @@ void app_main(void)
     // 创建任务
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
     xTaskCreate(encoder_task, "Encoder", 4096, NULL, 2, NULL);
-    xTaskCreate(time_update_task, "TimeUpdate", 2048, NULL, 1, NULL);
+    xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
     
     ESP_LOGI(TAG, "All tasks created");
     

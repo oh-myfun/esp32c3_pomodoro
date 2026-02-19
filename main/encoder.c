@@ -47,41 +47,40 @@ ec11_event_t encoder_get_event(void)
     uint8_t a = gpio_get_level(EC11_A_GPIO);
     uint8_t b = gpio_get_level(EC11_B_GPIO);
     uint8_t current_state = (a << 1) | b;
-    
+
     ec11_event_t event = EC11_EVENT_NONE;
-    
+
     // 只在状态为00时检测（编码器稳定位置）
     if (current_state == 0 && last_state != 0) {
-        // 根据上一个状态判断方向
-        // 顺时针序列: 00->01->11->10->00 (回到00时，上一个应该是10)
-        // 逆时针序列: 00->10->11->01->00 (回到00时，上一个应该是01)
         if (last_state == 0b10) {
             encoder_count++;
             event = EC11_EVENT_CW;
+            ESP_LOGI(TAG, "CW");
         } else if (last_state == 0b01) {
             encoder_count--;
             event = EC11_EVENT_CCW;
+            ESP_LOGI(TAG, "CCW");
         }
         last_state = 0;
     } else if (current_state != last_state) {
-        // 记录中间状态
         last_state = current_state;
     }
-    
-    // 检测按键（简化消抖）
+
+    // 检测按键
     uint8_t btn = gpio_get_level(EC11_K_GPIO);
     if (btn != last_button_state) {
         if (btn == 0) {
             button_pressed = true;
             event = EC11_EVENT_PRESS;
+            ESP_LOGI(TAG, "PRESS");
         } else {
             button_pressed = false;
             event = EC11_EVENT_RELEASE;
         }
         last_button_state = btn;
-        vTaskDelay(pdMS_TO_TICKS(20));  // 简单消抖
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
-    
+
     return event;
 }
 

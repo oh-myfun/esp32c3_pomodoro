@@ -9,6 +9,7 @@ static const char *TAG = "UI";
 static lv_obj_t *screens[UI_SCREEN_COUNT];
 static ui_screen_id_t current_screen = UI_SCREEN_MAIN;
 static lv_obj_t *time_label = NULL;
+static lv_obj_t *date_label = NULL;
 static lv_obj_t *temp_label = NULL;
 static lv_obj_t *humidity_label = NULL;
 
@@ -34,18 +35,20 @@ lv_obj_t *ui_create_main_screen(void)
     lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_14, 0);
     lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
     
-    // 中间大字体时间显示
+    // 中间超大字体时间显示 - 使用28号字体
     time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(time_label, "12:00:00");
-    // 使用放大效果模拟大字体
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_letter_space(time_label, 4, 0);
-    // 放大2.5倍
-    lv_obj_set_style_transform_zoom(time_label, 250, 0);
-    lv_obj_set_style_transform_pivot_x(time_label, 50, 0);  // 设置缩放点中心
-    lv_obj_set_style_transform_pivot_y(time_label, 50, 0);
-    lv_obj_center(time_label);
+    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_letter_space(time_label, 2, 0);
+    lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -15);
+    
+    // 日期显示 - 在时间下方
+    date_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(date_label, lv_color_hex(0xAAAAAA), 0);
+    lv_label_set_text(date_label, "2025-01-01 Mon");
+    lv_obj_set_style_text_font(date_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 60);
     
     // 底部提示
     lv_obj_t *hint = lv_label_create(screen);
@@ -113,16 +116,24 @@ ui_screen_id_t ui_get_current_screen(void)
     return current_screen;
 }
 
-// 循环滚动：只有两个界面，直接切换
+// 循环滚动：只有两个界面，左转切换到上一个
 void ui_prev_screen(void)
 {
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    if (current_screen == UI_SCREEN_MAIN) {
+        ui_switch_screen(UI_SCREEN_SETTINGS);
+    } else {
+        ui_switch_screen(UI_SCREEN_MAIN);
+    }
 }
 
-// 循环滚动：只有两个界面，直接切换
+// 循环滚动：只有两个界面，右转切换到下一个
 void ui_next_screen(void)
 {
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    if (current_screen == UI_SCREEN_MAIN) {
+        ui_switch_screen(UI_SCREEN_SETTINGS);
+    } else {
+        ui_switch_screen(UI_SCREEN_MAIN);
+    }
 }
 
 void ui_update_time(void)
@@ -135,11 +146,29 @@ void ui_update_time(void)
     gettimeofday(&tv, NULL);
     timeinfo = localtime(&tv.tv_sec);
     
-    char buf[16];
-    // 显示时:分:秒
-    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", 
-             timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-    lv_label_set_text(time_label, buf);
+    if (timeinfo == NULL) return;
+    
+    // 更新时间
+    char time_buf[16];
+    sprintf(time_buf, "%02d:%02d:%02d", 
+            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    lv_label_set_text(time_label, time_buf);
+    
+    // 更新日期
+    if (date_label != NULL) {
+        char date_buf[32];
+        sprintf(date_buf, "%04d-%02d-%02d %s",
+                timeinfo->tm_year + 1900,
+                timeinfo->tm_mon + 1,
+                timeinfo->tm_mday,
+                timeinfo->tm_wday == 0 ? "Sun" :
+                timeinfo->tm_wday == 1 ? "Mon" :
+                timeinfo->tm_wday == 2 ? "Tue" :
+                timeinfo->tm_wday == 3 ? "Wed" :
+                timeinfo->tm_wday == 4 ? "Thu" :
+                timeinfo->tm_wday == 5 ? "Fri" : "Sat");
+        lv_label_set_text(date_label, date_buf);
+    }
 }
 
 void ui_update_temp(float temp)
@@ -147,7 +176,7 @@ void ui_update_temp(float temp)
     if (temp_label == NULL) return;
     
     char buf[16];
-    snprintf(buf, sizeof(buf), "%.1f°C", temp);
+    sprintf(buf, "%.1fC", temp);
     lv_label_set_text(temp_label, buf);
 }
 
@@ -156,6 +185,6 @@ void ui_update_humidity(float humidity)
     if (humidity_label == NULL) return;
     
     char buf[16];
-    snprintf(buf, sizeof(buf), "%.0f%%", humidity);
+    sprintf(buf, "%.0f%%", humidity);
     lv_label_set_text(humidity_label, buf);
 }
