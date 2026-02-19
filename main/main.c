@@ -21,7 +21,7 @@ static const char *TAG = "MAIN";
 #define LCD_SCK_GPIO GPIO_NUM_6   // SCK
 #define LCD_SDA_GPIO GPIO_NUM_7   // SDA (MOSI)
 #define LCD_SPI_HOST SPI2_HOST    // 使用SPI2
-#define LCD_SPI_FREQ_HZ 26000000  // 26MHz
+#define LCD_SPI_FREQ_HZ 60000000  // 60MHz
 // =====================================================
 
 #define LCD_V_RES 240
@@ -99,7 +99,7 @@ static void lcd_write_data(uint8_t data)
     lcd_spi_write_data(&data, 1, false);
 }
 
-// 写16位数据
+// 写16位数据（大端格式，与ST7789一致）
 static void lcd_write_data_16(uint16_t data)
 {
     uint8_t buf[2] = {(data >> 8) & 0xFF, data & 0xFF};
@@ -144,7 +144,7 @@ static void lcd_init(void)
     ESP_LOGI(TAG, "LCD initialized with hardware SPI");
 }
 
-// LVGL flush回调
+// LVGL flush回调 - DMA传输（交换字节顺序）
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     int offsetx1 = area->x1;
@@ -157,9 +157,20 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     uint32_t pixel_num = (offsetx2 - offsetx1 + 1) * (offsety2 - offsety1 + 1);
     uint16_t *pixel_data = (uint16_t *)px_map;
 
+    // 交换字节顺序（小端->大端，与ST7789一致）
     for (uint32_t i = 0; i < pixel_num; i++) {
-        lcd_write_data_16(pixel_data[i]);
+        pixel_data[i] = (pixel_data[i] >> 8) | (pixel_data[i] << 8);
     }
+
+    // DC置高(数据模式)
+    gpio_set_level(LCD_RS_GPIO, 1);
+
+    // DMA传输
+    spi_transaction_t t = {
+        .length = pixel_num * 16,
+        .tx_buffer = px_map,
+    };
+    spi_device_polling_transmit(lcd_spi, &t);
 
     lv_display_flush_ready(disp);
 }
