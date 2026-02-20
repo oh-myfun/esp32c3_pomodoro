@@ -42,11 +42,22 @@ static lv_obj_t *pwd_hint = NULL;
 static char password_buffer[64] = {0};
 static int password_len = 0;
 
-// 密码输入模式
-static int pwd_char_row = 0;  // 0=数字, 1=字母, 2=确认
-static int pwd_char_col = 0;
-static const char *pwd_rows[3] = {"0123456789", "abcdefghijklmnopqrstuvwxyz", "[CONNECT]"};
-static const int pwd_col_counts[3] = {10, 26, 8};
+// 密码键盘布局：4行x10列
+// 行0: 数字0-9
+// 行1: 字母a-j
+// 行2: 字母k-t  
+// 行3: 字母u-z + 连接
+static const char *pwd_keyboard[4] = {
+    "0123456789",    // 10个
+    "abcdefghij",    // 10个
+    "klmnopqrst",    // 10个
+    "uvwxyz____"     // 10个，_表示空
+};
+static const int pwd_keyboard_cols = 10;
+static const int pwd_keyboard_rows = 4;
+
+static int pwd_selected_row = 0;
+static int pwd_selected_col = 0;
 
 // 设置项当前值
 static int settings_values[SETTINGS_COUNT] = {50, 50, 0};
@@ -403,13 +414,7 @@ void ui_wifi_list_refresh(void)
             wifi_scan_result_t *ap = wifi_manager_get_scan_result(idx);
             if (ap) {
                 char buf[40];
-                // 处理可能的中文字符（UTF-8）
-                if (ap->ssid[0] >= 0xE0) {
-                    // 简单处理：跳过中文SSID或显示占位符
-                    sprintf(buf, "--- %s", ap->open ? "[OPEN]" : "");
-                } else {
-                    sprintf(buf, "%s %s", ap->ssid, ap->open ? "[OPEN]" : "");
-                }
+                snprintf(buf, sizeof(buf), "%s %s", ap->ssid, ap->open ? "[OPEN]" : "");
                 lv_label_set_text(wifi_list_labels[i], buf);
 
                 if (idx == wifi_list_selected) {
@@ -504,8 +509,8 @@ void ui_password_input_start(const char *ssid)
 {
     password_len = 0;
     password_buffer[0] = '\0';
-    pwd_char_row = 0;
-    pwd_char_col = 0;
+    pwd_selected_row = 0;
+    pwd_selected_col = 0;
 
     lv_label_set_text(pwd_ssid_label, ssid);
     lv_label_set_text(pwd_display, "");
@@ -517,21 +522,27 @@ void ui_password_input_start(const char *ssid)
 
 static void update_password_display(void)
 {
-    if (pwd_char_row == 2) {
-        lv_label_set_text(pwd_char_display, "[CONNECT]");
+    char ch = pwd_keyboard[pwd_selected_row][pwd_selected_col];
+    char buf[8];
+    if (ch == '_') {
+        snprintf(buf, sizeof(buf), "[OK]");
     } else {
-        char buf[2] = {pwd_rows[pwd_char_row][pwd_char_col], '\0'};
-        lv_label_set_text(pwd_char_display, buf);
+        snprintf(buf, sizeof(buf), "%c", ch);
     }
+    lv_label_set_text(pwd_char_display, buf);
 }
 
 void ui_password_input_char_next(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    pwd_char_col++;
-    if (pwd_char_col >= pwd_col_counts[pwd_char_row]) {
-        pwd_char_col = 0;
+    pwd_selected_col++;
+    if (pwd_selected_col >= pwd_keyboard_cols) {
+        pwd_selected_col = 0;
+        pwd_selected_row++;
+        if (pwd_selected_row >= pwd_keyboard_rows) {
+            pwd_selected_row = 0;
+        }
     }
     update_password_display();
 }
@@ -540,9 +551,13 @@ void ui_password_input_char_prev(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    pwd_char_col--;
-    if (pwd_char_col < 0) {
-        pwd_char_col = pwd_col_counts[pwd_char_row] - 1;
+    pwd_selected_col--;
+    if (pwd_selected_col < 0) {
+        pwd_selected_col = pwd_keyboard_cols - 1;
+        pwd_selected_row--;
+        if (pwd_selected_row < 0) {
+            pwd_selected_row = pwd_keyboard_rows - 1;
+        }
     }
     update_password_display();
 }
@@ -551,15 +566,17 @@ void ui_password_input_add_char(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    // 如果在CONNECT行，直接连接
-    if (pwd_char_row == 2) {
+    char ch = pwd_keyboard[pwd_selected_row][pwd_selected_col];
+    
+    // 如果选中_[OK]，直接连接
+    if (ch == '_') {
         ui_password_input_confirm();
         return;
     }
 
     if (password_len >= sizeof(password_buffer) - 1) return;
 
-    password_buffer[password_len++] = pwd_rows[pwd_char_row][pwd_char_col];
+    password_buffer[password_len++] = ch;
     password_buffer[password_len] = '\0';
 
     char display[65];
