@@ -7,14 +7,16 @@
 typedef enum {
     UI_SCREEN_MAIN = 0,
     UI_SCREEN_SETTINGS,
+    UI_SCREEN_WIFI_LIST,
+    UI_SCREEN_PASSWORD_INPUT,
     UI_SCREEN_COUNT
 } ui_screen_id_t;
 
 // 设置模式状态
 typedef enum {
-    SETTINGS_MODE_IDLE = 0,      // 空闲（在主界面）
-    SETTINGS_MODE_SELECT,        // 选择设置项
-    SETTINGS_MODE_ADJUST         // 调整设置值
+    SETTINGS_MODE_IDLE = 0,
+    SETTINGS_MODE_SELECT,
+    SETTINGS_MODE_ADJUST
 } settings_mode_t;
 
 // 设置项ID
@@ -22,8 +24,15 @@ typedef enum {
     SETTINGS_BRIGHTNESS = 0,
     SETTINGS_CONTRAST,
     SETTINGS_LANGUAGE,
+    SETTINGS_WIFI_MODE,
     SETTINGS_COUNT
 } settings_item_t;
+
+// WiFi模式选择
+typedef enum {
+    WIFI_SELECT_AP = 0,
+    WIFI_SELECT_STA
+} wifi_mode_select_t;
 
 // 初始化UI系统
 void ui_init(void);
@@ -43,24 +52,36 @@ void ui_enter_settings(void);
 // 退出设置模式
 void ui_exit_settings(void);
 
-// 设置项选择（滚轮）
+// 设置项选择
 void ui_settings_select_next(void);
 void ui_settings_select_prev(void);
 
 // 进入设置项调整
 void ui_settings_enter_adjust(void);
 
-// 设置值调整（滚轮）
+// 设置值调整
 void ui_settings_adjust_up(void);
 void ui_settings_adjust_down(void);
 
-// 更新主界面时间显示
+// WiFi列表相关
+void ui_wifi_list_refresh(void);
+void ui_wifi_list_select_next(void);
+void ui_wifi_list_select_prev(void);
+void ui_wifi_list_confirm(void);
+void ui_update_wifi_status(const char *status);
+
+// 密码输入相关
+void ui_password_input_start(const char *ssid);
+void ui_password_input_char_next(void);
+void ui_password_input_char_prev(void);
+void ui_password_input_add_char(void);
+void ui_password_input_delete_char(void);
+void ui_password_input_confirm(void);
+void ui_password_input_cancel(void);
+
+// 更新显示
 void ui_update_time(void);
-
-// 更新温度显示
 void ui_update_temp(float temp);
-
-// 更新湿度显示
 void ui_update_humidity(float humidity);
 
 #endif

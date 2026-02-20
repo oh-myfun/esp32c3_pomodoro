@@ -13,6 +13,7 @@
 #include "lvgl.h"
 #include "encoder.h"
 #include "ui_manager.h"
+#include "wifi_manager.h"
 
 static const char *TAG = "MAIN";
 
@@ -229,39 +230,77 @@ static void encoder_task(void *arg)
         if (event != EC11_EVENT_NONE) {
             _lock_acquire(&lvgl_api_lock);
 
+            ui_screen_id_t screen = ui_get_current_screen();
             settings_mode_t mode = ui_get_settings_mode();
 
-            switch (event) {
-                case EC11_EVENT_CW:
-                    if (mode == SETTINGS_MODE_SELECT) {
-                        ui_settings_select_next();
-                    } else if (mode == SETTINGS_MODE_ADJUST) {
-                        ui_settings_adjust_up();
-                    } else {
-                        // 正常模式 - 切换界面
+            // WiFi列表界面
+            if (screen == UI_SCREEN_WIFI_LIST) {
+                switch (event) {
+                    case EC11_EVENT_CW:
+                        ui_wifi_list_select_next();
+                        break;
+                    case EC11_EVENT_CCW:
+                        ui_wifi_list_select_prev();
+                        break;
+                    case EC11_EVENT_PRESS:
                         ui_switch_screen(UI_SCREEN_SETTINGS);
-                    }
-                    break;
-
-                case EC11_EVENT_CCW:
-                    if (mode == SETTINGS_MODE_SELECT) {
-                        ui_settings_select_prev();
-                    } else if (mode == SETTINGS_MODE_ADJUST) {
-                        ui_settings_adjust_down();
-                    } else {
-                        ui_switch_screen(UI_SCREEN_MAIN);
-                    }
-                    break;
-
-                case EC11_EVENT_PRESS:
-                    // 编码器按键退出设置
-                    if (mode != SETTINGS_MODE_IDLE) {
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // 密码输入界面
+            else if (screen == UI_SCREEN_PASSWORD_INPUT) {
+                switch (event) {
+                    case EC11_EVENT_CW:
+                        ui_password_input_char_next();
+                        break;
+                    case EC11_EVENT_CCW:
+                        ui_password_input_char_prev();
+                        break;
+                    case EC11_EVENT_PRESS:
+                        ui_password_input_cancel();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // 设置界面
+            else if (mode != SETTINGS_MODE_IDLE) {
+                switch (event) {
+                    case EC11_EVENT_CW:
+                        if (mode == SETTINGS_MODE_SELECT) {
+                            ui_settings_select_next();
+                        } else if (mode == SETTINGS_MODE_ADJUST) {
+                            ui_settings_adjust_up();
+                        }
+                        break;
+                    case EC11_EVENT_CCW:
+                        if (mode == SETTINGS_MODE_SELECT) {
+                            ui_settings_select_prev();
+                        } else if (mode == SETTINGS_MODE_ADJUST) {
+                            ui_settings_adjust_down();
+                        }
+                        break;
+                    case EC11_EVENT_PRESS:
                         ui_exit_settings();
-                    }
-                    break;
-
-                default:
-                    break;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // 主界面
+            else {
+                switch (event) {
+                    case EC11_EVENT_CW:
+                        ui_switch_screen(UI_SCREEN_SETTINGS);
+                        break;
+                    case EC11_EVENT_CCW:
+                        ui_switch_screen(UI_SCREEN_SETTINGS);
+                        break;
+                    default:
+                        break;
+                }
             }
 
             _lock_release(&lvgl_api_lock);
@@ -279,7 +318,17 @@ static void settings_button_task(void *arg)
     while (1) {
         if (settings_button_get_event()) {
             _lock_acquire(&lvgl_api_lock);
-            ui_enter_settings();
+
+            ui_screen_id_t screen = ui_get_current_screen();
+
+            if (screen == UI_SCREEN_WIFI_LIST) {
+                ui_wifi_list_confirm();
+            } else if (screen == UI_SCREEN_PASSWORD_INPUT) {
+                ui_password_input_add_char();
+            } else {
+                ui_enter_settings();
+            }
+
             _lock_release(&lvgl_api_lock);
         }
 
@@ -291,44 +340,88 @@ static void settings_button_task(void *arg)
 static void time_update_task(void *arg)
 {
     ESP_LOGI(TAG, "Time update task started");
-    
+
     while (1) {
-        // 获取锁以保护LVGL API
         _lock_acquire(&lvgl_api_lock);
         ui_update_time();
-        // 模拟温湿度更新（实际项目中从传感器读取）
-        ui_update_temp(25.5f);  // 固定值或传感器读取
-        ui_update_humidity(65.0f);  // 固定值或传感器读取
+        ui_update_temp(25.5f);
+        ui_update_humidity(65.0f);
         _lock_release(&lvgl_api_lock);
-        
-        vTaskDelay(500 / portTICK_PERIOD_MS);  // 每500ms更新一次
+
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+}
+
+// WiFi状态更新任务
+static void wifi_status_task(void *arg)
+{
+    ESP_LOGI(TAG, "WiFi status task started");
+
+    while (1) {
+        _lock_acquire(&lvgl_api_lock);
+
+        wifi_manager_process_events();
+
+        // WiFi列表界面刷新
+        if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
+            ui_wifi_list_refresh();
+        }
+
+        // 主界面WiFi状态
+        if (ui_get_current_screen() == UI_SCREEN_MAIN) {
+            if (wifi_manager_is_connected()) {
+                const char *ip = wifi_manager_get_ip_address();
+                char status[32];
+                sprintf(status, "IP: %s", ip ? ip : "");
+                ui_update_wifi_status(status);
+            } else {
+                wifi_mode_state_t mode = wifi_manager_get_mode();
+                if (mode == WIFI_STATE_AP) {
+                    char ssid[32], pwd[9];
+                    wifi_manager_get_ap_info(ssid, pwd);
+                    char status[48];
+                    sprintf(status, "AP: %s", ssid);
+                    ui_update_wifi_status(status);
+                } else if (mode == WIFI_STATE_CONNECTING) {
+                    ui_update_wifi_status("Connecting...");
+                }
+            }
+        }
+
+        _lock_release(&lvgl_api_lock);
+
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
 void app_main(void)
 {
     ESP_LOGI(TAG, "================================");
-    ESP_LOGI(TAG, "ST7789 + LVGL + EC11 (20/20) Demo");
+    ESP_LOGI(TAG, "ST7789 + LVGL + EC11 WiFi Demo");
     ESP_LOGI(TAG, "================================");
-    
+
     // 初始化LCD
     lcd_init();
-    
+
     // 初始化LVGL
     lvgl_init();
-    
+
     // 初始化UI
     ui_init();
-    
+
     // 初始化编码器
     encoder_init();
-    
+
+    // 初始化WiFi
+    wifi_manager_init();
+
     // 创建任务
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
     xTaskCreate(encoder_task, "Encoder", 4096, NULL, 2, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
     xTaskCreate(settings_button_task, "SettingsBtn", 4096, NULL, 2, NULL);
-    
+    xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
+
     ESP_LOGI(TAG, "All tasks created");
     
     // 主循环
