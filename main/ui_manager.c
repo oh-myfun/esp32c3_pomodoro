@@ -397,12 +397,8 @@ void ui_wifi_list_refresh(void)
 
     int count = wifi_manager_get_scan_count();
 
-    // 计算可见范围
-    int start_idx = wifi_list_scroll;
-    int end_idx = (start_idx + 8 > count) ? count : start_idx + 8;
-
     for (int i = 0; i < 8; i++) {
-        int idx = start_idx + i;
+        int idx = wifi_list_scroll + i;
         if (idx < count) {
             wifi_scan_result_t *ap = wifi_manager_get_scan_result(idx);
             if (ap) {
@@ -428,8 +424,8 @@ void ui_wifi_list_refresh(void)
     }
 
     if (count > 0) {
-        char hint[32];
-        sprintf(hint, "%d/%d SET:Conn ENC:Back", wifi_list_selected + 1, count);
+        char hint[48];
+        snprintf(hint, sizeof(hint), "%d/%d SET:Conn ENC:Back", wifi_list_selected + 1, count);
         lv_label_set_text(wifi_list_hint, hint);
     } else {
         lv_label_set_text(wifi_list_hint, "No networks");
