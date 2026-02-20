@@ -24,15 +24,9 @@ typedef enum {
     SETTINGS_BRIGHTNESS = 0,
     SETTINGS_CONTRAST,
     SETTINGS_LANGUAGE,
-    SETTINGS_WIFI_MODE,
+    SETTINGS_WIFI,
     SETTINGS_COUNT
 } settings_item_t;
-
-// WiFi模式选择
-typedef enum {
-    WIFI_SELECT_AP = 0,
-    WIFI_SELECT_STA
-} wifi_mode_select_t;
 
 // 初始化UI系统
 void ui_init(void);

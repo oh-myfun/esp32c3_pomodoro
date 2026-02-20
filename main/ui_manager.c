@@ -45,7 +45,7 @@ static const char *charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
 static const int charset_len = 70;
 
 // 设置项当前值
-static int settings_values[SETTINGS_COUNT] = {50, 50, 0, 0};
+static int settings_values[SETTINGS_COUNT] = {50, 50, 0};
 static int current_settings_item = 0;
 
 // 设置项名称
@@ -53,16 +53,12 @@ static const char *settings_names[SETTINGS_COUNT] = {
     "Brightness",
     "Contrast",
     "Language",
-    "WiFi Mode"
+    "WiFi"
 };
 
 // 语言选项
 static const char *language_options[] = {"English", "Chinese"};
 static const int language_count = 2;
-
-// WiFi模式选项
-static const char *wifi_mode_options[] = {"AP", "Station"};
-static const int wifi_mode_count = 2;
 
 // 更新设置界面显示
 static void update_settings_display(void)
@@ -88,8 +84,8 @@ static void update_settings_display(void)
             case SETTINGS_LANGUAGE:
                 sprintf(buf, "%s", language_options[settings_values[i] % language_count]);
                 break;
-            case SETTINGS_WIFI_MODE:
-                sprintf(buf, "%s", wifi_mode_options[settings_values[i] % wifi_mode_count]);
+            case SETTINGS_WIFI:
+                sprintf(buf, ">");
                 break;
             default:
                 sprintf(buf, "%d", settings_values[i]);
@@ -101,8 +97,8 @@ static void update_settings_display(void)
     if (settings_mode == SETTINGS_MODE_SELECT) {
         lv_label_set_text(settings_hint, "Press SET to adjust");
     } else if (settings_mode == SETTINGS_MODE_ADJUST) {
-        if (current_settings_item == SETTINGS_WIFI_MODE) {
-            lv_label_set_text(settings_hint, "Press SET to enter");
+        if (current_settings_item == SETTINGS_WIFI) {
+            lv_label_set_text(settings_hint, "Press SET to scan");
         } else {
             lv_label_set_text(settings_hint, "Adjusting...");
         }
@@ -308,21 +304,10 @@ void ui_enter_settings(void)
         update_settings_display();
         ESP_LOGI(TAG, "Enter settings mode");
     } else if (settings_mode == SETTINGS_MODE_SELECT) {
-        if (current_settings_item == SETTINGS_WIFI_MODE) {
-            if (settings_values[SETTINGS_WIFI_MODE] == WIFI_SELECT_AP) {
-                wifi_manager_start_ap();
-                char ssid[32], pwd[9];
-                wifi_manager_get_ap_info(ssid, pwd);
-                char status[64];
-                sprintf(status, "AP:%s PWD:%s", ssid, pwd);
-                ui_update_wifi_status(status);
-                settings_mode = SETTINGS_MODE_IDLE;
-                ui_switch_screen(UI_SCREEN_MAIN);
-            } else {
-                wifi_manager_scan_start();
-                ui_switch_screen(UI_SCREEN_WIFI_LIST);
-                lv_label_set_text(wifi_list_hint, "Scanning...");
-            }
+        if (current_settings_item == SETTINGS_WIFI) {
+            wifi_manager_scan_start();
+            ui_switch_screen(UI_SCREEN_WIFI_LIST);
+            lv_label_set_text(wifi_list_hint, "Scanning...");
         } else {
             settings_mode = SETTINGS_MODE_ADJUST;
             update_settings_display();
@@ -377,9 +362,6 @@ void ui_settings_adjust_up(void)
         case SETTINGS_LANGUAGE:
             settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % language_count;
             break;
-        case SETTINGS_WIFI_MODE:
-            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % wifi_mode_count;
-            break;
     }
     update_settings_display();
     ESP_LOGI(TAG, "%s: %d", settings_names[current_settings_item], settings_values[current_settings_item]);
@@ -398,9 +380,6 @@ void ui_settings_adjust_down(void)
             break;
         case SETTINGS_LANGUAGE:
             settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + language_count) % language_count;
-            break;
-        case SETTINGS_WIFI_MODE:
-            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + wifi_mode_count) % wifi_mode_count;
             break;
     }
     update_settings_display();

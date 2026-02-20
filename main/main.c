@@ -360,8 +360,6 @@ static void wifi_status_task(void *arg)
     while (1) {
         _lock_acquire(&lvgl_api_lock);
 
-        wifi_manager_process_events();
-
         // WiFi列表界面刷新
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
             ui_wifi_list_refresh();
@@ -375,15 +373,11 @@ static void wifi_status_task(void *arg)
                 sprintf(status, "IP: %s", ip ? ip : "");
                 ui_update_wifi_status(status);
             } else {
-                wifi_mode_state_t mode = wifi_manager_get_mode();
-                if (mode == WIFI_STATE_AP) {
-                    char ssid[32], pwd[9];
-                    wifi_manager_get_ap_info(ssid, pwd);
-                    char status[48];
-                    sprintf(status, "AP: %s", ssid);
-                    ui_update_wifi_status(status);
-                } else if (mode == WIFI_STATE_CONNECTING) {
+                wifi_mode_state_t mode = wifi_manager_get_state();
+                if (mode == WIFI_STATE_CONNECTING) {
                     ui_update_wifi_status("Connecting...");
+                } else if (mode == WIFI_STATE_SCANNING) {
+                    ui_update_wifi_status("Scanning...");
                 }
             }
         }
