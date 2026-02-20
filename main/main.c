@@ -283,6 +283,7 @@ static void encoder_task(void *arg)
                         }
                         break;
                     case EC11_EVENT_PRESS:
+                        // 设置界面按编码器键返回主界面
                         ui_exit_settings();
                         break;
                     default:

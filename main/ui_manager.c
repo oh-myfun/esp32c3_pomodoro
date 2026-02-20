@@ -30,19 +30,23 @@ static lv_obj_t *wifi_list_title = NULL;
 static lv_obj_t *wifi_list_labels[8];
 static lv_obj_t *wifi_list_hint = NULL;
 static int wifi_list_selected = 0;
+static int wifi_list_scroll = 0;
 static char selected_ssid[33] = {0};
 
 // 密码输入界面控件
 static lv_obj_t *pwd_title = NULL;
 static lv_obj_t *pwd_ssid_label = NULL;
 static lv_obj_t *pwd_display = NULL;
-static lv_obj_t *pwd_char_selector = NULL;
+static lv_obj_t *pwd_char_display = NULL;
 static lv_obj_t *pwd_hint = NULL;
 static char password_buffer[64] = {0};
 static int password_len = 0;
-static int selected_char_index = 0;
-static const char *charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*";
-static const int charset_len = 70;
+
+// 密码输入模式
+static int pwd_char_row = 0;  // 0=数字, 1=字母, 2=确认
+static int pwd_char_col = 0;
+static const char *pwd_rows[3] = {"0123456789", "abcdefghijklmnopqrstuvwxyz", "[CONNECT]"};
+static const int pwd_col_counts[3] = {10, 26, 8};
 
 // 设置项当前值
 static int settings_values[SETTINGS_COUNT] = {50, 50, 0};
@@ -226,7 +230,7 @@ lv_obj_t *ui_create_password_screen(void)
 
     pwd_title = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(pwd_title, "Enter Password");
+    lv_label_set_text(pwd_title, "Password");
     lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_14, 0);
     lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 10);
 
@@ -240,17 +244,17 @@ lv_obj_t *ui_create_password_screen(void)
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
     lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_display, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_align(pwd_display, LV_ALIGN_CENTER, 0, -30);
 
-    pwd_char_selector = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_char_selector, lv_color_hex(0xFFFF00), 0);
-    lv_label_set_text(pwd_char_selector, "a");
-    lv_obj_set_style_text_font(pwd_char_selector, &lv_font_montserrat_28, 0);
-    lv_obj_align(pwd_char_selector, LV_ALIGN_CENTER, 0, 20);
+    pwd_char_display = lv_label_create(screen);
+    lv_obj_set_style_text_color(pwd_char_display, lv_color_hex(0xFFFF00), 0);
+    lv_label_set_text(pwd_char_display, "0");
+    lv_obj_set_style_text_font(pwd_char_display, &lv_font_montserrat_28, 0);
+    lv_obj_align(pwd_char_display, LV_ALIGN_CENTER, 0, 20);
 
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(pwd_hint, "Roll:select  SET:add  ENC:del");
+    lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
     lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
 
@@ -393,15 +397,26 @@ void ui_wifi_list_refresh(void)
 
     int count = wifi_manager_get_scan_count();
 
+    // 计算可见范围
+    int start_idx = wifi_list_scroll;
+    int end_idx = (start_idx + 8 > count) ? count : start_idx + 8;
+
     for (int i = 0; i < 8; i++) {
-        if (i < count) {
-            wifi_scan_result_t *ap = wifi_manager_get_scan_result(i);
+        int idx = start_idx + i;
+        if (idx < count) {
+            wifi_scan_result_t *ap = wifi_manager_get_scan_result(idx);
             if (ap) {
                 char buf[40];
-                sprintf(buf, "%s %s", ap->ssid, ap->open ? "[OPEN]" : "");
+                // 处理可能的中文字符（UTF-8）
+                if (ap->ssid[0] >= 0xE0) {
+                    // 简单处理：跳过中文SSID或显示占位符
+                    sprintf(buf, "--- %s", ap->open ? "[OPEN]" : "");
+                } else {
+                    sprintf(buf, "%s %s", ap->ssid, ap->open ? "[OPEN]" : "");
+                }
                 lv_label_set_text(wifi_list_labels[i], buf);
 
-                if (i == wifi_list_selected) {
+                if (idx == wifi_list_selected) {
                     lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0x00FF00), 0);
                 } else {
                     lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0xFFFFFF), 0);
@@ -413,9 +428,11 @@ void ui_wifi_list_refresh(void)
     }
 
     if (count > 0) {
-        lv_label_set_text(wifi_list_hint, "SET:Connect ENC:Back");
+        char hint[32];
+        sprintf(hint, "%d/%d SET:Conn ENC:Back", wifi_list_selected + 1, count);
+        lv_label_set_text(wifi_list_hint, hint);
     } else {
-        lv_label_set_text(wifi_list_hint, "No networks found");
+        lv_label_set_text(wifi_list_hint, "No networks");
     }
 }
 
@@ -426,7 +443,17 @@ void ui_wifi_list_select_next(void)
     int count = wifi_manager_get_scan_count();
     if (count == 0) return;
 
-    wifi_list_selected = (wifi_list_selected + 1) % count;
+    wifi_list_selected++;
+    if (wifi_list_selected >= count) {
+        wifi_list_selected = 0;
+        wifi_list_scroll = 0;
+    }
+
+    // 自动滚动
+    if (wifi_list_selected >= wifi_list_scroll + 8) {
+        wifi_list_scroll = wifi_list_selected - 7;
+    }
+
     ui_wifi_list_refresh();
 }
 
@@ -437,7 +464,17 @@ void ui_wifi_list_select_prev(void)
     int count = wifi_manager_get_scan_count();
     if (count == 0) return;
 
-    wifi_list_selected = (wifi_list_selected - 1 + count) % count;
+    wifi_list_selected--;
+    if (wifi_list_selected < 0) {
+        wifi_list_selected = count - 1;
+        wifi_list_scroll = (count > 8) ? count - 8 : 0;
+    }
+
+    // 自动滚动
+    if (wifi_list_selected < wifi_list_scroll) {
+        wifi_list_scroll = wifi_list_selected;
+    }
+
     ui_wifi_list_refresh();
 }
 
@@ -471,42 +508,62 @@ void ui_password_input_start(const char *ssid)
 {
     password_len = 0;
     password_buffer[0] = '\0';
-    selected_char_index = 0;
+    pwd_char_row = 0;
+    pwd_char_col = 0;
 
-    char title[40];
-    sprintf(title, "Password for: %s", ssid);
     lv_label_set_text(pwd_ssid_label, ssid);
-    lv_label_set_text(pwd_display, "_");
-    lv_label_set_text(pwd_char_selector, "a");
-    lv_label_set_text(pwd_hint, "Roll:select SET:add ENC:del");
+    lv_label_set_text(pwd_display, "");
+    lv_label_set_text(pwd_char_display, "0");
+    lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
 
     ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
+}
+
+static void update_password_display(void)
+{
+    if (pwd_char_row == 2) {
+        lv_label_set_text(pwd_char_display, "[CONNECT]");
+    } else {
+        char buf[2] = {pwd_rows[pwd_char_row][pwd_char_col], '\0'};
+        lv_label_set_text(pwd_char_display, buf);
+    }
 }
 
 void ui_password_input_char_next(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    selected_char_index = (selected_char_index + 1) % charset_len;
-    char buf[2] = {charset[selected_char_index], '\0'};
-    lv_label_set_text(pwd_char_selector, buf);
+    pwd_char_col++;
+    if (pwd_char_col >= pwd_col_counts[pwd_char_row]) {
+        pwd_char_col = 0;
+    }
+    update_password_display();
 }
 
 void ui_password_input_char_prev(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    selected_char_index = (selected_char_index - 1 + charset_len) % charset_len;
-    char buf[2] = {charset[selected_char_index], '\0'};
-    lv_label_set_text(pwd_char_selector, buf);
+    pwd_char_col--;
+    if (pwd_char_col < 0) {
+        pwd_char_col = pwd_col_counts[pwd_char_row] - 1;
+    }
+    update_password_display();
 }
 
 void ui_password_input_add_char(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
+
+    // 如果在CONNECT行，直接连接
+    if (pwd_char_row == 2) {
+        ui_password_input_confirm();
+        return;
+    }
+
     if (password_len >= sizeof(password_buffer) - 1) return;
 
-    password_buffer[password_len++] = charset[selected_char_index];
+    password_buffer[password_len++] = pwd_rows[pwd_char_row][pwd_char_col];
     password_buffer[password_len] = '\0';
 
     char display[65];
