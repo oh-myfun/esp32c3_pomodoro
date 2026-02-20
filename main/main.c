@@ -366,6 +366,9 @@ static void time_update_task(void *arg)
 static void wifi_status_task(void *arg)
 {
     ESP_LOGI(TAG, "WiFi status task started");
+    
+    int64_t last_sync_time = 0;
+    bool has_synced = false;
 
     while (1) {
         _lock_acquire(&lvgl_api_lock);
@@ -380,6 +383,29 @@ static void wifi_status_task(void *arg)
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 continue;
             }
+        }
+
+        // NTP定时同步
+        if (wifi_manager_is_connected()) {
+            // 首次连接或定时同步
+            int interval = wifi_manager_get_ntp_interval();
+            int64_t now = esp_timer_get_time() / 1000000;  // 秒
+            
+            if (!has_synced) {
+                // 首次连接，同步时间
+                wifi_manager_sync_time();
+                has_synced = true;
+                last_sync_time = now;
+            } else if (interval > 0 && (now - last_sync_time >= interval * 60)) {
+                // 定时同步
+                ESP_LOGI(TAG, "Periodic NTP sync triggered");
+                wifi_manager_sync_time();
+                last_sync_time = now;
+            }
+        } else {
+            // 断开连接时重置同步状态
+            has_synced = false;
+            last_sync_time = 0;
         }
 
         // 主界面WiFi状态

@@ -6,6 +6,10 @@
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "lwip/inet.h"
+#include "lwip/netdb.h"
+#include "esp_sntp.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 static const char *TAG = "WIFI";
@@ -14,6 +18,8 @@ static wifi_mode_state_t current_state = WIFI_STATE_NONE;
 static char connected_ssid[33] = {0};
 static char ip_address[16] = {0};
 static bool connect_failed = false;
+static int ntp_sync_interval_min = 10;  // 默认10分钟同步一次
+static int timezone_offset = 8;  // 默认时区+8
 
 static wifi_scan_result_t scan_results[20];
 static int scan_count = 0;
@@ -25,13 +31,15 @@ static esp_netif_t *sta_netif = NULL;
 // HTTP处理函数 - 主页
 static esp_err_t http_root_handler(httpd_req_t *req)
 {
-    const char *html = "<!DOCTYPE html>"
+    char html[2048];
+    snprintf(html, sizeof(html),
+        "<!DOCTYPE html>"
         "<html><head><meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         "<title>Pomodoro Timer</title>"
         "<style>body{font-family:Arial;margin:20px;background:#1a1a1a;color:#fff;}"
         "h1{color:#00ff00;}.setting{margin:15px 0;padding:15px;background:#2d2d2d;border-radius:8px;}"
-        "label{display:block;margin:8px 0;}input,select{padding:10px;width:100%;max-width:300px;border-radius:4px;border:none;box-sizing:border-box;}"
+        "label{display:block;margin:8px 0;}input,select{padding:10px;width:100%%;max-width:300px;border-radius:4px;border:none;box-sizing:border-box;}"
         "button{padding:12px 24px;background:#00ff00;color:#000;border:none;border-radius:5px;cursor:pointer;margin-top:15px;font-size:16px;}"
         "button:hover{background:#00cc00;}</style></head>"
         "<body><h1>🍅 Pomodoro Timer Settings</h1>"
@@ -44,7 +52,11 @@ static esp_err_t http_root_handler(httpd_req_t *req)
         "<div class='setting'><h3>Display Settings</h3>"
         "<label>Brightness (0-100): <input type='number' name='brightness' value='50' min='0' max='100'></label>"
         "<label>Contrast (0-100): <input type='number' name='contrast' value='50' min='0' max='100'></label></div>"
-        "<button type='submit'>Save Settings</button></form></body></html>";
+        "<div class='setting'><h3>Time Sync Settings</h3>"
+        "<label>NTP Sync Interval (minutes, 0=disable): <input type='number' name='ntp_interval' value='%d' min='0' max='1440'></label>"
+        "<label>Timezone (hours, e.g., 8 for +8): <input type='number' name='timezone' value='%d' min='-12' max='14'></label></div>"
+        "<button type='submit'>Save Settings</button></form></body></html>",
+        ntp_sync_interval_min, timezone_offset);
 
     httpd_resp_send(req, html, strlen(html));
     return ESP_OK;
@@ -58,6 +70,26 @@ static esp_err_t http_save_handler(httpd_req_t *req)
     if (ret > 0) {
         buf[ret] = '\0';
         ESP_LOGI(TAG, "Received settings: %s", buf);
+        
+        // 解析ntp_interval参数
+        char *ntp_str = strstr(buf, "ntp_interval=");
+        if (ntp_str) {
+            int interval = atoi(ntp_str + 13);
+            if (interval >= 0 && interval <= 1440) {
+                ntp_sync_interval_min = interval;
+                ESP_LOGI(TAG, "NTP sync interval set to %d minutes", interval);
+            }
+        }
+        
+        // 解析timezone参数
+        char *tz_str = strstr(buf, "timezone=");
+        if (tz_str) {
+            int tz = atoi(tz_str + 9);
+            if (tz >= -12 && tz <= 14) {
+                timezone_offset = tz;
+                ESP_LOGI(TAG, "Timezone set to %d", tz);
+            }
+        }
     }
 
     const char *resp = "<!DOCTYPE html>"
@@ -96,6 +128,9 @@ static void start_http_server(void)
         ESP_LOGI(TAG, "HTTP server started at http://%s/", ip_address);
     }
 }
+
+// NTP时间同步函数前向声明
+void wifi_manager_sync_time(void);
 
 // WiFi事件处理
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -201,8 +236,7 @@ void wifi_manager_connect(const char *ssid, const char *password)
 {
     // 先断开之前的连接
     esp_wifi_disconnect();
-    
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100));
     
     wifi_config_t wifi_config = {0};
     strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
@@ -225,6 +259,69 @@ void wifi_manager_disconnect(void)
     current_state = WIFI_STATE_NONE;
     connected_ssid[0] = '\0';
     ip_address[0] = '\0';
+}
+
+void wifi_manager_sync_time(void)
+{
+    if (current_state != WIFI_STATE_CONNECTED) {
+        ESP_LOGI(TAG, "Not connected, skip time sync");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Starting NTP sync...");
+    
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_setservername(1, "time.windows.com");
+    esp_sntp_setservername(2, "time.google.com");
+    
+    esp_sntp_init();
+    
+    // 等待同步成功
+    for (int i = 0; i < 10; i++) {
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+        if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+            ESP_LOGI(TAG, "NTP sync completed");
+            break;
+        }
+    }
+    
+    // 应用时区设置
+    wifi_manager_set_timezone(timezone_offset);
+    ESP_LOGI(TAG, "Timezone set to UTC+%d", timezone_offset);
+}
+
+void wifi_manager_set_ntp_interval(int minutes)
+{
+    ntp_sync_interval_min = minutes;
+    ESP_LOGI(TAG, "NTP sync interval set to %d minutes", minutes);
+}
+
+int wifi_manager_get_ntp_interval(void)
+{
+    return ntp_sync_interval_min;
+}
+
+void wifi_manager_set_timezone(int tz)
+{
+    if (tz >= -12 && tz <= 14) {
+        timezone_offset = tz;
+        char tz_str[32];
+        if (tz == 8) {
+            snprintf(tz_str, sizeof(tz_str), "CST-8");  // 中国标准时间
+        } else if (tz >= 0) {
+            snprintf(tz_str, sizeof(tz_str), "GMT-%d", tz);
+        } else {
+            snprintf(tz_str, sizeof(tz_str), "GMT+%d", -tz);
+        }
+        setenv("TZ", tz_str, 1);
+        tzset();
+    }
+}
+
+int wifi_manager_get_timezone(void)
+{
+    return timezone_offset;
 }
 
 wifi_mode_state_t wifi_manager_get_state(void)

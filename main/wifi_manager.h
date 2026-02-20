@@ -55,4 +55,11 @@ bool wifi_manager_is_connect_failed(void);
 // 检查扫描是否完成
 bool wifi_manager_is_scan_done(void);
 
+// NTP时间同步
+void wifi_manager_sync_time(void);
+void wifi_manager_set_ntp_interval(int minutes);
+int wifi_manager_get_ntp_interval(void);
+void wifi_manager_set_timezone(int tz);
+int wifi_manager_get_timezone(void);
+
 #endif
