@@ -37,8 +37,8 @@ static char selected_ssid[33] = {0};
 static lv_obj_t *pwd_title = NULL;
 static lv_obj_t *pwd_ssid_label = NULL;
 static lv_obj_t *pwd_display = NULL;
-static lv_obj_t *pwd_char_display = NULL;
 static lv_obj_t *pwd_hint = NULL;
+static lv_obj_t *pwd_keyboard_labels[4][10];  // 键盘字符label
 static char password_buffer[64] = {0};
 static int password_len = 0;
 
@@ -46,18 +46,28 @@ static int password_len = 0;
 // 行0: 数字0-9
 // 行1: 字母a-j
 // 行2: 字母k-t  
-// 行3: 字母u-z + 连接
-static const char *pwd_keyboard[4] = {
-    "0123456789",    // 10个
-    "abcdefghij",    // 10个
-    "klmnopqrst",    // 10个
-    "uvwxyz____"     // 10个，_表示空
+// 行3: 字母u-z + Ab + OK
+static const char pwd_keyboard_lower[4][10] = {
+    "0123456789",
+    "abcdefghij",
+    "klmnopqrst",
+    "uvwxyz"
+};
+static const char pwd_keyboard_upper[4][10] = {
+    "0123456789",
+    "ABCDEFGHIJ",
+    "KLMNOPQRST",
+    "UVWXYZ"
 };
 static const int pwd_keyboard_cols = 10;
 static const int pwd_keyboard_rows = 4;
+static bool pwd_uppercase = false;
 
 static int pwd_selected_row = 0;
 static int pwd_selected_col = 0;
+
+// 前向声明
+static void update_password_display(void);
 
 // 设置项当前值
 static int settings_values[SETTINGS_COUNT] = {50, 50, 0};
@@ -220,14 +230,14 @@ lv_obj_t *ui_create_wifi_list_screen(void)
         wifi_list_labels[i] = lv_label_create(screen);
         lv_obj_set_style_text_font(wifi_list_labels[i], &lv_font_montserrat_14, 0);
         lv_label_set_text(wifi_list_labels[i], "");
-        lv_obj_align(wifi_list_labels[i], LV_ALIGN_TOP_LEFT, 10, 35 + i * 24);
+        lv_obj_align(wifi_list_labels[i], LV_ALIGN_TOP_LEFT, 10, 32 + i * 22);
     }
 
     wifi_list_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x666666), 0);
     lv_label_set_text(wifi_list_hint, "Scanning...");
     lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
 
     return screen;
 }
@@ -243,31 +253,60 @@ lv_obj_t *ui_create_password_screen(void)
     lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_title, "Password");
     lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 5);
 
     pwd_ssid_label = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(pwd_ssid_label, "");
     lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 30);
+    lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 22);
 
+    // 创建密码显示区域 (已输入的密码)
     pwd_display = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
     lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_display, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 40);
 
-    pwd_char_display = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_char_display, lv_color_hex(0xFFFF00), 0);
-    lv_label_set_text(pwd_char_display, "0");
-    lv_obj_set_style_text_font(pwd_char_display, &lv_font_montserrat_28, 0);
-    lv_obj_align(pwd_char_display, LV_ALIGN_CENTER, 0, 20);
+    // 创建4x10键盘布局
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 10; col++) {
+            pwd_keyboard_labels[row][col] = lv_label_create(screen);
+            const char *row_str = pwd_uppercase ? pwd_keyboard_upper[row] : pwd_keyboard_lower[row];
+            char buf[4] = {0};
+            
+            if (row < 3) {
+                // 前3行正常显示10个字符
+                buf[0] = row_str[col];
+            } else {
+                // 第3行：只显示8个 (u,v,w,x,y,z,Ab,OK)，后面两列隐藏
+                if (col < 6) {
+                    buf[0] = row_str[col];
+                } else if (col == 6) {
+                    snprintf(buf, sizeof(buf), "Ab");
+                } else if (col == 7) {
+                    snprintf(buf, sizeof(buf), "OK");
+                } else {
+                    // 隐藏第8、9列
+                    snprintf(buf, sizeof(buf), " ");
+                }
+            }
+            
+            lv_label_set_text(pwd_keyboard_labels[row][col], buf);
+            lv_obj_set_style_text_font(pwd_keyboard_labels[row][col], &lv_font_montserrat_14, 0);
+            int x = 5 + col * 23;
+            int y = 65 + row * 35;
+            lv_obj_align(pwd_keyboard_labels[row][col], LV_ALIGN_TOP_LEFT, x, y);
+            lv_obj_set_style_text_color(pwd_keyboard_labels[row][col], lv_color_hex(0x666666), 0);
+        }
+    }
 
+    // 提示信息
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x666666), 0);
     lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
     lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
 
     return screen;
 }
@@ -407,10 +446,11 @@ void ui_wifi_list_refresh(void)
     if (current_screen != UI_SCREEN_WIFI_LIST) return;
 
     int count = wifi_manager_get_scan_count();
+    bool scan_done = (count > 0);
 
     for (int i = 0; i < 8; i++) {
         int idx = wifi_list_scroll + i;
-        if (idx < count) {
+        if (scan_done && idx < count) {
             wifi_scan_result_t *ap = wifi_manager_get_scan_result(idx);
             if (ap) {
                 char buf[40];
@@ -428,12 +468,12 @@ void ui_wifi_list_refresh(void)
         }
     }
 
-    if (count > 0) {
+    if (scan_done && count > 0) {
         char hint[48];
         snprintf(hint, sizeof(hint), "%d/%d SET:Conn ENC:Back", wifi_list_selected + 1, count);
         lv_label_set_text(wifi_list_hint, hint);
     } else {
-        lv_label_set_text(wifi_list_hint, "No networks");
+        lv_label_set_text(wifi_list_hint, "Scanning...");
     }
 }
 
@@ -497,6 +537,14 @@ void ui_wifi_list_confirm(void)
     }
 }
 
+void ui_update_wifi_status_ex(const char *status, uint32_t color)
+{
+    if (wifi_status_label) {
+        lv_label_set_text(wifi_status_label, status);
+        lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(color), 0);
+    }
+}
+
 void ui_update_wifi_status(const char *status)
 {
     if (wifi_status_label) {
@@ -511,25 +559,60 @@ void ui_password_input_start(const char *ssid)
     password_buffer[0] = '\0';
     pwd_selected_row = 0;
     pwd_selected_col = 0;
+    pwd_uppercase = false;
 
     lv_label_set_text(pwd_ssid_label, ssid);
     lv_label_set_text(pwd_display, "");
-    lv_label_set_text(pwd_char_display, "0");
     lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
 
     ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
+
+    // 初始化键盘显示
+    update_password_display();
 }
 
 static void update_password_display(void)
 {
-    char ch = pwd_keyboard[pwd_selected_row][pwd_selected_col];
-    char buf[8];
-    if (ch == '_') {
-        snprintf(buf, sizeof(buf), "[OK]");
-    } else {
-        snprintf(buf, sizeof(buf), "%c", ch);
+    // 重新绘制键盘以反映大小写状态
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 10; col++) {
+            if (pwd_keyboard_labels[row][col]) {
+                const char *row_str = pwd_uppercase ? pwd_keyboard_upper[row] : pwd_keyboard_lower[row];
+                char buf[4] = {0};
+                
+                if (row < 3) {
+                    buf[0] = row_str[col];
+                } else {
+                    if (col < 6) {
+                        buf[0] = row_str[col];
+                    } else if (col == 6) {
+                        snprintf(buf, sizeof(buf), "Ab");
+                    } else if (col == 7) {
+                        snprintf(buf, sizeof(buf), "OK");
+                    } else {
+                        // 隐藏第8、9列
+                        snprintf(buf, sizeof(buf), " ");
+                    }
+                }
+                lv_label_set_text(pwd_keyboard_labels[row][col], buf);
+            }
+        }
     }
-    lv_label_set_text(pwd_char_display, buf);
+
+    // 取消所有字符的高亮
+    for (int row = 0; row < 4; row++) {
+        int max_col = (row == 3) ? 8 : pwd_keyboard_cols;
+        for (int col = 0; col < max_col; col++) {
+            if (pwd_keyboard_labels[row][col]) {
+                lv_obj_set_style_text_color(pwd_keyboard_labels[row][col], lv_color_hex(0x666666), 0);
+            }
+        }
+    }
+
+    // 高亮当前选中的字符
+    if (pwd_keyboard_labels[pwd_selected_row][pwd_selected_col]) {
+        lv_obj_set_style_text_color(pwd_keyboard_labels[pwd_selected_row][pwd_selected_col], lv_color_hex(0x00FF00), 0);
+    }
 }
 
 void ui_password_input_char_next(void)
@@ -537,7 +620,11 @@ void ui_password_input_char_next(void)
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
     pwd_selected_col++;
-    if (pwd_selected_col >= pwd_keyboard_cols) {
+    
+    // 检查当前行的有效列数
+    int max_col = (pwd_selected_row == 3) ? 8 : pwd_keyboard_cols;
+    
+    if (pwd_selected_col >= max_col) {
         pwd_selected_col = 0;
         pwd_selected_row++;
         if (pwd_selected_row >= pwd_keyboard_rows) {
@@ -552,12 +639,13 @@ void ui_password_input_char_prev(void)
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
     pwd_selected_col--;
+    
     if (pwd_selected_col < 0) {
-        pwd_selected_col = pwd_keyboard_cols - 1;
         pwd_selected_row--;
         if (pwd_selected_row < 0) {
             pwd_selected_row = pwd_keyboard_rows - 1;
         }
+        pwd_selected_col = (pwd_selected_row == 3) ? 7 : (pwd_keyboard_cols - 1);
     }
     update_password_display();
 }
@@ -566,24 +654,29 @@ void ui_password_input_add_char(void)
 {
     if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
 
-    char ch = pwd_keyboard[pwd_selected_row][pwd_selected_col];
-    
-    // 如果选中_[OK]，直接连接
-    if (ch == '_') {
+    // 检查是否选中大小写切换（第3行第6列）
+    if (pwd_selected_row == 3 && pwd_selected_col == 6) {
+        pwd_uppercase = !pwd_uppercase;
+        update_password_display();
+        return;
+    }
+
+    // 检查是否选中OK（第3行第7列）
+    if (pwd_selected_row == 3 && pwd_selected_col == 7) {
         ui_password_input_confirm();
         return;
     }
 
+    const char *row_str = pwd_uppercase ? pwd_keyboard_upper[pwd_selected_row] : pwd_keyboard_lower[pwd_selected_row];
+    char ch = row_str[pwd_selected_col];
+    
     if (password_len >= sizeof(password_buffer) - 1) return;
 
     password_buffer[password_len++] = ch;
     password_buffer[password_len] = '\0';
 
-    char display[65];
-    memset(display, '*', password_len);
-    display[password_len] = '_';
-    display[password_len + 1] = '\0';
-    lv_label_set_text(pwd_display, display);
+    // 明文显示密码
+    lv_label_set_text(pwd_display, password_buffer);
 }
 
 void ui_password_input_delete_char(void)
@@ -593,11 +686,8 @@ void ui_password_input_delete_char(void)
 
     password_buffer[--password_len] = '\0';
 
-    char display[65];
-    memset(display, '*', password_len);
-    display[password_len] = '_';
-    display[password_len + 1] = '\0';
-    lv_label_set_text(pwd_display, display);
+    // 明文显示密码
+    lv_label_set_text(pwd_display, password_buffer);
 }
 
 void ui_password_input_confirm(void)

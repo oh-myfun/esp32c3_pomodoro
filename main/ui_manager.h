@@ -63,6 +63,7 @@ void ui_wifi_list_select_next(void);
 void ui_wifi_list_select_prev(void);
 void ui_wifi_list_confirm(void);
 void ui_update_wifi_status(const char *status);
+void ui_update_wifi_status_ex(const char *status, uint32_t color);
 
 // 密码输入相关
 void ui_password_input_start(const char *ssid);

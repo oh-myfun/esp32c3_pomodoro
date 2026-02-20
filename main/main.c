@@ -27,7 +27,7 @@ static const char *TAG = "MAIN";
 
 #define LCD_V_RES 240
 #define LCD_H_RES 240
-#define LVGL_DRAW_BUF_LINES 20
+#define LVGL_DRAW_BUF_LINES 60
 #define LVGL_TICK_PERIOD_MS 2
 #define LVGL_TASK_MAX_DELAY_MS 500
 #define LVGL_TASK_MIN_DELAY_MS 1000 / CONFIG_FREERTOS_HZ
@@ -265,8 +265,19 @@ static void encoder_task(void *arg)
                         break;
                 }
             }
-            // 设置界面
-            else if (mode != SETTINGS_MODE_IDLE) {
+            // 设置界面 - 滚动切换回主界面
+            else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_IDLE) {
+                switch (event) {
+                    case EC11_EVENT_CW:
+                    case EC11_EVENT_CCW:
+                        ui_switch_screen(UI_SCREEN_MAIN);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // 设置界面 - 设置模式
+            else if (screen == UI_SCREEN_SETTINGS && mode != SETTINGS_MODE_IDLE) {
                 switch (event) {
                     case EC11_EVENT_CW:
                         if (mode == SETTINGS_MODE_SELECT) {
@@ -290,12 +301,10 @@ static void encoder_task(void *arg)
                         break;
                 }
             }
-            // 主界面
-            else {
+            // 主界面 - 滚动进入设置界面
+            else if (screen == UI_SCREEN_MAIN) {
                 switch (event) {
                     case EC11_EVENT_CW:
-                        ui_switch_screen(UI_SCREEN_SETTINGS);
-                        break;
                     case EC11_EVENT_CCW:
                         ui_switch_screen(UI_SCREEN_SETTINGS);
                         break;
@@ -364,6 +373,13 @@ static void wifi_status_task(void *arg)
         // WiFi列表界面刷新
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
             ui_wifi_list_refresh();
+            
+            // 扫描期间更频繁刷新
+            if (!wifi_manager_is_scan_done()) {
+                _lock_release(&lvgl_api_lock);
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+                continue;
+            }
         }
 
         // 主界面WiFi状态
@@ -372,13 +388,17 @@ static void wifi_status_task(void *arg)
                 const char *ip = wifi_manager_get_ip_address();
                 char status[32];
                 sprintf(status, "IP: %s", ip ? ip : "");
-                ui_update_wifi_status(status);
+                ui_update_wifi_status_ex(status, 0x00FF00);
             } else {
                 wifi_mode_state_t mode = wifi_manager_get_state();
                 if (mode == WIFI_STATE_CONNECTING) {
-                    ui_update_wifi_status("Connecting...");
+                    ui_update_wifi_status_ex("Connecting...", 0xFFFF00);
                 } else if (mode == WIFI_STATE_SCANNING) {
-                    ui_update_wifi_status("Scanning...");
+                    ui_update_wifi_status_ex("Scanning...", 0xFFFF00);
+                } else if (wifi_manager_is_connect_failed()) {
+                    ui_update_wifi_status_ex("Connect Failed", 0xFF0000);
+                } else {
+                    ui_update_wifi_status_ex("Disconnected", 0x666666);
                 }
             }
         }

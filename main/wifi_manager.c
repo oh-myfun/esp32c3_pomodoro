@@ -13,6 +13,7 @@ static const char *TAG = "WIFI";
 static wifi_mode_state_t current_state = WIFI_STATE_NONE;
 static char connected_ssid[33] = {0};
 static char ip_address[16] = {0};
+static bool connect_failed = false;
 
 static wifi_scan_result_t scan_results[20];
 static int scan_count = 0;
@@ -107,6 +108,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 break;
             case WIFI_EVENT_STA_DISCONNECTED:
                 ESP_LOGI(TAG, "WiFi disconnected");
+                if (current_state == WIFI_STATE_CONNECTING) {
+                    connect_failed = true;
+                }
                 current_state = WIFI_STATE_NONE;
                 connected_ssid[0] = '\0';
                 ip_address[0] = '\0';
@@ -195,14 +199,21 @@ wifi_scan_result_t* wifi_manager_get_scan_result(int index)
 
 void wifi_manager_connect(const char *ssid, const char *password)
 {
+    // 先断开之前的连接
+    esp_wifi_disconnect();
+    
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+    
     wifi_config_t wifi_config = {0};
     strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
     strncpy((char*)wifi_config.sta.password, password, sizeof(wifi_config.sta.password) - 1);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
+    connect_failed = false;
     current_state = WIFI_STATE_CONNECTING;
     strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
+    ip_address[0] = '\0';
 
     ESP_ERROR_CHECK(esp_wifi_connect());
     ESP_LOGI(TAG, "Connecting to: %s", ssid);
@@ -234,4 +245,14 @@ bool wifi_manager_is_connected(void)
 const char* wifi_manager_get_ip_address(void)
 {
     return ip_address[0] ? ip_address : NULL;
+}
+
+bool wifi_manager_is_connect_failed(void)
+{
+    return connect_failed;
+}
+
+bool wifi_manager_is_scan_done(void)
+{
+    return scan_done;
 }

@@ -49,4 +49,10 @@ bool wifi_manager_is_connected(void);
 // 获取本机IP地址
 const char* wifi_manager_get_ip_address(void);
 
+// 检查连接是否失败
+bool wifi_manager_is_connect_failed(void);
+
+// 检查扫描是否完成
+bool wifi_manager_is_scan_done(void);
+
 #endif
