@@ -16,18 +16,6 @@ static const char *TAG = "STORAGE";
 #define KEY_COMPLETED    "completed"
 #define KEY_CURRENT_CYCLE "cycle"
 
-esp_err_t storage_init(void)
-{
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(err);
-    ESP_LOGI(TAG, "Storage initialized");
-    return err;
-}
-
 bool storage_save_string(const char *namespace, const char *key, const char *value)
 {
     nvs_handle_t handle;

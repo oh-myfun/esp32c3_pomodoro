@@ -28,15 +28,6 @@ void encoder_init(void);
 // 获取编码器事件（非阻塞，需定期调用）
 ec11_event_t encoder_get_event(void);
 
-// 获取旋转计数（累计值，可正可负）
-int32_t encoder_get_count(void);
-
-// 重置计数
-void encoder_reset_count(void);
-
-// 检查按键是否按下
-bool encoder_is_pressed(void);
-
 // 获取按键按下时长（毫秒）
 uint32_t encoder_get_press_duration_ms(void);
 

@@ -129,9 +129,6 @@ static void start_http_server(void)
     }
 }
 
-// NTP时间同步函数前向声明
-void wifi_manager_sync_time(void);
-
 // WiFi事件处理
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)

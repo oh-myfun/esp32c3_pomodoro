@@ -114,21 +114,6 @@ ec11_event_t encoder_get_event(void)
     return event;
 }
 
-int32_t encoder_get_count(void)
-{
-    return encoder_count;
-}
-
-void encoder_reset_count(void)
-{
-    encoder_count = 0;
-}
-
-bool encoder_is_pressed(void)
-{
-    return (gpio_get_level(EC11_K_GPIO) == 0);
-}
-
 // 检测设置按键是否被按下（带消抖）
 bool settings_button_get_event(void)
 {

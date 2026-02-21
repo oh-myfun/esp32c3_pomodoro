@@ -10,8 +10,6 @@
 #define STORAGE_NAMESPACE_SETTINGS "settings"
 #define STORAGE_NAMESPACE_WIFI     "wifi"
 
-esp_err_t storage_init(void);
-
 bool storage_save_wifi_config(const char *ssid, const char *password);
 
 bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len);
