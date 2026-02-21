@@ -1,5 +1,6 @@
 #include "encoder.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -16,6 +17,11 @@ static int8_t last_dir = 0;
 
 // 设置按键状态
 static uint8_t last_settings_btn_state = 1;
+
+// 长按检测
+static uint32_t press_start_time = 0;
+static bool long_press_triggered = false;
+#define LONG_PRESS_DURATION_MS 1000
 
 void encoder_init(void)
 {
@@ -85,14 +91,24 @@ ec11_event_t encoder_get_event(void)
     if (btn != last_button_state) {
         if (btn == 0) {
             button_pressed = true;
+            press_start_time = esp_timer_get_time() / 1000;
+            long_press_triggered = false;
             event = EC11_EVENT_PRESS;
             ESP_LOGI(TAG, "PRESS");
         } else {
             button_pressed = false;
+            long_press_triggered = false;
             event = EC11_EVENT_RELEASE;
         }
         last_button_state = btn;
         vTaskDelay(pdMS_TO_TICKS(20));
+    } else if (button_pressed && !long_press_triggered) {
+        uint32_t current_time = esp_timer_get_time() / 1000;
+        if (current_time - press_start_time >= LONG_PRESS_DURATION_MS) {
+            long_press_triggered = true;
+            event = EC11_EVENT_LONG_PRESS;
+            ESP_LOGI(TAG, "LONG_PRESS");
+        }
     }
 
     return event;
@@ -130,3 +146,13 @@ bool settings_button_get_event(void)
 
     return pressed;
 }
+
+uint32_t encoder_get_press_duration_ms(void)
+{
+    if (!button_pressed) {
+        return 0;
+    }
+    uint32_t current_time = esp_timer_get_time() / 1000;
+    return current_time - press_start_time;
+}
+

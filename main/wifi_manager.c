@@ -353,3 +353,15 @@ bool wifi_manager_is_scan_done(void)
 {
     return scan_done;
 }
+
+int8_t wifi_manager_get_rssi(void)
+{
+    if (current_state != WIFI_STATE_CONNECTED) {
+        return 0;
+    }
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+        return ap_info.rssi;
+    }
+    return 0;
+}

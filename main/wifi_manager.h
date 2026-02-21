@@ -55,6 +55,9 @@ bool wifi_manager_is_connect_failed(void);
 // 检查扫描是否完成
 bool wifi_manager_is_scan_done(void);
 
+// 获取当前WiFi信号强度
+int8_t wifi_manager_get_rssi(void);
+
 // NTP时间同步
 void wifi_manager_sync_time(void);
 void wifi_manager_set_ntp_interval(int minutes);
