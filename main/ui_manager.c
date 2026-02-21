@@ -27,109 +27,11 @@ static lv_obj_t *settings_item_labels[SETTINGS_COUNT];
 static lv_obj_t *settings_value_labels[SETTINGS_COUNT];
 static lv_obj_t *settings_hint = NULL;
 
-// WiFi列表界面控件
-static lv_obj_t *wifi_list_title = NULL;
-static lv_obj_t *wifi_list_labels[8];
-static lv_obj_t *wifi_list_hint = NULL;
-static int wifi_list_selected = 0;
-static int wifi_list_scroll = 0;
-static char selected_ssid[33] = {0};
-
-// 密码输入界面控件
-static lv_obj_t *pwd_title = NULL;
-static lv_obj_t *pwd_ssid_label = NULL;
-static lv_obj_t *pwd_display = NULL;
-static lv_obj_t *pwd_hint = NULL;
-static lv_obj_t *pwd_keyboard_labels[4][10];  // 键盘字符label
-static char password_buffer[64] = {0};
-static int password_len = 0;
-
-// 密码键盘布局：4行x10列
-// 行0: 数字0-9
-// 行1: 字母a-j
-// 行2: 字母k-t  
-// 行3: 字母u-z + Ab + OK
-static const char pwd_keyboard_lower[4][10] = {
-    "0123456789",
-    "abcdefghij",
-    "klmnopqrst",
-    "uvwxyz"
-};
-static const char pwd_keyboard_upper[4][10] = {
-    "0123456789",
-    "ABCDEFGHIJ",
-    "KLMNOPQRST",
-    "UVWXYZ"
-};
-static const int pwd_keyboard_cols = 10;
-static const int pwd_keyboard_rows = 4;
-static bool pwd_uppercase = false;
-
-static int pwd_selected_row = 0;
-static int pwd_selected_col = 0;
-
-// 前向声明
-static void update_password_display(void);
-
-// 设置项当前值
-static int settings_values[SETTINGS_COUNT] = {50, 50, 0};
-static int current_settings_item = 0;
-
-// 设置项名称
-static const char *settings_names[SETTINGS_COUNT] = {
-    "Brightness",
-    "Contrast",
-    "Language",
-    "WiFi"
-};
-
-// 语言选项
-static const char *language_options[] = {"English", "Chinese"};
-static const int language_count = 2;
-
 // 更新设置界面显示
 static void update_settings_display(void)
 {
     if (current_screen != UI_SCREEN_SETTINGS) return;
-
-    for (int i = 0; i < SETTINGS_COUNT; i++) {
-        if (settings_item_labels[i] == NULL || settings_value_labels[i] == NULL) continue;
-
-        if (i == current_settings_item && settings_mode == SETTINGS_MODE_SELECT) {
-            lv_obj_set_style_text_color(settings_item_labels[i], lv_color_hex(0x00FF00), 0);
-            lv_obj_set_style_text_color(settings_value_labels[i], lv_color_hex(0x00FF00), 0);
-        } else if (i == current_settings_item && settings_mode == SETTINGS_MODE_ADJUST) {
-            lv_obj_set_style_text_color(settings_item_labels[i], lv_color_hex(0xFFFF00), 0);
-            lv_obj_set_style_text_color(settings_value_labels[i], lv_color_hex(0xFFFF00), 0);
-        } else {
-            lv_obj_set_style_text_color(settings_item_labels[i], lv_color_hex(0xFFFFFF), 0);
-            lv_obj_set_style_text_color(settings_value_labels[i], lv_color_hex(0xAAAAAA), 0);
-        }
-
-        char buf[20];
-        switch (i) {
-            case SETTINGS_LANGUAGE:
-                sprintf(buf, "%s", language_options[settings_values[i] % language_count]);
-                break;
-            case SETTINGS_WIFI:
-                sprintf(buf, ">");
-                break;
-            default:
-                sprintf(buf, "%d", settings_values[i]);
-                break;
-        }
-        lv_label_set_text(settings_value_labels[i], buf);
-    }
-
-    if (settings_mode == SETTINGS_MODE_SELECT) {
-        lv_label_set_text(settings_hint, "Press SET to adjust");
-    } else if (settings_mode == SETTINGS_MODE_ADJUST) {
-        if (current_settings_item == SETTINGS_WIFI) {
-            lv_label_set_text(settings_hint, "Press SET to scan");
-        } else {
-            lv_label_set_text(settings_hint, "Adjusting...");
-        }
-    }
+    ui_screen_settings_update(ui_screen_settings_get_values(), ui_screen_settings_get_current_item(), ui_screen_settings_get_mode());
 }
 
 void ui_init(void)
