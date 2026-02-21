@@ -1,5 +1,9 @@
 #include "ui_manager.h"
 #include "wifi_manager.h"
+#include "ui_screen_main.h"
+#include "ui_screen_pomodoro.h"
+#include "ui_screen_settings.h"
+#include "ui_screen_wifi.h"
 #include "esp_log.h"
 #include <time.h>
 #include <sys/time.h>
@@ -130,193 +134,12 @@ static void update_settings_display(void)
     }
 }
 
-// 主界面
-lv_obj_t *ui_create_main_screen(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
-    lv_obj_set_size(screen, 240, 240);
-
-    temp_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(temp_label, lv_color_hex(0xFF6B6B), 0);
-    lv_label_set_text(temp_label, "25C");
-    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 10, 10);
-
-    humidity_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(humidity_label, lv_color_hex(0x4D96FF), 0);
-    lv_label_set_text(humidity_label, "65%");
-    lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
-
-    time_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(time_label, "12:00:00");
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_letter_space(time_label, 2, 0);
-    lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -15);
-
-    date_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(date_label, lv_color_hex(0xAAAAAA), 0);
-    lv_label_set_text(date_label, "2025-01-01 Mon");
-    lv_obj_set_style_text_font(date_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 60);
-
-    wifi_status_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(wifi_status_label, "");
-    lv_obj_set_style_text_font(wifi_status_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 28);
-
-    lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(hint, "Press SET to config");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -5);
-
-    return screen;
-}
-
-// 设置界面
-lv_obj_t *ui_create_settings_screen(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_size(screen, 240, 240);
-
-    settings_title = lv_label_create(screen);
-    lv_obj_set_style_text_color(settings_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(settings_title, "SETTINGS");
-    lv_obj_set_style_text_font(settings_title, &lv_font_montserrat_14, 0);
-    lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 15);
-
-    // 创建设置项
-    for (int i = 0; i < SETTINGS_COUNT; i++) {
-        int y_offset = 45 + i * 50;
-
-        settings_item_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(settings_item_labels[i], &lv_font_montserrat_14, 0);
-        lv_label_set_text(settings_item_labels[i], settings_names[i]);
-        lv_obj_align(settings_item_labels[i], LV_ALIGN_TOP_LEFT, 20, y_offset);
-
-        settings_value_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(settings_value_labels[i], &lv_font_montserrat_14, 0);
-        lv_obj_align(settings_value_labels[i], LV_ALIGN_TOP_RIGHT, -20, y_offset);
-    }
-
-    settings_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(settings_hint, "Press SET to adjust");
-    lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
-
-    return screen;
-}
-
-// WiFi列表界面
-lv_obj_t *ui_create_wifi_list_screen(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_size(screen, 240, 240);
-
-    wifi_list_title = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(wifi_list_title, "WiFi Networks");
-    lv_obj_set_style_text_font(wifi_list_title, &lv_font_montserrat_14, 0);
-    lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
-
-    for (int i = 0; i < 8; i++) {
-        wifi_list_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(wifi_list_labels[i], &lv_font_montserrat_14, 0);
-        lv_label_set_text(wifi_list_labels[i], "");
-        lv_obj_align(wifi_list_labels[i], LV_ALIGN_TOP_LEFT, 10, 32 + i * 22);
-    }
-
-    wifi_list_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(wifi_list_hint, "Scanning...");
-    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
-
-    return screen;
-}
-
-// 密码输入界面
-lv_obj_t *ui_create_password_screen(void)
-{
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_size(screen, 240, 240);
-
-    pwd_title = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(pwd_title, "Password");
-    lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 5);
-
-    pwd_ssid_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(pwd_ssid_label, "");
-    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 22);
-
-    // 创建密码显示区域 (已输入的密码)
-    pwd_display = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(pwd_display, "");
-    lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 40);
-
-    // 创建4x10键盘布局
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 10; col++) {
-            pwd_keyboard_labels[row][col] = lv_label_create(screen);
-            const char *row_str = pwd_uppercase ? pwd_keyboard_upper[row] : pwd_keyboard_lower[row];
-            char buf[4] = {0};
-            
-            if (row < 3) {
-                // 前3行正常显示10个字符
-                buf[0] = row_str[col];
-            } else {
-                // 第3行：只显示8个 (u,v,w,x,y,z,Ab,OK)，后面两列隐藏
-                if (col < 6) {
-                    buf[0] = row_str[col];
-                } else if (col == 6) {
-                    snprintf(buf, sizeof(buf), "Ab");
-                } else if (col == 7) {
-                    snprintf(buf, sizeof(buf), "OK");
-                } else {
-                    // 隐藏第8、9列
-                    snprintf(buf, sizeof(buf), " ");
-                }
-            }
-            
-            lv_label_set_text(pwd_keyboard_labels[row][col], buf);
-            lv_obj_set_style_text_font(pwd_keyboard_labels[row][col], &lv_font_montserrat_14, 0);
-            int x = 5 + col * 23;
-            int y = 65 + row * 35;
-            lv_obj_align(pwd_keyboard_labels[row][col], LV_ALIGN_TOP_LEFT, x, y);
-            lv_obj_set_style_text_color(pwd_keyboard_labels[row][col], lv_color_hex(0x666666), 0);
-        }
-    }
-
-    // 提示信息
-    pwd_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
-    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
-
-    return screen;
-}
-
 void ui_init(void)
 {
-    screens[UI_SCREEN_MAIN] = ui_create_main_screen();
-    screens[UI_SCREEN_SETTINGS] = ui_create_settings_screen();
-    screens[UI_SCREEN_WIFI_LIST] = ui_create_wifi_list_screen();
-    screens[UI_SCREEN_PASSWORD_INPUT] = ui_create_password_screen();
+    screens[UI_SCREEN_MAIN] = ui_screen_main_create();
+    screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
+    screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
+    screens[UI_SCREEN_PASSWORD_INPUT] = ui_screen_password_create();
 
     lv_scr_load(screens[UI_SCREEN_MAIN]);
     current_screen = UI_SCREEN_MAIN;
@@ -711,49 +534,35 @@ void ui_password_input_cancel(void)
 
 void ui_update_time(void)
 {
-    if (time_label == NULL) return;
-
-    struct timeval tv;
-    struct tm *timeinfo;
-
-    gettimeofday(&tv, NULL);
-    timeinfo = localtime(&tv.tv_sec);
-
-    if (timeinfo == NULL) return;
-
-    char time_buf[16];
-    sprintf(time_buf, "%02d:%02d:%02d",
-            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-    lv_label_set_text(time_label, time_buf);
-
-    if (date_label != NULL) {
-        char date_buf[32];
-        sprintf(date_buf, "%04d-%02d-%02d %s",
-                timeinfo->tm_year + 1900,
-                timeinfo->tm_mon + 1,
-                timeinfo->tm_mday,
-                timeinfo->tm_wday == 0 ? "Sun" :
-                timeinfo->tm_wday == 1 ? "Mon" :
-                timeinfo->tm_wday == 2 ? "Tue" :
-                timeinfo->tm_wday == 3 ? "Wed" :
-                timeinfo->tm_wday == 4 ? "Thu" :
-                timeinfo->tm_wday == 5 ? "Fri" : "Sat");
-        lv_label_set_text(date_label, date_buf);
-    }
+    ui_screen_main_update_time();
 }
 
 void ui_update_temp(float temp)
 {
-    if (temp_label == NULL) return;
-    char buf[16];
-    sprintf(buf, "%.1fC", temp);
-    lv_label_set_text(temp_label, buf);
+    ui_screen_main_update_temp(temp);
 }
 
 void ui_update_humidity(float humidity)
 {
-    if (humidity_label == NULL) return;
-    char buf[16];
-    sprintf(buf, "%.0f%%", humidity);
-    lv_label_set_text(humidity_label, buf);
+    ui_screen_main_update_humidity(humidity);
+}
+
+void ui_pomodoro_update_time(uint32_t remaining_seconds)
+{
+    ui_screen_pomodoro_update_time(remaining_seconds);
+}
+
+void ui_pomodoro_update_phase(const char *phase)
+{
+    ui_screen_pomodoro_update_phase(phase);
+}
+
+void ui_pomodoro_update_completed(uint32_t count)
+{
+    ui_screen_pomodoro_update_completed(count);
+}
+
+void ui_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed)
+{
+    ui_screen_pomodoro_update_state(phase, remaining_seconds, completed);
 }
