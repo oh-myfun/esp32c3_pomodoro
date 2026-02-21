@@ -52,7 +52,7 @@ void ui_screen_pomodoro_update_time(uint32_t remaining_seconds)
     uint32_t minutes = remaining_seconds / 60;
     uint32_t seconds = remaining_seconds % 60;
     char buf[16];
-    snprintf(buf, sizeof(buf), "%02u:%02u", minutes, seconds);
+    snprintf(buf, sizeof(buf), "%02lu:%02lu", (unsigned long)minutes, (unsigned long)seconds);
     lv_label_set_text(timer_label, buf);
 }
 

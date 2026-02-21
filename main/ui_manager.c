@@ -14,19 +14,6 @@ static lv_obj_t *screens[UI_SCREEN_COUNT];
 static ui_screen_id_t current_screen = UI_SCREEN_MAIN;
 static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
 
-// 主界面控件
-static lv_obj_t *time_label = NULL;
-static lv_obj_t *date_label = NULL;
-static lv_obj_t *temp_label = NULL;
-static lv_obj_t *humidity_label = NULL;
-static lv_obj_t *wifi_status_label = NULL;
-
-// 设置界面控件
-static lv_obj_t *settings_title = NULL;
-static lv_obj_t *settings_item_labels[SETTINGS_COUNT];
-static lv_obj_t *settings_value_labels[SETTINGS_COUNT];
-static lv_obj_t *settings_hint = NULL;
-
 // 更新设置界面显示
 static void update_settings_display(void)
 {
