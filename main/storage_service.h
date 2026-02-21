@@ -1,0 +1,37 @@
+#ifndef STORAGE_SERVICE_H
+#define STORAGE_SERVICE_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "esp_err.h"
+
+#define STORAGE_NAMESPACE_POMODORO "pomodoro"
+#define STORAGE_NAMESPACE_SETTINGS "settings"
+#define STORAGE_NAMESPACE_WIFI     "wifi"
+
+esp_err_t storage_init(void);
+
+bool storage_save_wifi_config(const char *ssid, const char *password);
+
+bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len);
+
+bool storage_save_pomodoro_state(void *state);
+
+bool storage_load_pomodoro_state(void *state);
+
+bool storage_save_pomodoro_settings(void *settings);
+
+bool storage_load_pomodoro_settings(void *settings);
+
+bool storage_save_string(const char *namespace, const char *key, const char *value);
+
+bool storage_load_string(const char *namespace, const char *key, char *value, size_t len);
+
+bool storage_save_int(const char *namespace, const char *key, int32_t value);
+
+bool storage_load_int(const char *namespace, const char *key, int32_t *value);
+
+void storage_clear_namespace(const char *namespace);
+
+#endif

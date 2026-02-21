@@ -1,0 +1,178 @@
+#include "storage_service.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include <string.h>
+
+static const char *TAG = "STORAGE";
+
+#define KEY_WIFI_SSID     "ssid"
+#define KEY_WIFI_PASSWORD "password"
+#define KEY_POM_STATE     "state"
+#define KEY_POM_SETTINGS  "settings"
+#define KEY_WORK_MIN      "work_min"
+#define KEY_BREAK_MIN     "break_min"
+#define KEY_LONG_BREAK   "long_break"
+#define KEY_COMPLETED    "completed"
+#define KEY_CURRENT_CYCLE "cycle"
+
+esp_err_t storage_init(void)
+{
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    ESP_LOGI(TAG, "Storage initialized");
+    return err;
+}
+
+bool storage_save_string(const char *namespace, const char *key, const char *value)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS namespace %s", namespace);
+        return false;
+    }
+
+    err = nvs_set_str(handle, key, value);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to save %s.%s", namespace, key);
+        nvs_close(handle);
+        return false;
+    }
+
+    err = nvs_commit(handle);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+bool storage_load_string(const char *namespace, const char *key, char *value, size_t len)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return false;
+    }
+
+    err = nvs_get_str(handle, key, value, &len);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+bool storage_save_int(const char *namespace, const char *key, int32_t value)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return false;
+    }
+
+    err = nvs_set_i32(handle, key, value);
+    if (err != ESP_OK) {
+        nvs_close(handle);
+        return false;
+    }
+
+    err = nvs_commit(handle);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+bool storage_load_int(const char *namespace, const char *key, int32_t *value)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(namespace, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return false;
+    }
+
+    err = nvs_get_i32(handle, key, value);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+bool storage_save_wifi_config(const char *ssid, const char *password)
+{
+    bool result = storage_save_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid);
+    if (password && strlen(password) > 0) {
+        result &= storage_save_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, password);
+    }
+    return result;
+}
+
+bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len)
+{
+    bool ssid_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid, ssid_len);
+    bool pwd_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, password, password_len);
+    return ssid_ok;
+}
+
+bool storage_save_pomodoro_settings(void *settings_ptr)
+{
+    if (!settings_ptr) return false;
+    int32_t *data = (int32_t *)settings_ptr;
+    
+    bool result = true;
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_WORK_MIN, data[0]);
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_BREAK_MIN, data[1]);
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_LONG_BREAK, data[2]);
+    return result;
+}
+
+bool storage_load_pomodoro_settings(void *settings_ptr)
+{
+    if (!settings_ptr) return false;
+    int32_t *data = (int32_t *)settings_ptr;
+    
+    int32_t val;
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_WORK_MIN, &val)) data[0] = val;
+    else data[0] = 25;
+    
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_BREAK_MIN, &val)) data[1] = val;
+    else data[1] = 5;
+    
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_LONG_BREAK, &val)) data[2] = val;
+    else data[2] = 15;
+    
+    return true;
+}
+
+bool storage_save_pomodoro_state(void *state_ptr)
+{
+    if (!state_ptr) return false;
+    int32_t *data = (int32_t *)state_ptr;
+    
+    bool result = true;
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_COMPLETED, data[0]);
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_CURRENT_CYCLE, data[1]);
+    return result;
+}
+
+bool storage_load_pomodoro_state(void *state_ptr)
+{
+    if (!state_ptr) return false;
+    int32_t *data = (int32_t *)state_ptr;
+    
+    int32_t val;
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_COMPLETED, &val)) data[0] = val;
+    else data[0] = 0;
+    
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_CURRENT_CYCLE, &val)) data[1] = val;
+    else data[1] = 0;
+    
+    return true;
+}
+
+void storage_clear_namespace(const char *namespace)
+{
+    nvs_handle_t handle;
+    if (nvs_open(namespace, NVS_READWRITE, &handle) == ESP_OK) {
+        nvs_erase_all(handle);
+        nvs_commit(handle);
+        nvs_close(handle);
+        ESP_LOGI(TAG, "Namespace %s cleared", namespace);
+    }
+}

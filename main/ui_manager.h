@@ -6,7 +6,10 @@
 // 界面ID
 typedef enum {
     UI_SCREEN_MAIN = 0,
+    UI_SCREEN_POMODORO,
+    UI_SCREEN_CHAT,
     UI_SCREEN_SETTINGS,
+    UI_SCREEN_SETTINGS_POMODORO,
     UI_SCREEN_WIFI_LIST,
     UI_SCREEN_PASSWORD_INPUT,
     UI_SCREEN_COUNT
@@ -24,9 +27,20 @@ typedef enum {
     SETTINGS_BRIGHTNESS = 0,
     SETTINGS_CONTRAST,
     SETTINGS_LANGUAGE,
+    SETTINGS_POMODORO,
     SETTINGS_WIFI,
     SETTINGS_COUNT
 } settings_item_t;
+
+// 番茄钟操作
+typedef enum {
+    POMODORO_OP_NONE = 0,
+    POMODORO_OP_START,
+    POMODORO_OP_PAUSE,
+    POMODORO_OP_RESUME,
+    POMODORO_OP_STOP,
+    POMODORO_OP_RESET
+} pomodoro_op_t;
 
 // 初始化UI系统
 void ui_init(void);
@@ -78,5 +92,11 @@ void ui_password_input_cancel(void);
 void ui_update_time(void);
 void ui_update_temp(float temp);
 void ui_update_humidity(float humidity);
+
+// 番茄钟界面
+void ui_pomodoro_update_time(uint32_t remaining_seconds);
+void ui_pomodoro_update_phase(const char *phase);
+void ui_pomodoro_update_completed(uint32_t count);
+void ui_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed);
 
 #endif
