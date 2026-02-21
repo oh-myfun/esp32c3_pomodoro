@@ -5,8 +5,6 @@
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
 #include "esp_log.h"
-#include <time.h>
-#include <sys/time.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -174,360 +172,112 @@ settings_mode_t ui_get_settings_mode(void)
 
 void ui_enter_settings(void)
 {
-    if (settings_mode == SETTINGS_MODE_IDLE) {
-        settings_mode = SETTINGS_MODE_SELECT;
-        current_settings_item = 0;
-        ui_switch_screen(UI_SCREEN_SETTINGS);
-        update_settings_display();
-        ESP_LOGI(TAG, "Enter settings mode");
-    } else if (settings_mode == SETTINGS_MODE_SELECT) {
-        if (current_settings_item == SETTINGS_WIFI) {
-            wifi_manager_scan_start();
-            ui_switch_screen(UI_SCREEN_WIFI_LIST);
-            lv_label_set_text(wifi_list_hint, "Scanning...");
-        } else {
-            settings_mode = SETTINGS_MODE_ADJUST;
-            update_settings_display();
-            ESP_LOGI(TAG, "Enter adjust mode: %s", settings_names[current_settings_item]);
-        }
-    }
+    ui_screen_settings_enter();
+    ui_switch_screen(UI_SCREEN_SETTINGS);
+    ui_screen_settings_update(ui_screen_settings_get_values(), ui_screen_settings_get_current_item(), ui_screen_settings_get_mode());
 }
 
 void ui_exit_settings(void)
 {
-    if (settings_mode == SETTINGS_MODE_ADJUST) {
-        settings_mode = SETTINGS_MODE_SELECT;
-        update_settings_display();
-        ESP_LOGI(TAG, "Exit adjust mode");
-    } else if (settings_mode == SETTINGS_MODE_SELECT) {
-        settings_mode = SETTINGS_MODE_IDLE;
+    ui_screen_settings_exit();
+    if (ui_screen_settings_get_mode() == SETTINGS_MODE_IDLE) {
         ui_switch_screen(UI_SCREEN_MAIN);
-        ESP_LOGI(TAG, "Exit settings mode");
     }
 }
 
 void ui_settings_select_next(void)
 {
-    if (settings_mode != SETTINGS_MODE_SELECT) return;
-    current_settings_item = (current_settings_item + 1) % SETTINGS_COUNT;
-    update_settings_display();
+    ui_screen_settings_select_next();
 }
 
 void ui_settings_select_prev(void)
 {
-    if (settings_mode != SETTINGS_MODE_SELECT) return;
-    current_settings_item = (current_settings_item - 1 + SETTINGS_COUNT) % SETTINGS_COUNT;
-    update_settings_display();
+    ui_screen_settings_select_prev();
 }
 
 void ui_settings_enter_adjust(void)
 {
-    ui_enter_settings();
+    ui_screen_settings_enter_adjust();
+    ui_screen_settings_update(ui_screen_settings_get_values(), ui_screen_settings_get_current_item(), ui_screen_settings_get_mode());
 }
 
 void ui_settings_adjust_up(void)
 {
-    if (settings_mode != SETTINGS_MODE_ADJUST) return;
-
-    switch (current_settings_item) {
-        case SETTINGS_BRIGHTNESS:
-        case SETTINGS_CONTRAST:
-            if (settings_values[current_settings_item] < 100) {
-                settings_values[current_settings_item]++;
-            }
-            break;
-        case SETTINGS_LANGUAGE:
-            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % language_count;
-            break;
-    }
-    update_settings_display();
-    ESP_LOGI(TAG, "%s: %d", settings_names[current_settings_item], settings_values[current_settings_item]);
+    ui_screen_settings_adjust_up();
 }
 
 void ui_settings_adjust_down(void)
 {
-    if (settings_mode != SETTINGS_MODE_ADJUST) return;
-
-    switch (current_settings_item) {
-        case SETTINGS_BRIGHTNESS:
-        case SETTINGS_CONTRAST:
-            if (settings_values[current_settings_item] > 0) {
-                settings_values[current_settings_item]--;
-            }
-            break;
-        case SETTINGS_LANGUAGE:
-            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + language_count) % language_count;
-            break;
-    }
-    update_settings_display();
-    ESP_LOGI(TAG, "%s: %d", settings_names[current_settings_item], settings_values[current_settings_item]);
+    ui_screen_settings_adjust_down();
 }
 
 // WiFi列表相关函数
 void ui_wifi_list_refresh(void)
 {
-    if (current_screen != UI_SCREEN_WIFI_LIST) return;
-
-    int count = wifi_manager_get_scan_count();
-    bool scan_done = (count > 0);
-
-    for (int i = 0; i < 8; i++) {
-        int idx = wifi_list_scroll + i;
-        if (scan_done && idx < count) {
-            wifi_scan_result_t *ap = wifi_manager_get_scan_result(idx);
-            if (ap) {
-                char buf[40];
-                snprintf(buf, sizeof(buf), "%s %s", ap->ssid, ap->open ? "[OPEN]" : "");
-                lv_label_set_text(wifi_list_labels[i], buf);
-
-                if (idx == wifi_list_selected) {
-                    lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0x00FF00), 0);
-                } else {
-                    lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0xFFFFFF), 0);
-                }
-            }
-        } else {
-            lv_label_set_text(wifi_list_labels[i], "");
-        }
-    }
-
-    if (scan_done && count > 0) {
-        char hint[48];
-        snprintf(hint, sizeof(hint), "%d/%d SET:Conn ENC:Back", wifi_list_selected + 1, count);
-        lv_label_set_text(wifi_list_hint, hint);
-    } else {
-        lv_label_set_text(wifi_list_hint, "Scanning...");
-    }
+    ui_screen_wifi_list_refresh();
 }
 
 void ui_wifi_list_select_next(void)
 {
-    if (current_screen != UI_SCREEN_WIFI_LIST) return;
-
-    int count = wifi_manager_get_scan_count();
-    if (count == 0) return;
-
-    wifi_list_selected++;
-    if (wifi_list_selected >= count) {
-        wifi_list_selected = 0;
-        wifi_list_scroll = 0;
-    }
-
-    // 自动滚动
-    if (wifi_list_selected >= wifi_list_scroll + 8) {
-        wifi_list_scroll = wifi_list_selected - 7;
-    }
-
-    ui_wifi_list_refresh();
+    ui_screen_wifi_list_select_next();
 }
 
 void ui_wifi_list_select_prev(void)
 {
-    if (current_screen != UI_SCREEN_WIFI_LIST) return;
-
-    int count = wifi_manager_get_scan_count();
-    if (count == 0) return;
-
-    wifi_list_selected--;
-    if (wifi_list_selected < 0) {
-        wifi_list_selected = count - 1;
-        wifi_list_scroll = (count > 8) ? count - 8 : 0;
-    }
-
-    // 自动滚动
-    if (wifi_list_selected < wifi_list_scroll) {
-        wifi_list_scroll = wifi_list_selected;
-    }
-
-    ui_wifi_list_refresh();
+    ui_screen_wifi_list_select_prev();
 }
 
 void ui_wifi_list_confirm(void)
 {
-    if (current_screen != UI_SCREEN_WIFI_LIST) return;
-
-    wifi_scan_result_t *ap = wifi_manager_get_scan_result(wifi_list_selected);
-    if (ap) {
-        strncpy(selected_ssid, ap->ssid, sizeof(selected_ssid) - 1);
-        if (ap->open) {
-            wifi_manager_connect(selected_ssid, "");
-            settings_mode = SETTINGS_MODE_IDLE;
-            ui_switch_screen(UI_SCREEN_MAIN);
-            ui_update_wifi_status("Connecting...");
-        } else {
-            ui_password_input_start(selected_ssid);
-        }
-    }
+    ui_screen_wifi_list_confirm();
 }
 
 void ui_update_wifi_status_ex(const char *status, uint32_t color)
 {
-    if (wifi_status_label) {
-        lv_label_set_text(wifi_status_label, status);
-        lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(color), 0);
-    }
+    ui_screen_main_update_wifi_status(status, color);
 }
 
 void ui_update_wifi_status(const char *status)
 {
-    if (wifi_status_label) {
-        lv_label_set_text(wifi_status_label, status);
-    }
+    ui_screen_main_update_wifi_status(status, 0xFFFFFF);
 }
 
 // 密码输入相关函数
 void ui_password_input_start(const char *ssid)
 {
-    password_len = 0;
-    password_buffer[0] = '\0';
-    pwd_selected_row = 0;
-    pwd_selected_col = 0;
-    pwd_uppercase = false;
-
-    lv_label_set_text(pwd_ssid_label, ssid);
-    lv_label_set_text(pwd_display, "");
-    lv_label_set_text(pwd_hint, "Roll:chg  SET:add  ENC:del");
-
+    ui_screen_password_start(ssid);
     ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
-
-    // 初始化键盘显示
-    update_password_display();
-}
-
-static void update_password_display(void)
-{
-    // 重新绘制键盘以反映大小写状态
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 10; col++) {
-            if (pwd_keyboard_labels[row][col]) {
-                const char *row_str = pwd_uppercase ? pwd_keyboard_upper[row] : pwd_keyboard_lower[row];
-                char buf[4] = {0};
-                
-                if (row < 3) {
-                    buf[0] = row_str[col];
-                } else {
-                    if (col < 6) {
-                        buf[0] = row_str[col];
-                    } else if (col == 6) {
-                        snprintf(buf, sizeof(buf), "Ab");
-                    } else if (col == 7) {
-                        snprintf(buf, sizeof(buf), "OK");
-                    } else {
-                        // 隐藏第8、9列
-                        snprintf(buf, sizeof(buf), " ");
-                    }
-                }
-                lv_label_set_text(pwd_keyboard_labels[row][col], buf);
-            }
-        }
-    }
-
-    // 取消所有字符的高亮
-    for (int row = 0; row < 4; row++) {
-        int max_col = (row == 3) ? 8 : pwd_keyboard_cols;
-        for (int col = 0; col < max_col; col++) {
-            if (pwd_keyboard_labels[row][col]) {
-                lv_obj_set_style_text_color(pwd_keyboard_labels[row][col], lv_color_hex(0x666666), 0);
-            }
-        }
-    }
-
-    // 高亮当前选中的字符
-    if (pwd_keyboard_labels[pwd_selected_row][pwd_selected_col]) {
-        lv_obj_set_style_text_color(pwd_keyboard_labels[pwd_selected_row][pwd_selected_col], lv_color_hex(0x00FF00), 0);
-    }
 }
 
 void ui_password_input_char_next(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-
-    pwd_selected_col++;
-    
-    // 检查当前行的有效列数
-    int max_col = (pwd_selected_row == 3) ? 8 : pwd_keyboard_cols;
-    
-    if (pwd_selected_col >= max_col) {
-        pwd_selected_col = 0;
-        pwd_selected_row++;
-        if (pwd_selected_row >= pwd_keyboard_rows) {
-            pwd_selected_row = 0;
-        }
-    }
-    update_password_display();
+    ui_screen_password_char_next();
 }
 
 void ui_password_input_char_prev(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-
-    pwd_selected_col--;
-    
-    if (pwd_selected_col < 0) {
-        pwd_selected_row--;
-        if (pwd_selected_row < 0) {
-            pwd_selected_row = pwd_keyboard_rows - 1;
-        }
-        pwd_selected_col = (pwd_selected_row == 3) ? 7 : (pwd_keyboard_cols - 1);
-    }
-    update_password_display();
+    ui_screen_password_char_prev();
 }
 
 void ui_password_input_add_char(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-
-    // 检查是否选中大小写切换（第3行第6列）
-    if (pwd_selected_row == 3 && pwd_selected_col == 6) {
-        pwd_uppercase = !pwd_uppercase;
-        update_password_display();
-        return;
-    }
-
-    // 检查是否选中OK（第3行第7列）
-    if (pwd_selected_row == 3 && pwd_selected_col == 7) {
-        ui_password_input_confirm();
-        return;
-    }
-
-    const char *row_str = pwd_uppercase ? pwd_keyboard_upper[pwd_selected_row] : pwd_keyboard_lower[pwd_selected_row];
-    char ch = row_str[pwd_selected_col];
-    
-    if (password_len >= sizeof(password_buffer) - 1) return;
-
-    password_buffer[password_len++] = ch;
-    password_buffer[password_len] = '\0';
-
-    // 明文显示密码
-    lv_label_set_text(pwd_display, password_buffer);
+    ui_screen_password_add_char();
 }
 
 void ui_password_input_delete_char(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-    if (password_len <= 0) return;
-
-    password_buffer[--password_len] = '\0';
-
-    // 明文显示密码
-    lv_label_set_text(pwd_display, password_buffer);
+    ui_screen_password_delete_char();
 }
 
 void ui_password_input_confirm(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-
-    wifi_manager_connect(selected_ssid, password_buffer);
-    settings_mode = SETTINGS_MODE_IDLE;
+    ui_screen_password_confirm();
     ui_switch_screen(UI_SCREEN_MAIN);
-    ui_update_wifi_status("Connecting...");
 }
 
 void ui_password_input_cancel(void)
 {
-    if (current_screen != UI_SCREEN_PASSWORD_INPUT) return;
-
-    settings_mode = SETTINGS_MODE_SELECT;
+    ui_screen_password_cancel();
     ui_switch_screen(UI_SCREEN_WIFI_LIST);
     ui_wifi_list_refresh();
 }

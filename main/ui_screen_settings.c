@@ -93,3 +93,112 @@ void ui_screen_settings_set_hint(const char *hint)
     if (settings_hint == NULL) return;
     lv_label_set_text(settings_hint, hint);
 }
+
+static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
+static int settings_values[5] = {50, 50, 0, 25, 0};
+static int current_settings_item = 0;
+
+void ui_screen_settings_enter(void)
+{
+    if (settings_mode == SETTINGS_MODE_IDLE) {
+        settings_mode = SETTINGS_MODE_SELECT;
+        current_settings_item = 0;
+    }
+}
+
+void ui_screen_settings_exit(void)
+{
+    if (settings_mode == SETTINGS_MODE_ADJUST) {
+        settings_mode = SETTINGS_MODE_SELECT;
+    } else if (settings_mode == SETTINGS_MODE_SELECT) {
+        settings_mode = SETTINGS_MODE_IDLE;
+    }
+}
+
+settings_mode_t ui_screen_settings_get_mode(void)
+{
+    return settings_mode;
+}
+
+void ui_screen_settings_set_mode(settings_mode_t mode)
+{
+    settings_mode = mode;
+}
+
+void ui_screen_settings_select_next(void)
+{
+    if (settings_mode != SETTINGS_MODE_SELECT) return;
+    current_settings_item = (current_settings_item + 1) % 5;
+    ui_screen_settings_update(settings_values, current_settings_item, settings_mode);
+}
+
+void ui_screen_settings_select_prev(void)
+{
+    if (settings_mode != SETTINGS_MODE_SELECT) return;
+    current_settings_item = (current_settings_item - 1 + 5) % 5;
+    ui_screen_settings_update(settings_values, current_settings_item, settings_mode);
+}
+
+void ui_screen_settings_enter_adjust(void)
+{
+    if (settings_mode == SETTINGS_MODE_SELECT) {
+        settings_mode = SETTINGS_MODE_ADJUST;
+        ui_screen_settings_update(settings_values, current_settings_item, settings_mode);
+    }
+}
+
+void ui_screen_settings_adjust_up(void)
+{
+    if (settings_mode != SETTINGS_MODE_ADJUST) return;
+    
+    switch (current_settings_item) {
+        case 0:  // Brightness
+        case 1:  // Contrast
+            if (settings_values[current_settings_item] < 100) {
+                settings_values[current_settings_item]++;
+            }
+            break;
+        case 2:  // Language
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 2;
+            break;
+        case 3:  // Pomodoro work time
+            if (settings_values[current_settings_item] < 60) {
+                settings_values[current_settings_item]++;
+            }
+            break;
+    }
+    ui_screen_settings_update(settings_values, current_settings_item, settings_mode);
+}
+
+void ui_screen_settings_adjust_down(void)
+{
+    if (settings_mode != SETTINGS_MODE_ADJUST) return;
+    
+    switch (current_settings_item) {
+        case 0:  // Brightness
+        case 1:  // Contrast
+            if (settings_values[current_settings_item] > 0) {
+                settings_values[current_settings_item]--;
+            }
+            break;
+        case 2:  // Language
+            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + 2) % 2;
+            break;
+        case 3:  // Pomodoro work time
+            if (settings_values[current_settings_item] > 1) {
+                settings_values[current_settings_item]--;
+            }
+            break;
+    }
+    ui_screen_settings_update(settings_values, current_settings_item, settings_mode);
+}
+
+int ui_screen_settings_get_current_item(void)
+{
+    return current_settings_item;
+}
+
+int* ui_screen_settings_get_values(void)
+{
+    return settings_values;
+}
