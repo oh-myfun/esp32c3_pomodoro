@@ -29,8 +29,8 @@ void ui_init(void)
 {
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
     screens[UI_SCREEN_POMODORO] = ui_screen_pomodoro_create();
-    screens[UI_SCREEN_TEST] = ui_screen_test_create();
     screens[UI_SCREEN_CHAT] = ui_screen_chat_create();
+    screens[UI_SCREEN_TEST] = ui_screen_test_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
     screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
