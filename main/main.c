@@ -233,84 +233,58 @@ static void encoder_task(void *arg)
             ui_screen_id_t screen = ui_get_current_screen();
             settings_mode_t mode = ui_get_settings_mode();
 
-            // WiFi列表界面
-            if (screen == UI_SCREEN_WIFI_LIST) {
-                switch (event) {
-                    case EC11_EVENT_CW:
-                        ui_wifi_list_select_next();
-                        break;
-                    case EC11_EVENT_CCW:
-                        ui_wifi_list_select_prev();
-                        break;
-                    case EC11_EVENT_PRESS:
-                        ui_switch_screen(UI_SCREEN_SETTINGS);
-                        break;
-                    default:
-                        break;
+            switch (event) {
+                case EC11_EVENT_CW:
+                case EC11_EVENT_CCW: {
+                    bool cw = (event == EC11_EVENT_CW);
+                    
+                    // 主界面/番茄钟界面/设置界面 轮流切换
+                    if (screen == UI_SCREEN_MAIN || screen == UI_SCREEN_POMODORO || 
+                        (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_IDLE)) {
+                        static int screen_index = 0;
+                        if (cw) screen_index = (screen_index + 1) % 3;
+                        else screen_index = (screen_index - 1 + 3) % 3;
+                        
+                        if (screen_index == 0) ui_switch_screen(UI_SCREEN_MAIN);
+                        else if (screen_index == 1) ui_switch_screen(UI_SCREEN_POMODORO);
+                        else ui_switch_screen(UI_SCREEN_SETTINGS);
+                    }
+                    // WiFi列表界面 - 切换选中SSID
+                    else if (screen == UI_SCREEN_WIFI_LIST) {
+                        if (cw) ui_wifi_list_select_next();
+                        else ui_wifi_list_select_prev();
+                    }
+                    // 密码输入界面 - 切换选中字符
+                    else if (screen == UI_SCREEN_PASSWORD_INPUT) {
+                        if (cw) ui_password_input_char_next();
+                        else ui_password_input_char_prev();
+                    }
+                    // 设置界面 选择模式 - 切换设置项
+                    else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_SELECT) {
+                        if (cw) ui_settings_select_next();
+                        else ui_settings_select_prev();
+                    }
+                    // 设置界面 调整模式 - 调整值
+                    else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_ADJUST) {
+                        if (cw) ui_settings_adjust_up();
+                        else ui_settings_adjust_down();
+                    }
+                    break;
                 }
-            }
-            // 密码输入界面
-            else if (screen == UI_SCREEN_PASSWORD_INPUT) {
-                switch (event) {
-                    case EC11_EVENT_CW:
-                        ui_password_input_char_next();
-                        break;
-                    case EC11_EVENT_CCW:
-                        ui_password_input_char_prev();
-                        break;
-                    case EC11_EVENT_PRESS:
-                        ui_password_input_cancel();
-                        break;
-                    default:
-                        break;
-                }
-            }
-            // 设置界面 - 滚动切换回主界面
-            else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_IDLE) {
-                switch (event) {
-                    case EC11_EVENT_CW:
-                    case EC11_EVENT_CCW:
-                        ui_switch_screen(UI_SCREEN_MAIN);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            // 设置界面 - 设置模式
-            else if (screen == UI_SCREEN_SETTINGS && mode != SETTINGS_MODE_IDLE) {
-                switch (event) {
-                    case EC11_EVENT_CW:
-                        if (mode == SETTINGS_MODE_SELECT) {
-                            ui_settings_select_next();
-                        } else if (mode == SETTINGS_MODE_ADJUST) {
-                            ui_settings_adjust_up();
+                case EC11_EVENT_PRESS:
+                    // 设置界面按编码器键返回/退出
+                    if (screen == UI_SCREEN_SETTINGS) {
+                        if (mode == SETTINGS_MODE_ADJUST) {
+                            ui_exit_settings();
+                        } else if (mode == SETTINGS_MODE_SELECT) {
+                            ui_settings_enter_adjust();
+                        } else {
+                            ui_exit_settings();
                         }
-                        break;
-                    case EC11_EVENT_CCW:
-                        if (mode == SETTINGS_MODE_SELECT) {
-                            ui_settings_select_prev();
-                        } else if (mode == SETTINGS_MODE_ADJUST) {
-                            ui_settings_adjust_down();
-                        }
-                        break;
-                    case EC11_EVENT_PRESS:
-                        // 设置界面按编码器键返回主界面
-                        ui_exit_settings();
-                        break;
-                    default:
-                        break;
-                }
-            }
-            // 主界面 - 滚动进入设置界面
-            else if (screen == UI_SCREEN_MAIN) {
-                switch (event) {
-                    case EC11_EVENT_CW:
-                    case EC11_EVENT_CCW:
-                        ui_switch_screen(UI_SCREEN_SETTINGS);
-                        break;
-                    default:
-                        break;
-                }
+                    }
+                    break;
+                default:
+                    break;
             }
 
             _lock_release(&lvgl_api_lock);
