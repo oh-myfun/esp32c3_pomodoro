@@ -14,9 +14,13 @@
 ## 2. 需求清单
 - 基本功能
   - 主界面显示时间、温度/湿度（示例数据）、WiFi 状态
+  - 番茄钟界面显示倒计时、完成次数
   - 设置界面：亮度、对比度、语言、WiFi 配置等
   - WiFi 配网：扫描、选择、输入密码、连接状态显示
   - NTP 时间同步，时区配置
+- 输入控制
+  - EC11编码器：旋转导航，短按确认，长按返回
+  - SET设置按键：进入设置界面
 - 性能与稳定性
   - LVGL 主循环与任务调度的合理优先级
   - DMA/硬件 SPI 优化数据传输
@@ -47,17 +51,49 @@
   - connect(ssid, password)
   - get_status() -> {connected, ip, rssi, etc.}
 - encoder
-  - init_encoder(pin_a, pin_b, pin_k)
-  - on_rotate(delta)
-  - on_press()
-  - on_long_press()
+  - init_encoder(pin_a, pin_b, pin_key)
+  - get_event() -> {CW, CCW, PRESS, RELEASE, LONG_PRESS}
 
-## 5. 架构约束与前提
+## 5. 输入控制说明
+
+### 硬件连接
+- EC11编码器
+  - GPIO4: A相 (EC11_A)
+  - GPIO5: B相 (EC11_B)
+  - GPIO21: 按键 (EC11_K)
+- 设置按键
+  - GPIO9: SET按键
+
+### 界面导航规则
+
+| 当前界面 | EC11旋转 | SET按键 |
+|----------|----------|---------|
+| 主界面 | 切换到番茄钟/设置界面 | 进入设置界面 |
+| 番茄钟界面 | 切换到设置/主界面 | - |
+| 设置界面(空闲) | 切换到主界面/番茄钟 | 进入设置选择模式 |
+| WiFi列表 | 切换选中SSID | 确认连接 |
+| 密码输入 | 切换选中字符 | 输入字符 |
+
+### 设置界面导航
+
+| 模式 | EC11旋转 | SET按键 |
+|------|----------|---------|
+| 选择模式 | 切换设置项 | 进入调整模式 |
+| 调整模式 | 调整数值 | 退出调整模式 |
+
+### 设置项说明
+- Brightness (0-100): 屏幕亮度
+- Contrast (0-100): 屏幕对比度
+- Language: English / Chinese
+- Pomodoro: 番茄钟工作时间设置
+- WiFi: 进入WiFi配网流程
+
+## 6. 架构约束与前提
 - 资源约束：RAM 充足，LVGL 版本兼容性，240x240 的分辨率
 - 依赖：ESP-IDF、LVGL、ST7789 驱动、NTP 库、NVS 等
 - 构建：ESP-IDF 脚手架，使用 idf.py 构建与烧录
 
-## 6. 构建与测试
+## 7. 构建与测试
 - 构建：idf.py build
 - 烧录：idf.py flash
 - 监控：idf.py monitor
@@ -66,17 +102,19 @@
   - 编码器导航可用，设置项可进入及修改
   - 能扫描并连接到 WiFi，NTP 同步成功
 
-## 7. 版本与变更
+## 8. 版本与变更
 - 初始版本：2026-02-20
 - 版本号：v1.0.0
 
-## 8. 术语表
+## 9. 术语表
 - LVGL：Light and Versatile Graphics Library，嵌入式 GUI 框架
 - ST7789：彩色 LCD 控制器，SPI 总线
 - EC11：编码器，带按键
 - NTP：网络时间协议，用于时间同步
+- NVS：Non-Volatile Storage，非易失性存储
+- GPIO：通用输入输出引脚
 
-## 9. 风险与缓解
+## 10. 风险与缓解
 - 风格统一性：确保界面风格一致，避免混乱的 UI 设计
 - 运行时资源预算：LVGL 渲染与 UI 动画对内存影响，按需裁剪选项
 
