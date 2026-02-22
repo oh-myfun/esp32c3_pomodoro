@@ -99,11 +99,11 @@ void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int sele
             
             // SSID作为key，如果是开放网络则加上[open]
             if (ap->open) {
-                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s[open]", ap->ssid);
+                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%.*s[open]", 32 - 6, ap->ssid);
             } else {
                 strncpy(wifi_item_keys[i], (char*)ap->ssid, sizeof(wifi_item_keys[i]) - 1);
+                wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0';
             }
-            wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0';
             
             // 信号强度作为value
             const char *rssi_icon = "";
