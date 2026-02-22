@@ -7,6 +7,7 @@
 typedef enum {
     UI_SCREEN_MAIN = 0,
     UI_SCREEN_POMODORO,
+    UI_SCREEN_TEST,
     UI_SCREEN_CHAT,
     UI_SCREEN_SETTINGS,
     UI_SCREEN_SETTINGS_POMODORO,
@@ -72,10 +73,6 @@ void ui_settings_adjust_up(void);
 void ui_settings_adjust_down(void);
 
 // WiFi列表相关
-void ui_wifi_list_refresh(void);
-void ui_wifi_list_select_next(void);
-void ui_wifi_list_select_prev(void);
-void ui_wifi_list_confirm(void);
 void ui_update_wifi_status(const char *status);
 void ui_update_wifi_status_ex(const char *status, uint32_t color);
 

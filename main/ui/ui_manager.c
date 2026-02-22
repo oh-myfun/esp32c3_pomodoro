@@ -2,6 +2,7 @@
 #include "wifi_manager.h"
 #include "ui_screen_main.h"
 #include "ui_screen_pomodoro.h"
+#include "ui_screen_test.h"
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
 #include "ui_screen_chat.h"
@@ -28,6 +29,7 @@ void ui_init(void)
 {
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
     screens[UI_SCREEN_POMODORO] = ui_screen_pomodoro_create();
+    screens[UI_SCREEN_TEST] = ui_screen_test_create();
     screens[UI_SCREEN_CHAT] = ui_screen_chat_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
     screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
@@ -76,9 +78,6 @@ void ui_exit_settings(void)
 {
     ui_screen_settings_exit();
     ui_screen_settings_update(ui_screen_settings_get_values(), ui_screen_settings_get_current_item(), ui_screen_settings_get_mode());
-    if (ui_screen_settings_get_mode() == SETTINGS_MODE_IDLE) {
-        ui_switch_screen(UI_SCREEN_MAIN);
-    }
 }
 
 void ui_settings_select_next(void)
@@ -108,26 +107,6 @@ void ui_settings_adjust_down(void)
 }
 
 // WiFi列表相关函数
-void ui_wifi_list_refresh(void)
-{
-    ui_screen_wifi_list_refresh();
-}
-
-void ui_wifi_list_select_next(void)
-{
-    ui_screen_wifi_list_select_next();
-}
-
-void ui_wifi_list_select_prev(void)
-{
-    ui_screen_wifi_list_select_prev();
-}
-
-void ui_wifi_list_confirm(void)
-{
-    ui_screen_wifi_list_confirm();
-}
-
 void ui_update_wifi_status_ex(const char *status, uint32_t color)
 {
     ui_screen_main_update_wifi_status(status, color);
@@ -175,7 +154,7 @@ void ui_password_input_cancel(void)
 {
     ui_screen_password_cancel();
     ui_switch_screen(UI_SCREEN_WIFI_LIST);
-    ui_wifi_list_refresh();
+    ui_screen_wifi_list_refresh();
 }
 
 void ui_update_time(void)

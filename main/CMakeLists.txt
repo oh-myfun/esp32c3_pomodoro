@@ -3,8 +3,10 @@ idf_component_register(SRCS main.c
                         driver/st7789_lcd.c 
                         input/input_handler.c 
                         ui/ui_manager.c 
+                        ui/ui_list.c
                         ui/ui_screen_main.c 
                         ui/ui_screen_pomodoro.c 
+                        ui/ui_screen_test.c
                         ui/ui_screen_settings.c 
                         ui/ui_screen_wifi.c
                         ui/ui_screen_chat.c 
