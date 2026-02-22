@@ -3,6 +3,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "storage_service.h"
 #include "esp_netif.h"
 #include "esp_http_server.h"
 #include "lwip/inet.h"
@@ -231,7 +232,8 @@ wifi_scan_result_t* wifi_manager_get_scan_result(int index)
 
 void wifi_manager_connect(const char *ssid, const char *password)
 {
-    // 先断开之前的连接
+    connect_failed = false;
+    
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(100));
     
@@ -241,7 +243,6 @@ void wifi_manager_connect(const char *ssid, const char *password)
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
-    connect_failed = false;
     current_state = WIFI_STATE_CONNECTING;
     strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
     ip_address[0] = '\0';
@@ -283,9 +284,11 @@ void wifi_manager_sync_time(void)
         }
     }
     
-    // 应用时区设置
-    wifi_manager_set_timezone(timezone_offset);
-    ESP_LOGI(TAG, "Timezone set to UTC+%d", timezone_offset);
+    // 从存储加载时区设置并应用
+    int32_t stored_tz = 8;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, "timezone", &stored_tz);
+    wifi_manager_set_timezone((int)stored_tz);
+    ESP_LOGI(TAG, "Timezone loaded from storage: UTC+%d", stored_tz);
 }
 
 void wifi_manager_set_ntp_interval(int minutes)

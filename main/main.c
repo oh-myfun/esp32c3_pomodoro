@@ -14,17 +14,18 @@
 #include "driver/st7789_lcd.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
+#include "ui/ui_screen_wifi.h"
 #include "wifi_manager.h"
 #include "pomodoro_engine.h"
 
 static const char *TAG = "MAIN";
 
 #define LVGL_DRAW_BUF_LINES 60
-#define LVGL_TICK_PERIOD_MS 2
-#define LVGL_TASK_MAX_DELAY_MS 500
-#define LVGL_TASK_MIN_DELAY_MS 1000 / CONFIG_FREERTOS_HZ
+#define LVGL_TICK_PERIOD_MS 1
+#define LVGL_TASK_MAX_DELAY_MS 10
+#define LVGL_TASK_MIN_DELAY_MS 1
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
-#define LVGL_TASK_PRIORITY 2
+#define LVGL_TASK_PRIORITY 5
 
 static _lock_t lvgl_api_lock;
 static lv_display_t *display = NULL;
@@ -114,7 +115,7 @@ static void wifi_status_task(void *arg)
         _lock_acquire(&lvgl_api_lock);
 
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
-            ui_wifi_list_refresh();
+            ui_screen_wifi_list_refresh();
             
             if (!wifi_manager_is_scan_done()) {
                 _lock_release(&lvgl_api_lock);
@@ -172,6 +173,8 @@ void app_main(void)
     ESP_LOGI(TAG, "================================");
     ESP_LOGI(TAG, "ST7789 + LVGL + EC11 WiFi Demo");
     ESP_LOGI(TAG, "================================");
+    ESP_LOGI(TAG, "LVGL: tick=%dms, max_delay=%dms, priority=%d, buf_lines=%d",
+             LVGL_TICK_PERIOD_MS, LVGL_TASK_MAX_DELAY_MS, LVGL_TASK_PRIORITY, LVGL_DRAW_BUF_LINES);
 
     st7789_lcd_init();
     lvgl_init();
@@ -181,7 +184,7 @@ void app_main(void)
     wifi_manager_init();
 
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-    xTaskCreate(input_handler_task, "Input", 4096, NULL, 2, NULL);
+    xTaskCreate(input_handler_task, "Input", 16384, NULL, 2, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
     xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
     xTaskCreate(pomodoro_task, "Pomodoro", 4096, NULL, 1, NULL);

@@ -48,10 +48,10 @@ lv_obj_t* ui_screen_main_create(void)
     lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 28);
 
     lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(hint, "Press SET to config");
+    lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
+    lv_label_set_text(hint, "Rotate: nav | SET: adjust");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     ESP_LOGI(TAG, "Main screen created");
     return screen;

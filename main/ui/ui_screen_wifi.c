@@ -1,4 +1,6 @@
 #include "ui_screen_wifi.h"
+#include "ui_manager.h"
+#include "ui_list.h"
 #include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
@@ -7,31 +9,56 @@
 static const char *TAG = "UI_WIFI";
 
 static lv_obj_t *wifi_list_title = NULL;
-static lv_obj_t *wifi_list_labels[8];
+static lv_obj_t *wifi_list = NULL;
 static lv_obj_t *wifi_list_hint = NULL;
-static lv_obj_t *wifi_list_scrollbar = NULL;
 
-static int wifi_list_selected = 0;
-static int wifi_list_scroll = 0;
-static int wifi_list_count = 0;
+static char selected_ssid[33] = {0};
 
 static lv_obj_t *pwd_title = NULL;
 static lv_obj_t *pwd_ssid_label = NULL;
 static lv_obj_t *pwd_display = NULL;
 static lv_obj_t *pwd_hint = NULL;
+static lv_obj_t *pwd_keyboard[4][10];
 
-static char selected_ssid[33] = {0};
 static char password_buffer[64] = {0};
+
+// 静态数组用于存储WiFi列表项的键值，避免在ui_screen_wifi_list_update中频繁分配/释放内存
+static char wifi_item_keys[20][33];   // 每个SSID最多32个字符 + '\0'
+static char wifi_item_values[20][32]; // 增大value缓冲区以包含Open字样和信号强度
 static int password_len = 0;
 static bool pwd_uppercase = false;
 static int pwd_selected_row = 0;
 static int pwd_selected_col = 0;
+
+static const char pwd_keys[4][10] = {
+    "1234567890",
+    "qwertyuiop",
+    "asdfghjkl",
+    "zxcvbnm._"
+};
+
+static wifi_scan_result_t *wifi_results = NULL;
+static int wifi_count = 0;
+
+static void wifi_list_item_click(int index)
+{
+    if (index < 0 || index >= wifi_count || !wifi_results) return;
+    
+    strncpy(selected_ssid, (char*)wifi_results[index].ssid, sizeof(selected_ssid) - 1);
+    if (wifi_results[index].open) {
+        wifi_manager_connect(wifi_results[index].ssid, "");
+    } else {
+        ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
+        ui_password_input_start((char*)wifi_results[index].ssid);
+    }
+}
 
 lv_obj_t* ui_screen_wifi_list_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_size(screen, 240, 240);
+    lv_obj_set_pos(screen, 0, 0);
 
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
@@ -39,88 +66,71 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     lv_obj_set_style_text_font(wifi_list_title, &lv_font_montserrat_14, 0);
     lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
 
-    for (int i = 0; i < 8; i++) {
-        wifi_list_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(wifi_list_labels[i], &lv_font_montserrat_14, 0);
-        lv_label_set_text(wifi_list_labels[i], "");
-        lv_obj_align(wifi_list_labels[i], LV_ALIGN_TOP_LEFT, 10, 32 + i * 22);
-    }
-
-    wifi_list_scrollbar = lv_bar_create(screen);
-    lv_obj_set_size(wifi_list_scrollbar, 6, 160);
-    lv_obj_align(wifi_list_scrollbar, LV_ALIGN_TOP_RIGHT, -5, 30);
-    lv_bar_set_range(wifi_list_scrollbar, 0, 100);
-    lv_bar_set_value(wifi_list_scrollbar, 0, LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(wifi_list_scrollbar, lv_color_hex(0x333333), 0);
-    lv_obj_set_style_bg_color(wifi_list_scrollbar, lv_color_hex(0x666666), LV_PART_INDICATOR);
+    // 创建列表，高度设为刚好显示8个项目 (8 * 22 = 176)
+    wifi_list = ui_list_create(screen, 220, 176, 10, 32);
+    ui_list_set_click_callback(wifi_list, wifi_list_item_click);
 
     wifi_list_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(wifi_list_hint, "Scanning...");
+    lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
+    lv_label_set_text(wifi_list_hint, "Rotate: nav | SET: select");
     lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     ESP_LOGI(TAG, "WiFi list screen created");
     return screen;
 }
 
+lv_obj_t* ui_screen_wifi_list_get_list(void)
+{
+    return wifi_list;
+}
+
 void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int selected, const char *hint)
 {
-    wifi_list_count = count;
-    wifi_list_selected = selected;
+    wifi_results = results;
+    wifi_count = count;
     
-    if (count > 8) {
-        if (selected < wifi_list_scroll) {
-            wifi_list_scroll = selected;
-        } else if (selected >= wifi_list_scroll + 8) {
-            wifi_list_scroll = selected - 7;
-        }
-        if (wifi_list_scroll > count - 8) {
-            wifi_list_scroll = count - 8;
-        }
-        if (wifi_list_scroll < 0) wifi_list_scroll = 0;
-    } else {
-        wifi_list_scroll = 0;
-    }
-    
-    for (int i = 0; i < 8; i++) {
-        if (wifi_list_labels[i] == NULL) continue;
+    if (wifi_list && count > 0 && results) {
+        static ui_list_item_t items[20];
+        int item_count = count > 20 ? 20 : count;
         
-        int idx = wifi_list_scroll + i;
-        if (idx < count && results != NULL) {
-            wifi_scan_result_t *ap = &results[idx];
-            char buf[64];
+        for (int i = 0; i < item_count; i++) {
+            wifi_scan_result_t *ap = &results[i];
+            
+            // SSID作为key
+            strncpy(wifi_item_keys[i], (char*)ap->ssid, sizeof(wifi_item_keys[i]) - 1);
+            wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0'; // 确保字符串结束
+            
+            // 信号强度作为value，格式为"Open ***"或"***"
             const char *rssi_icon = "";
             if (ap->rssi > -50) rssi_icon = "***";
             else if (ap->rssi > -70) rssi_icon = "**";
             else rssi_icon = "*";
             
             if (ap->open) {
-                snprintf(buf, sizeof(buf), "%s %s[Open]", rssi_icon, ap->ssid);
+                snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "Open %s", rssi_icon);
             } else {
-                snprintf(buf, sizeof(buf), "%s %s", rssi_icon, ap->ssid);
+                snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_icon);
             }
-            lv_label_set_text(wifi_list_labels[i], buf);
             
-            if (idx == selected) {
-                lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0x00FF00), 0);
-            } else {
-                lv_obj_set_style_text_color(wifi_list_labels[i], lv_color_hex(0xFFFFFF), 0);
-            }
-        } else {
-            lv_label_set_text(wifi_list_labels[i], "");
+            items[i].key = wifi_item_keys[i];
+            items[i].value = wifi_item_values[i];
         }
-    }
-    
-    if (wifi_list_scrollbar) {
-        if (count > 8) {
-            int max_scroll = count - 8;
-            int scroll_pos = (wifi_list_scroll * 100) / max_scroll;
-            if (scroll_pos > 100) scroll_pos = 100;
-            lv_bar_set_value(wifi_list_scrollbar, scroll_pos, LV_ANIM_OFF);
-            lv_obj_clear_flag(wifi_list_scrollbar, LV_OBJ_FLAG_HIDDEN);
+        
+        // 保存当前选中的位置
+        int current_selection = ui_list_get_selected(wifi_list);
+        
+        ui_list_set_items(wifi_list, items, item_count);
+        
+        // 恢复之前选中的位置，如果它仍然有效
+        if (current_selection < item_count) {
+            ui_list_set_selected(wifi_list, current_selection);
+        } else if (selected >= 0 && selected < item_count) {
+            // 否则，使用传入的selected参数
+            ui_list_set_selected(wifi_list, selected);
         } else {
-            lv_obj_add_flag(wifi_list_scrollbar, LV_OBJ_FLAG_HIDDEN);
+            // 如果都没有有效值，则默认选中第一个
+            ui_list_set_selected(wifi_list, 0);
         }
     }
     
@@ -145,19 +155,42 @@ lv_obj_t* ui_screen_password_create(void)
     lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(pwd_ssid_label, "SSID: ");
     lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_LEFT, 5, 25);
+    lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 28);
 
     pwd_display = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
     lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_display, LV_ALIGN_TOP_LEFT, 5, 50);
+    lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 50);
+
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 10; col++) {
+            pwd_keyboard[row][col] = lv_label_create(screen);
+            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_montserrat_14, 0);
+            
+            if (row == 2 && col == 9) {
+                lv_label_set_text(pwd_keyboard[row][col], "A/a");
+            } else if (row == 3 && col == 8) {
+                lv_label_set_text(pwd_keyboard[row][col], "DEL");
+            } else if (row == 3 && col == 9) {
+                lv_label_set_text(pwd_keyboard[row][col], "OK");
+            } else {
+                char ch[2] = {pwd_keys[row][col], '\0'};
+                lv_label_set_text(pwd_keyboard[row][col], ch);
+            }
+            
+            lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x888888), 0);
+            int x = 10 + col * 22;
+            int y = 75 + row * 18;
+            lv_obj_set_pos(pwd_keyboard[row][col], x, y);
+        }
+    }
 
     pwd_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(pwd_hint, "Rotate: select | SET: input");
+    lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x888888), 0);
+    lv_label_set_text(pwd_hint, "Rotate: nav | SET: input");
     lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     ESP_LOGI(TAG, "Password screen created");
     return screen;
@@ -175,6 +208,23 @@ void ui_screen_password_update_display(const char *password, int cursor_pos)
 {
     if (pwd_display == NULL) return;
     lv_label_set_text(pwd_display, password ? password : "");
+    
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 10; col++) {
+            if (row == pwd_selected_row && col == pwd_selected_col) {
+                lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x00FF00), 0);
+            } else if (pwd_uppercase && row < 3 && col < 10) {
+                char c = pwd_keys[row][col];
+                if (c >= 'a' && c <= 'z') {
+                    lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0xFFFFFF), 0);
+                } else {
+                    lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x888888), 0);
+                }
+            } else {
+                lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x888888), 0);
+            }
+        }
+    }
 }
 
 void ui_screen_password_set_hint(const char *hint)
@@ -193,64 +243,22 @@ void ui_screen_wifi_list_refresh(void)
         results = wifi_manager_get_scan_result(0);
     }
     
-    const char *hint = scan_done ? "Select: SET | Back: ROTATE" : "Scanning...";
-    ui_screen_wifi_list_update(count, results, wifi_list_selected, hint);
-}
-
-void ui_screen_wifi_list_select_next(void)
-{
-    int count = wifi_manager_get_scan_count();
-    if (count <= 0) return;
-    wifi_list_selected = (wifi_list_selected + 1) % count;
-    ui_screen_wifi_list_refresh();
-}
-
-void ui_screen_wifi_list_select_prev(void)
-{
-    int count = wifi_manager_get_scan_count();
-    if (count <= 0) return;
-    wifi_list_selected = (wifi_list_selected - 1 + count) % count;
-    ui_screen_wifi_list_refresh();
-}
-
-void ui_screen_wifi_list_confirm(void)
-{
-    int count = wifi_manager_get_scan_count();
-    if (count <= 0 || wifi_list_selected >= count) return;
-    
-    wifi_scan_result_t *result = wifi_manager_get_scan_result(wifi_list_selected);
-    if (result) {
-        strncpy(selected_ssid, result->ssid, sizeof(selected_ssid) - 1);
-        if (result->open) {
-            wifi_manager_connect(selected_ssid, "");
-        } else {
-            ui_screen_password_start(selected_ssid);
-        }
-    }
+    const char *hint = scan_done ? "Rotate: nav | SET: select" : "Scanning...";
+    ui_screen_wifi_list_update(count, results, 0, hint);
 }
 
 int ui_screen_wifi_list_get_selected(void)
 {
-    return wifi_list_selected;
+    if (wifi_list) {
+        return ui_list_get_selected(wifi_list);
+    }
+    return 0;
 }
 
 const char* ui_screen_wifi_list_get_selected_ssid(void)
 {
     return selected_ssid;
 }
-
-static const char pwd_keyboard_lower[4][10] = {
-    "0123456789",
-    "abcdefghij",
-    "klmnopqrst",
-    "uvwxyz"
-};
-static const char pwd_keyboard_upper[4][10] = {
-    "0123456789",
-    "ABCDEFGHIJ",
-    "KLMNOPQRST",
-    "UVWXYZ"
-};
 
 void ui_screen_password_start(const char *ssid)
 {
@@ -259,9 +267,10 @@ void ui_screen_password_start(const char *ssid)
     pwd_uppercase = false;
     pwd_selected_row = 0;
     pwd_selected_col = 0;
+    strncpy(selected_ssid, ssid ? ssid : "", sizeof(selected_ssid) - 1);
     ui_screen_password_set_ssid(ssid);
     ui_screen_password_update_display(password_buffer, pwd_selected_col);
-    ui_screen_password_set_hint("Rotate: sel | SET: input");
+    ui_screen_password_set_hint("Rotate: nav | SET: input");
 }
 
 void ui_screen_password_char_next(void)
@@ -288,22 +297,34 @@ void ui_screen_password_char_prev(void)
 
 void ui_screen_password_add_char(void)
 {
+    if (pwd_selected_row == 2 && pwd_selected_col == 9) {
+        pwd_uppercase = !pwd_uppercase;
+        ui_screen_password_set_hint(pwd_uppercase ? "Uppercase" : "Lowercase");
+        return;
+    }
+    
+    if (pwd_selected_row == 3 && pwd_selected_col == 8) {
+        if (password_len > 0) {
+            password_buffer[--password_len] = '\0';
+            ui_screen_password_update_display(password_buffer, pwd_selected_col);
+        }
+        return;
+    }
+    
+    if (pwd_selected_row == 3 && pwd_selected_col == 9) {
+        if (strlen(password_buffer) > 0) {
+            wifi_manager_connect(selected_ssid, password_buffer);
+            ui_switch_screen(UI_SCREEN_MAIN);
+        }
+        return;
+    }
+    
     if (password_len >= 63) return;
     
-    const char *row_str = pwd_uppercase ? pwd_keyboard_upper[pwd_selected_row] : pwd_keyboard_lower[pwd_selected_row];
-    char c = row_str[pwd_selected_col];
+    char c = pwd_keys[pwd_selected_row][pwd_selected_col];
     
-    if (pwd_selected_row == 3) {
-        if (pwd_selected_col == 6) {
-            pwd_uppercase = !pwd_uppercase;
-            ui_screen_password_set_hint(pwd_uppercase ? "Uppercase" : "Lowercase");
-            return;
-        } else if (pwd_selected_col == 7) {
-            if (strlen(password_buffer) > 0) {
-                wifi_manager_connect(selected_ssid, password_buffer);
-            }
-            return;
-        }
+    if (pwd_uppercase && c >= 'a' && c <= 'z') {
+        c = c - 'a' + 'A';
     }
     
     password_buffer[password_len++] = c;

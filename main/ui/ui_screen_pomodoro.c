@@ -36,10 +36,10 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_align(completed_label, LV_ALIGN_CENTER, 0, 50);
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, "Rotate: nav | SET: start/pause");
     lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     ESP_LOGI(TAG, "Pomodoro screen created");
     return screen;

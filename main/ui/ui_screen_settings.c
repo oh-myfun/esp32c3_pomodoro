@@ -31,7 +31,7 @@ lv_obj_t* ui_screen_settings_create(void)
     lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 15);
 
     for (int i = 0; i < 5; i++) {
-        int y_offset = 45 + i * 40;
+        int y_offset = 38 + i * 34;
 
         settings_item_labels[i] = lv_label_create(screen);
         lv_obj_set_style_text_font(settings_item_labels[i], &lv_font_montserrat_14, 0);
@@ -44,10 +44,10 @@ lv_obj_t* ui_screen_settings_create(void)
     }
 
     settings_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x666666), 0);
-    lv_label_set_text(settings_hint, "Press SET to adjust");
+    lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
+    lv_label_set_text(settings_hint, "Rotate: nav | SET: select");
     lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     ESP_LOGI(TAG, "Settings screen created");
     return screen;

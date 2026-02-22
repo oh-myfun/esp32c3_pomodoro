@@ -3,6 +3,7 @@
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_settings.h"
 #include "ui/ui_screen_wifi.h"
+#include "ui/ui_list.h"
 #include "wifi_manager.h"
 #include "pomodoro_engine.h"
 #include "esp_log.h"
@@ -34,8 +35,9 @@ static void encoder_handle_rotation(bool cw)
         ui_switch_screen(target_screen);
     }
     else if (screen == UI_SCREEN_WIFI_LIST) {
-        if (cw) ui_wifi_list_select_next();
-        else ui_wifi_list_select_prev();
+        lv_obj_t *list = ui_screen_wifi_list_get_list();
+        if (cw) ui_list_nav_next(list);
+        else ui_list_nav_prev(list);
     }
     else if (screen == UI_SCREEN_PASSWORD_INPUT) {
         if (cw) ui_password_input_char_next();
@@ -63,22 +65,19 @@ static void encoder_handle_press(void)
     if (screen == UI_SCREEN_POMODORO) {
         pomodoro_engine_stop();
     }
+    else if (screen == UI_SCREEN_WIFI_LIST) {
+        ui_switch_screen(UI_SCREEN_SETTINGS);
+    }
     else if (screen == UI_SCREEN_PASSWORD_INPUT) {
         ui_password_input_cancel();
         ui_switch_screen(UI_SCREEN_WIFI_LIST);
-        ui_wifi_list_refresh();
+        ui_screen_wifi_list_refresh();
     }
     else if (screen == UI_SCREEN_SETTINGS) {
         if (mode == SETTINGS_MODE_ADJUST) {
             ui_exit_settings();
         } else if (mode == SETTINGS_MODE_SELECT) {
-            int item = ui_screen_settings_get_current_item();
-            if (item == 4) {
-                wifi_manager_scan_start();
-                ui_switch_screen(UI_SCREEN_WIFI_LIST);
-            } else if (item == 3) {
-                ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
-            }
+            ui_exit_settings();
         }
     }
     else if (screen == UI_SCREEN_SETTINGS_POMODORO) {
