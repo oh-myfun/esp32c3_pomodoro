@@ -105,13 +105,15 @@ void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int sele
                 wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0';
             }
             
-            // 信号强度作为value
-            const char *rssi_icon = "";
-            if (ap->rssi > -50) rssi_icon = "***";
-            else if (ap->rssi > -70) rssi_icon = "**";
-            else rssi_icon = "*";
+            // 信号强度作为value，5档竖线表示
+            const char *rssi_bars = "";
+            if (ap->rssi > -50) rssi_bars = "|||||";
+            else if (ap->rssi > -60) rssi_bars = "||||";
+            else if (ap->rssi > -70) rssi_bars = "|||";
+            else if (ap->rssi > -80) rssi_bars = "||";
+            else rssi_bars = "|";
             
-            snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_icon);
+            snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_bars);
             
             items[i].key = wifi_item_keys[i];
             items[i].value = wifi_item_values[i];
