@@ -94,7 +94,7 @@ bool storage_save_wifi_config(const char *ssid, const char *password)
 bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len)
 {
     bool ssid_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid, ssid_len);
-    bool pwd_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, password, password_len);
+    storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, password, password_len);
     return ssid_ok;
 }
 

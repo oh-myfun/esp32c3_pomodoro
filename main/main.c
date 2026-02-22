@@ -11,22 +11,14 @@
 #include <unistd.h>
 
 #include "lvgl.h"
-#include "encoder.h"
-#include "ui_manager.h"
+#include "driver/st7789_lcd.h"
+#include "input/input_handler.h"
+#include "ui/ui_manager.h"
 #include "wifi_manager.h"
+#include "pomodoro_engine.h"
 
 static const char *TAG = "MAIN";
 
-// ===================== LCD引脚配置 (硬件SPI) =====================
-#define LCD_RS_GPIO GPIO_NUM_10   // DC/RS
-#define LCD_SCK_GPIO GPIO_NUM_6   // SCK
-#define LCD_SDA_GPIO GPIO_NUM_7   // SDA (MOSI)
-#define LCD_SPI_HOST SPI2_HOST    // 使用SPI2
-#define LCD_SPI_FREQ_HZ 60000000  // 60MHz
-// =====================================================
-
-#define LCD_V_RES 240
-#define LCD_H_RES 240
 #define LVGL_DRAW_BUF_LINES 60
 #define LVGL_TICK_PERIOD_MS 2
 #define LVGL_TASK_MAX_DELAY_MS 500
@@ -36,145 +28,6 @@ static const char *TAG = "MAIN";
 
 static _lock_t lvgl_api_lock;
 static lv_display_t *display = NULL;
-static spi_device_handle_t lcd_spi = NULL;
-
-// GPIO初始化 (仅DC引脚)
-static void lcd_gpio_init(void)
-{
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << LCD_RS_GPIO),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&io_conf);
-    gpio_set_level(LCD_RS_GPIO, 0);
-}
-
-// 硬件SPI初始化
-static void lcd_spi_init(void)
-{
-    spi_bus_config_t buscfg = {
-        .miso_io_num = -1,  // 不使用MISO
-        .mosi_io_num = LCD_SDA_GPIO,
-        .sclk_io_num = LCD_SCK_GPIO,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 240 * 240 * 2 + 8,  // 最大传输240x240x2字节 + 指令开销
-    };
-
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = LCD_SPI_FREQ_HZ,
-        .mode = 0,  // CPOL=0, CPHA=0
-        .spics_io_num = -1,  // 不使用CS
-        .queue_size = 7,
-        .pre_cb = NULL,
-    };
-
-    ESP_ERROR_CHECK(spi_bus_initialize(LCD_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
-    ESP_ERROR_CHECK(spi_bus_add_device(LCD_SPI_HOST, &devcfg, &lcd_spi));
-    ESP_LOGI(TAG, "Hardware SPI initialized: %d MHz", LCD_SPI_FREQ_HZ / 1000000);
-}
-
-// 硬件SPI发送数据
-static void lcd_spi_write_data(const uint8_t *data, size_t len, bool is_cmd)
-{
-    gpio_set_level(LCD_RS_GPIO, is_cmd ? 0 : 1);
-    
-    spi_transaction_t t = {
-        .length = len * 8,
-        .tx_buffer = data,
-    };
-    ESP_ERROR_CHECK(spi_device_polling_transmit(lcd_spi, &t));
-}
-
-// 写指令
-static void lcd_write_cmd(uint8_t cmd)
-{
-    lcd_spi_write_data(&cmd, 1, true);
-}
-
-// 写数据
-static void lcd_write_data(uint8_t data)
-{
-    lcd_spi_write_data(&data, 1, false);
-}
-
-// 写16位数据（大端格式，与ST7789一致）
-static void lcd_write_data_16(uint16_t data)
-{
-    uint8_t buf[2] = {(data >> 8) & 0xFF, data & 0xFF};
-    lcd_spi_write_data(buf, 2, false);
-}
-
-// 设置显示窗口
-static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
-{
-    lcd_write_cmd(0x2A);
-    lcd_write_data_16(x_start);
-    lcd_write_data_16(x_end);
-
-    lcd_write_cmd(0x2B);
-    lcd_write_data_16(y_start);
-    lcd_write_data_16(y_end);
-
-    lcd_write_cmd(0x2C);
-}
-
-// ST7789V初始化
-static void lcd_init(void)
-{
-    lcd_gpio_init();
-    lcd_spi_init();
-
-    vTaskDelay(200 / portTICK_PERIOD_MS);
-
-    lcd_write_cmd(0x11);
-    vTaskDelay(120 / portTICK_PERIOD_MS);
-
-    lcd_write_cmd(0x36);
-    lcd_write_data(0x00);
-
-    lcd_write_cmd(0x3A);
-    lcd_write_data(0x05);
-
-    lcd_write_cmd(0x21);
-
-    lcd_write_cmd(0x29);
-
-    ESP_LOGI(TAG, "LCD initialized with hardware SPI");
-}
-
-// LVGL flush回调 - DMA传输（交换字节顺序）
-static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
-{
-    int offsetx1 = area->x1;
-    int offsetx2 = area->x2;
-    int offsety1 = area->y1;
-    int offsety2 = area->y2;
-
-    lcd_set_window(offsetx1, offsety1, offsetx2, offsety2);
-
-    uint32_t pixel_num = (offsetx2 - offsetx1 + 1) * (offsety2 - offsety1 + 1);
-    uint16_t *pixel_data = (uint16_t *)px_map;
-
-    // 交换字节顺序（小端->大端，与ST7789一致）
-    for (uint32_t i = 0; i < pixel_num; i++) {
-        pixel_data[i] = (pixel_data[i] >> 8) | (pixel_data[i] << 8);
-    }
-
-    // DC置高(数据模式)
-    gpio_set_level(LCD_RS_GPIO, 1);
-
-    // DMA传输
-    spi_transaction_t t = {
-        .length = pixel_num * 16,
-        .tx_buffer = px_map,
-    };
-    spi_device_polling_transmit(lcd_spi, &t);
-
-    lv_display_flush_ready(disp);
-}
 
 static void increase_lvgl_tick(void *arg)
 {
@@ -185,9 +38,9 @@ void lvgl_init(void)
 {
     lv_init();
 
-    display = lv_display_create(LCD_H_RES, LCD_V_RES);
+    display = lv_display_create(240, 240);
 
-    size_t draw_buffer_sz = LCD_H_RES * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
+    size_t draw_buffer_sz = 240 * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
 
     void *buf1 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
     assert(buf1);
@@ -196,7 +49,7 @@ void lvgl_init(void)
 
     lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
-    lv_display_set_flush_cb(display, lvgl_flush_cb);
+    lv_display_set_flush_cb(display, st7789_lcd_flush);
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {.callback = &increase_lvgl_tick, .name = "lvgl_tick"};
     esp_timer_handle_t lvgl_tick_timer = NULL;
@@ -204,7 +57,6 @@ void lvgl_init(void)
     esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000);
 }
 
-// LVGL任务
 static void lvgl_port_task(void *arg)
 {
     ESP_LOGI(TAG, "LVGL task started");
@@ -219,108 +71,6 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-// 编码器处理任务
-static void encoder_task(void *arg)
-{
-    ESP_LOGI(TAG, "Encoder task started");
-
-    while (1) {
-        ec11_event_t event = encoder_get_event();
-
-        if (event != EC11_EVENT_NONE) {
-            _lock_acquire(&lvgl_api_lock);
-
-            ui_screen_id_t screen = ui_get_current_screen();
-            settings_mode_t mode = ui_get_settings_mode();
-
-            switch (event) {
-                case EC11_EVENT_CW:
-                case EC11_EVENT_CCW: {
-                    bool cw = (event == EC11_EVENT_CW);
-                    
-                    // 主界面/番茄钟界面/设置界面 轮流切换
-                    if (screen == UI_SCREEN_MAIN || screen == UI_SCREEN_POMODORO || 
-                        (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_IDLE)) {
-                        static int screen_index = 0;
-                        if (cw) screen_index = (screen_index + 1) % 3;
-                        else screen_index = (screen_index - 1 + 3) % 3;
-                        
-                        if (screen_index == 0) ui_switch_screen(UI_SCREEN_MAIN);
-                        else if (screen_index == 1) ui_switch_screen(UI_SCREEN_POMODORO);
-                        else ui_switch_screen(UI_SCREEN_SETTINGS);
-                    }
-                    // WiFi列表界面 - 切换选中SSID
-                    else if (screen == UI_SCREEN_WIFI_LIST) {
-                        if (cw) ui_wifi_list_select_next();
-                        else ui_wifi_list_select_prev();
-                    }
-                    // 密码输入界面 - 切换选中字符
-                    else if (screen == UI_SCREEN_PASSWORD_INPUT) {
-                        if (cw) ui_password_input_char_next();
-                        else ui_password_input_char_prev();
-                    }
-                    // 设置界面 选择模式 - 切换设置项
-                    else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_SELECT) {
-                        if (cw) ui_settings_select_next();
-                        else ui_settings_select_prev();
-                    }
-                    // 设置界面 调整模式 - 调整值
-                    else if (screen == UI_SCREEN_SETTINGS && mode == SETTINGS_MODE_ADJUST) {
-                        if (cw) ui_settings_adjust_up();
-                        else ui_settings_adjust_down();
-                    }
-                    break;
-                }
-                case EC11_EVENT_PRESS:
-                    // 设置界面按编码器键返回/退出
-                    if (screen == UI_SCREEN_SETTINGS) {
-                        if (mode == SETTINGS_MODE_ADJUST) {
-                            ui_exit_settings();
-                        } else if (mode == SETTINGS_MODE_SELECT) {
-                            ui_settings_enter_adjust();
-                        } else {
-                            ui_exit_settings();
-                        }
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            _lock_release(&lvgl_api_lock);
-        }
-
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-}
-
-// 设置按键处理任务
-static void settings_button_task(void *arg)
-{
-    ESP_LOGI(TAG, "Settings button task started");
-
-    while (1) {
-        if (settings_button_get_event()) {
-            _lock_acquire(&lvgl_api_lock);
-
-            ui_screen_id_t screen = ui_get_current_screen();
-
-            if (screen == UI_SCREEN_WIFI_LIST) {
-                ui_wifi_list_confirm();
-            } else if (screen == UI_SCREEN_PASSWORD_INPUT) {
-                ui_password_input_add_char();
-            } else {
-                ui_enter_settings();
-            }
-
-            _lock_release(&lvgl_api_lock);
-        }
-
-        vTaskDelay(20 / portTICK_PERIOD_MS);
-    }
-}
-
-// 时间更新任务（500ms更新一次，使秒数显示更流畅）
 static void time_update_task(void *arg)
 {
     ESP_LOGI(TAG, "Time update task started");
@@ -336,7 +86,23 @@ static void time_update_task(void *arg)
     }
 }
 
-// WiFi状态更新任务
+static void pomodoro_task(void *arg)
+{
+    ESP_LOGI(TAG, "Pomodoro task started");
+    
+    while (1) {
+        pomodoro_engine_tick();
+        
+        pomodoro_state_t state = pomodoro_engine_get_state();
+        
+        _lock_acquire(&lvgl_api_lock);
+        ui_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
+        _lock_release(&lvgl_api_lock);
+        
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 static void wifi_status_task(void *arg)
 {
     ESP_LOGI(TAG, "WiFi status task started");
@@ -347,11 +113,9 @@ static void wifi_status_task(void *arg)
     while (1) {
         _lock_acquire(&lvgl_api_lock);
 
-        // WiFi列表界面刷新
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
             ui_wifi_list_refresh();
             
-            // 扫描期间更频繁刷新
             if (!wifi_manager_is_scan_done()) {
                 _lock_release(&lvgl_api_lock);
                 vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -359,30 +123,24 @@ static void wifi_status_task(void *arg)
             }
         }
 
-        // NTP定时同步
         if (wifi_manager_is_connected()) {
-            // 首次连接或定时同步
             int interval = wifi_manager_get_ntp_interval();
-            int64_t now = esp_timer_get_time() / 1000000;  // 秒
+            int64_t now = esp_timer_get_time() / 1000000;
             
             if (!has_synced) {
-                // 首次连接，同步时间
                 wifi_manager_sync_time();
                 has_synced = true;
                 last_sync_time = now;
             } else if (interval > 0 && (now - last_sync_time >= interval * 60)) {
-                // 定时同步
                 ESP_LOGI(TAG, "Periodic NTP sync triggered");
                 wifi_manager_sync_time();
                 last_sync_time = now;
             }
         } else {
-            // 断开连接时重置同步状态
             has_synced = false;
             last_sync_time = 0;
         }
 
-        // 主界面WiFi状态
         if (ui_get_current_screen() == UI_SCREEN_MAIN) {
             if (wifi_manager_is_connected()) {
                 const char *ip = wifi_manager_get_ip_address();
@@ -415,31 +173,21 @@ void app_main(void)
     ESP_LOGI(TAG, "ST7789 + LVGL + EC11 WiFi Demo");
     ESP_LOGI(TAG, "================================");
 
-    // 初始化LCD
-    lcd_init();
-
-    // 初始化LVGL
+    st7789_lcd_init();
     lvgl_init();
-
-    // 初始化UI
     ui_init();
-
-    // 初始化编码器
-    encoder_init();
-
-    // 初始化WiFi
+    pomodoro_engine_init();
+    input_handler_init();
     wifi_manager_init();
 
-    // 创建任务
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-    xTaskCreate(encoder_task, "Encoder", 4096, NULL, 2, NULL);
+    xTaskCreate(input_handler_task, "Input", 4096, NULL, 2, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
-    xTaskCreate(settings_button_task, "SettingsBtn", 4096, NULL, 2, NULL);
     xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
+    xTaskCreate(pomodoro_task, "Pomodoro", 4096, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "All tasks created");
     
-    // 主循环
     while (1) {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }

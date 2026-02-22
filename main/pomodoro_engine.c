@@ -56,6 +56,7 @@ void pomodoro_engine_resume(void)
 {
     if (current_state.phase == POMODORO_PHASE_PAUSED) {
         current_state.is_paused = false;
+        current_state.phase = POMODORO_PHASE_WORK;
         ESP_LOGI(TAG, "Resumed");
     }
 }
