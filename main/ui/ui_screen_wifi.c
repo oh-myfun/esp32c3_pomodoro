@@ -97,21 +97,21 @@ void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int sele
         for (int i = 0; i < item_count; i++) {
             wifi_scan_result_t *ap = &results[i];
             
-            // SSID作为key
-            strncpy(wifi_item_keys[i], (char*)ap->ssid, sizeof(wifi_item_keys[i]) - 1);
-            wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0'; // 确保字符串结束
+            // SSID作为key，如果是开放网络则加上[open]
+            if (ap->open) {
+                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s[open]", ap->ssid);
+            } else {
+                strncpy(wifi_item_keys[i], (char*)ap->ssid, sizeof(wifi_item_keys[i]) - 1);
+            }
+            wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0';
             
-            // 信号强度作为value，格式为"Open ***"或"***"
+            // 信号强度作为value
             const char *rssi_icon = "";
             if (ap->rssi > -50) rssi_icon = "***";
             else if (ap->rssi > -70) rssi_icon = "**";
             else rssi_icon = "*";
             
-            if (ap->open) {
-                snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "Open %s", rssi_icon);
-            } else {
-                snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_icon);
-            }
+            snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_icon);
             
             items[i].key = wifi_item_keys[i];
             items[i].value = wifi_item_values[i];
