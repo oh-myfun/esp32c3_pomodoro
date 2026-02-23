@@ -13,6 +13,7 @@ static const char *TAG = "STORAGE";
 #define KEY_WORK_MIN      "work_min"
 #define KEY_BREAK_MIN     "break_min"
 #define KEY_LONG_BREAK   "long_break"
+#define KEY_CYCLES       "cycles"
 #define KEY_COMPLETED    "completed"
 #define KEY_CURRENT_CYCLE "cycle"
 
@@ -107,6 +108,7 @@ bool storage_save_pomodoro_settings(void *settings_ptr)
     result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_WORK_MIN, data[0]);
     result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_BREAK_MIN, data[1]);
     result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_LONG_BREAK, data[2]);
+    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_CYCLES, data[3]);
     return result;
 }
 
@@ -124,6 +126,9 @@ bool storage_load_pomodoro_settings(void *settings_ptr)
     
     if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_LONG_BREAK, &val)) data[2] = val;
     else data[2] = 15;
+    
+    if (storage_load_int(STORAGE_NAMESPACE_POMODORO, KEY_CYCLES, &val)) data[3] = val;
+    else data[3] = 4;
     
     return true;
 }

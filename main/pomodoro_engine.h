@@ -57,6 +57,8 @@ void pomodoro_engine_set_break_minutes(uint16_t minutes);
 
 void pomodoro_engine_set_long_break_minutes(uint16_t minutes);
 
+void pomodoro_engine_set_cycles(uint16_t cycles);
+
 void pomodoro_engine_clear_completed_count(void);
 
 void pomodoro_engine_save_state(void);

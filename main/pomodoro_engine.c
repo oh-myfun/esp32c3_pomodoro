@@ -129,7 +129,7 @@ void pomodoro_engine_set_work_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 60) {
         settings.work_minutes = minutes;
-        int32_t data[3] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes};
+        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
         storage_save_pomodoro_settings(data);
         ESP_LOGI(TAG, "Work minutes set to %d", minutes);
     }
@@ -139,7 +139,7 @@ void pomodoro_engine_set_break_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 30) {
         settings.break_minutes = minutes;
-        int32_t data[3] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes};
+        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
         storage_save_pomodoro_settings(data);
         ESP_LOGI(TAG, "Break minutes set to %d", minutes);
     }
@@ -149,9 +149,19 @@ void pomodoro_engine_set_long_break_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 60) {
         settings.long_break_minutes = minutes;
-        int32_t data[3] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes};
+        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
         storage_save_pomodoro_settings(data);
         ESP_LOGI(TAG, "Long break minutes set to %d", minutes);
+    }
+}
+
+void pomodoro_engine_set_cycles(uint16_t cycles)
+{
+    if (cycles >= 1 && cycles <= 10) {
+        settings.cycles_until_long_break = cycles;
+        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
+        storage_save_pomodoro_settings(data);
+        ESP_LOGI(TAG, "Cycles set to %d", cycles);
     }
 }
 
@@ -172,7 +182,7 @@ void pomodoro_engine_save_state(void)
 void pomodoro_engine_load_state(void)
 {
     int32_t state_data[2] = {0, 0};
-    int32_t settings_data[3] = {25, 5, 15};
+    int32_t settings_data[4] = {25, 5, 15, 4};
     
     storage_load_pomodoro_state(state_data);
     storage_load_pomodoro_settings(settings_data);
@@ -182,4 +192,5 @@ void pomodoro_engine_load_state(void)
     settings.work_minutes = settings_data[0];
     settings.break_minutes = settings_data[1];
     settings.long_break_minutes = settings_data[2];
+    settings.cycles_until_long_break = settings_data[3];
 }

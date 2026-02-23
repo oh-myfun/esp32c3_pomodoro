@@ -180,8 +180,6 @@ void app_main(void)
 
     ESP_ERROR_CHECK(nvs_flash_init());
     
-    time_service_init();
-    pomodoro_engine_init();
     st7789_lcd_init();
     lvgl_init();
     ui_init();
