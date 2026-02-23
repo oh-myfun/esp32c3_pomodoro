@@ -154,7 +154,7 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
     
     if (cycle_label) {
         uint32_t cycle = (completed / 4) + 1;
-        char cycle_buf[16];
+        char cycle_buf[20];
         snprintf(cycle_buf, sizeof(cycle_buf), "Cycle: %lu", (unsigned long)cycle);
         lv_label_set_text(cycle_label, cycle_buf);
     }
