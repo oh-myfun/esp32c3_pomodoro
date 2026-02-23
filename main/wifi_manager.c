@@ -165,7 +165,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                         }
                         free(ap_list);
                     }
-                    current_state = WIFI_STATE_NONE;
+                    if (current_state != WIFI_STATE_CONNECTED) {
+                        current_state = WIFI_STATE_NONE;
+                    }
                     ESP_LOGI(TAG, "Scan done, found %d APs", scan_count);
                 }
                 break;
