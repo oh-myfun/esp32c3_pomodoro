@@ -30,6 +30,10 @@ bool storage_save_int(const char *namespace, const char *key, int32_t value);
 
 bool storage_load_int(const char *namespace, const char *key, int32_t *value);
 
+bool storage_save_time(uint64_t timestamp);
+
+bool storage_load_time(uint64_t *timestamp);
+
 void storage_clear_namespace(const char *namespace);
 
 #endif

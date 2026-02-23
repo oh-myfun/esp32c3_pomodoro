@@ -44,6 +44,14 @@ void time_service_init(void)
     setenv("TZ", tz_buffer, 1);
     tzset();
 
+    uint64_t saved_time = 0;
+    if (storage_load_time(&saved_time) && saved_time > 0) {
+        struct timeval tv = { .tv_sec = (time_t)saved_time, .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+        ESP_LOGI(TAG, "Loaded saved time: %llu", saved_time);
+        synced = true;
+    }
+
     ESP_LOGI(TAG, "Time service initialized: TZ=CST-%d, NTP=%s", tz_hours, ntp_server);
 }
 
@@ -60,6 +68,9 @@ bool time_service_sync(void)
     int retry = 0;
     while (retry < 5) {
         if (synced) {
+            uint64_t now = time(NULL);
+            storage_save_time(now);
+            ESP_LOGI(TAG, "Time saved: %llu", now);
             return true;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));

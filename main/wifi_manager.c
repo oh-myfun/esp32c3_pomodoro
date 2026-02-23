@@ -176,6 +176,16 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             snprintf(ip_address, sizeof(ip_address), IPSTR, IP2STR(&event->ip_info.ip));
             current_state = WIFI_STATE_CONNECTED;
             ESP_LOGI(TAG, "Got IP: %s", ip_address);
+            
+            if (strlen(connected_ssid) > 0) {
+                char password[65] = {0};
+                wifi_config_t cfg;
+                esp_wifi_get_config(WIFI_IF_STA, &cfg);
+                strncpy(password, (char*)cfg.sta.password, sizeof(password) - 1);
+                storage_save_wifi_config(connected_ssid, password);
+                ESP_LOGI(TAG, "WiFi config saved: %s", connected_ssid);
+            }
+            
             start_http_server();
         }
     }
@@ -196,6 +206,15 @@ void wifi_manager_init(void)
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+    char saved_ssid[33] = {0};
+    char saved_password[65] = {0};
+    if (storage_load_wifi_config(saved_ssid, sizeof(saved_ssid), saved_password, sizeof(saved_password))) {
+        if (strlen(saved_ssid) > 0) {
+            ESP_LOGI(TAG, "Loading saved WiFi config: %s", saved_ssid);
+            wifi_manager_connect(saved_ssid, saved_password);
+        }
+    }
 
     ESP_LOGI(TAG, "WiFi manager initialized");
 }

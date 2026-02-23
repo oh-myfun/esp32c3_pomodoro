@@ -154,6 +154,52 @@ bool storage_load_pomodoro_state(void *state_ptr)
     return true;
 }
 
+bool storage_save_time(uint64_t timestamp)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(STORAGE_NAMESPACE_SETTINGS, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return false;
+    }
+    
+    int32_t high = (int32_t)(timestamp >> 32);
+    int32_t low = (int32_t)(timestamp & 0xFFFFFFFF);
+    
+    bool result = true;
+    result &= (nvs_set_i32(handle, "time_high", high) == ESP_OK);
+    result &= (nvs_set_i32(handle, "time_low", low) == ESP_OK);
+    result &= (nvs_commit(handle) == ESP_OK);
+    
+    nvs_close(handle);
+    return result;
+}
+
+bool storage_load_time(uint64_t *timestamp)
+{
+    if (!timestamp) return false;
+    
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(STORAGE_NAMESPACE_SETTINGS, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return false;
+    }
+    
+    int32_t high = 0;
+    int32_t low = 0;
+    
+    bool result = true;
+    result &= (nvs_get_i32(handle, "time_high", &high) == ESP_OK);
+    result &= (nvs_get_i32(handle, "time_low", &low) == ESP_OK);
+    
+    nvs_close(handle);
+    
+    if (result) {
+        *timestamp = ((uint64_t)(uint32_t)high << 32) | (uint64_t)(uint32_t)low;
+    }
+    
+    return result;
+}
+
 void storage_clear_namespace(const char *namespace)
 {
     nvs_handle_t handle;
