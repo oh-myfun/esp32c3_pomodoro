@@ -19,36 +19,36 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_size(screen, 240, 240);
 
+    phase_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
+    lv_label_set_text(phase_label, "WORK");
+    lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
+
     progress_arc = lv_arc_create(screen);
-    lv_obj_set_size(progress_arc, 160, 160);
+    lv_obj_set_size(progress_arc, 140, 140);
     lv_arc_set_rotation(progress_arc, 270);
     lv_arc_set_bg_angles(progress_arc, 0, 360);
     lv_arc_set_angles(progress_arc, 0, 0);
     lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0x333333), LV_PART_MAIN);
     lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0xFF6B6B), LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(progress_arc, 12, LV_PART_MAIN);
-    lv_obj_set_style_arc_width(progress_arc, 12, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(progress_arc, 10, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(progress_arc, 10, LV_PART_INDICATOR);
     lv_obj_remove_flag(progress_arc, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align(progress_arc, LV_ALIGN_CENTER, 0, -10);
-
-    phase_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
-    lv_label_set_text(phase_label, "WORK");
-    lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 15);
+    lv_obj_align(progress_arc, LV_ALIGN_CENTER, 0, 5);
 
     timer_label = lv_label_create(screen);
     lv_obj_set_style_text_color(timer_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(timer_label, "25:00");
-    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_letter_space(timer_label, 2, 0);
-    lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_letter_space(timer_label, 1, 0);
+    lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 5);
 
     completed_label = lv_label_create(screen);
     lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(completed_label, "Completed: 0");
+    lv_label_set_text(completed_label, "0");
     lv_obj_set_style_text_font(completed_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(completed_label, LV_ALIGN_CENTER, 0, 50);
+    lv_obj_align(completed_label, LV_ALIGN_BOTTOM_MID, 0, -25);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
@@ -71,7 +71,8 @@ void ui_screen_pomodoro_update_time(uint32_t remaining_seconds)
     lv_label_set_text(timer_label, buf);
     
     if (progress_arc && total_seconds > 0) {
-        uint32_t progress = ((total_seconds - remaining_seconds) * 360) / total_seconds;
+        uint32_t elapsed = total_seconds - remaining_seconds;
+        uint32_t progress = (elapsed * 360) / total_seconds;
         lv_arc_set_angles(progress_arc, 0, progress);
     }
 }
@@ -85,8 +86,8 @@ void ui_screen_pomodoro_update_phase(const char *phase)
 void ui_screen_pomodoro_update_completed(uint32_t count)
 {
     if (completed_label == NULL) return;
-    char buf[32];
-    snprintf(buf, sizeof(buf), "Completed: %u", (unsigned int)count);
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%u", (unsigned int)count);
     lv_label_set_text(completed_label, buf);
 }
 
@@ -130,6 +131,7 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
     lv_label_set_text(phase_label, phase_text);
     
     if (progress_arc) {
+        lv_arc_set_angles(progress_arc, 0, 0);
         lv_obj_set_style_arc_color(progress_arc, lv_color_hex(color), LV_PART_INDICATOR);
     }
 }
