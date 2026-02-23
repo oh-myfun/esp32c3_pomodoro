@@ -185,8 +185,10 @@ void app_main(void)
     st7789_lcd_init();
     lvgl_init();
     ui_init();
+    pomodoro_engine_init();
     input_handler_init();
     wifi_manager_init();
+    time_service_init();
 
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
     xTaskCreate(input_handler_task, "Input", 16384, NULL, 2, NULL);
