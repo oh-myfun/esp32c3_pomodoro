@@ -13,6 +13,7 @@
 
 #include "lvgl.h"
 #include "driver/st7789_lcd.h"
+#include "driver/buzzer.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_wifi.h"
@@ -181,6 +182,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     
     st7789_lcd_init();
+    buzzer_init();
     lvgl_init();
     ui_init();
     pomodoro_engine_init();

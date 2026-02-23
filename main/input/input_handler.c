@@ -1,5 +1,6 @@
 #include "input_handler.h"
 #include "encoder.h"
+#include "driver/buzzer.h"
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_settings.h"
 #include "ui/ui_screen_wifi.h"
@@ -90,7 +91,13 @@ static void settings_button_handle(void)
     ui_screen_id_t screen = ui_get_current_screen();
     settings_mode_t mode = ui_get_settings_mode();
 
-    if (screen == UI_SCREEN_WIFI_LIST) {
+    if (screen == UI_SCREEN_MAIN) {
+        for (int i = 0; i < 3; i++) {
+            buzzer_beep(2000, 100);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+    }
+    else if (screen == UI_SCREEN_WIFI_LIST) {
         int count = wifi_manager_get_scan_count();
         int selected = ui_screen_wifi_list_get_selected();
         if (count > 0) {
