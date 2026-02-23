@@ -3,6 +3,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdio.h>
@@ -17,6 +18,7 @@
 #include "ui/ui_screen_wifi.h"
 #include "wifi_manager.h"
 #include "pomodoro_engine.h"
+#include "time_service.h"
 
 static const char *TAG = "MAIN";
 
@@ -176,10 +178,13 @@ void app_main(void)
     ESP_LOGI(TAG, "LVGL: tick=%dms, max_delay=%dms, priority=%d, buf_lines=%d",
              LVGL_TICK_PERIOD_MS, LVGL_TASK_MAX_DELAY_MS, LVGL_TASK_PRIORITY, LVGL_DRAW_BUF_LINES);
 
+    ESP_ERROR_CHECK(nvs_flash_init());
+    
+    time_service_init();
+    pomodoro_engine_init();
     st7789_lcd_init();
     lvgl_init();
     ui_init();
-    pomodoro_engine_init();
     input_handler_init();
     wifi_manager_init();
 
