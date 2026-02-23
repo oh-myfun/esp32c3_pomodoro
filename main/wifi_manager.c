@@ -356,7 +356,7 @@ const char* wifi_manager_get_connected_ssid(void)
 
 bool wifi_manager_is_connected(void)
 {
-    return current_state == WIFI_STATE_CONNECTED;
+    return current_state == WIFI_STATE_CONNECTED || (ip_address[0] != '\0' && current_state != WIFI_STATE_NONE);
 }
 
 const char* wifi_manager_get_ip_address(void)
