@@ -5,10 +5,13 @@
 
 static const char *TAG = "UI_POMODORO";
 
+static lv_obj_t *progress_arc = NULL;
 static lv_obj_t *timer_label = NULL;
 static lv_obj_t *phase_label = NULL;
 static lv_obj_t *completed_label = NULL;
 static lv_obj_t *hint_label = NULL;
+
+static uint32_t total_seconds = 25 * 60;
 
 lv_obj_t* ui_screen_pomodoro_create(void)
 {
@@ -16,11 +19,23 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_size(screen, 240, 240);
 
+    progress_arc = lv_arc_create(screen);
+    lv_obj_set_size(progress_arc, 160, 160);
+    lv_arc_set_rotation(progress_arc, 270);
+    lv_arc_set_bg_angles(progress_arc, 0, 360);
+    lv_arc_set_angles(progress_arc, 0, 0);
+    lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0xFF6B6B), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(progress_arc, 12, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(progress_arc, 12, LV_PART_INDICATOR);
+    lv_obj_remove_flag(progress_arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_align(progress_arc, LV_ALIGN_CENTER, 0, -10);
+
     phase_label = lv_label_create(screen);
     lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
     lv_label_set_text(phase_label, "WORK");
     lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 20);
+    lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 15);
 
     timer_label = lv_label_create(screen);
     lv_obj_set_style_text_color(timer_label, lv_color_hex(0xFFFFFF), 0);
@@ -54,6 +69,11 @@ void ui_screen_pomodoro_update_time(uint32_t remaining_seconds)
     char buf[16];
     snprintf(buf, sizeof(buf), "%02lu:%02lu", (unsigned long)minutes, (unsigned long)seconds);
     lv_label_set_text(timer_label, buf);
+    
+    if (progress_arc && total_seconds > 0) {
+        uint32_t progress = ((total_seconds - remaining_seconds) * 360) / total_seconds;
+        lv_arc_set_angles(progress_arc, 0, progress);
+    }
 }
 
 void ui_screen_pomodoro_update_phase(const char *phase)
@@ -83,14 +103,17 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
         case 1:  // WORK
             color = 0xFF6B6B;
             phase_text = "WORK";
+            total_seconds = 25 * 60;
             break;
         case 2:  // BREAK
             color = 0x4D96FF;
             phase_text = "BREAK";
+            total_seconds = 5 * 60;
             break;
         case 3:  // LONG_BREAK
             color = 0x9B59B6;
             phase_text = "LONG BREAK";
+            total_seconds = 15 * 60;
             break;
         case 4:  // PAUSED
             color = 0xFFFF00;
@@ -99,9 +122,14 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
         default:  // IDLE
             color = 0xAAAAAA;
             phase_text = "IDLE";
+            total_seconds = 25 * 60;
             break;
     }
     
     lv_obj_set_style_text_color(phase_label, lv_color_hex(color), 0);
     lv_label_set_text(phase_label, phase_text);
+    
+    if (progress_arc) {
+        lv_obj_set_style_arc_color(progress_arc, lv_color_hex(color), LV_PART_INDICATOR);
+    }
 }
