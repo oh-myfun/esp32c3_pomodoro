@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/netdb.h"
-#include "storage_service.h"
+#include "storage/storage_service.h"
 #include <string.h>
 #include <sys/time.h>
 

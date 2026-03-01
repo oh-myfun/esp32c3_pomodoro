@@ -17,13 +17,17 @@ typedef enum {
     EC11_EVENT_NONE = 0,
     EC11_EVENT_CW,           // 顺时针旋转
     EC11_EVENT_CCW,          // 逆时针旋转
-    EC11_EVENT_PRESS,       // 按键按下
-    EC11_EVENT_RELEASE,     // 按键释放
-    EC11_EVENT_LONG_PRESS   // 长按事件
+    EC11_EVENT_PRESS,        // 按键按下
+    EC11_EVENT_RELEASE,      // 按键释放
+    EC11_EVENT_LONG_PRESS,   // 长按事件
+    EC11_EVENT_SETTINGS      // 设置按键按下
 } ec11_event_t;
 
 // 初始化编码器
 void encoder_init(void);
+
+// 卸载编码器
+void encoder_deinit(void);
 
 // 获取编码器事件（非阻塞，需定期调用）
 ec11_event_t encoder_get_event(void);

@@ -1,13 +1,12 @@
 #include "ui_manager.h"
-#include "wifi_manager.h"
+#include "network/wifi_manager.h"
 #include "ui_screen_main.h"
 #include "ui_screen_pomodoro.h"
-#include "ui_screen_test.h"
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
 #include "ui_screen_chat.h"
 #include "ui_screen_settings_pomodoro.h"
-#include "pomodoro_engine.h"
+#include "pomodoro/pomodoro_engine.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +16,7 @@ static const char *TAG = "UI";
 static lv_obj_t *screens[UI_SCREEN_COUNT];
 static ui_screen_id_t current_screen = UI_SCREEN_MAIN;
 static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
+static ui_input_callbacks_t input_callbacks[UI_SCREEN_COUNT];
 
 // 更新设置界面显示
 static void update_settings_display(void)
@@ -30,7 +30,6 @@ void ui_init(void)
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
     screens[UI_SCREEN_POMODORO] = ui_screen_pomodoro_create();
     screens[UI_SCREEN_CHAT] = ui_screen_chat_create();
-    screens[UI_SCREEN_TEST] = ui_screen_test_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
     screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
@@ -47,6 +46,9 @@ void ui_switch_screen(ui_screen_id_t screen_id)
 {
     if (screen_id >= UI_SCREEN_COUNT) return;
     if (screen_id == current_screen) return;
+
+    // 注销当前界面回调
+    memset(&input_callbacks[current_screen], 0, sizeof(ui_input_callbacks_t));
 
     lv_scr_load(screens[screen_id]);
     current_screen = screen_id;
@@ -190,4 +192,51 @@ void ui_pomodoro_update_completed(uint32_t count)
 void ui_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed)
 {
     ui_screen_pomodoro_update_state(phase, remaining_seconds, completed);
+}
+
+void ui_register_input_callbacks(ui_screen_id_t screen, const ui_input_callbacks_t *cbs)
+{
+    if (screen >= UI_SCREEN_COUNT || !cbs) return;
+    memcpy(&input_callbacks[screen], cbs, sizeof(ui_input_callbacks_t));
+}
+
+void ui_unregister_input_callbacks(ui_screen_id_t screen)
+{
+    if (screen >= UI_SCREEN_COUNT) return;
+    memset(&input_callbacks[screen], 0, sizeof(ui_input_callbacks_t));
+}
+
+void ui_dispatch_encoder_cw(void)
+{
+    if (input_callbacks[current_screen].on_encoder_cw) {
+        input_callbacks[current_screen].on_encoder_cw();
+    }
+}
+
+void ui_dispatch_encoder_ccw(void)
+{
+    if (input_callbacks[current_screen].on_encoder_ccw) {
+        input_callbacks[current_screen].on_encoder_ccw();
+    }
+}
+
+void ui_dispatch_encoder_press(void)
+{
+    if (input_callbacks[current_screen].on_encoder_press) {
+        input_callbacks[current_screen].on_encoder_press();
+    }
+}
+
+void ui_dispatch_encoder_long_press(void)
+{
+    if (input_callbacks[current_screen].on_encoder_long_press) {
+        input_callbacks[current_screen].on_encoder_long_press();
+    }
+}
+
+void ui_dispatch_settings_press(void)
+{
+    if (input_callbacks[current_screen].on_settings_press) {
+        input_callbacks[current_screen].on_settings_press();
+    }
 }

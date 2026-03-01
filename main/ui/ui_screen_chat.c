@@ -1,7 +1,18 @@
 #include "ui_screen_chat.h"
+#include "ui_manager.h"
 #include "esp_log.h"
 
 static const char *TAG = "UI_CHAT";
+
+static void chat_on_encoder_cw(void)
+{
+    ui_switch_screen(UI_SCREEN_SETTINGS);
+}
+
+static void chat_on_encoder_ccw(void)
+{
+    ui_switch_screen(UI_SCREEN_POMODORO);
+}
 
 lv_obj_t* ui_screen_chat_create(void)
 {
@@ -20,6 +31,12 @@ lv_obj_t* ui_screen_chat_create(void)
     lv_label_set_text(hint, "Coming soon...");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
     lv_obj_align(hint, LV_ALIGN_CENTER, 0, 0);
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = chat_on_encoder_cw,
+        .on_encoder_ccw = chat_on_encoder_ccw,
+    };
+    ui_register_input_callbacks(UI_SCREEN_CHAT, &cbs);
 
     ESP_LOGI(TAG, "Chat screen created");
     return screen;

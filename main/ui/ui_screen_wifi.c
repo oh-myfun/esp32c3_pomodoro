@@ -8,6 +8,35 @@
 
 static const char *TAG = "UI_WIFI";
 
+static void wifi_on_encoder_cw(void)
+{
+    lv_obj_t *list = ui_screen_wifi_list_get_list();
+    if (list) ui_list_nav_next(list);
+}
+
+static void wifi_on_encoder_ccw(void)
+{
+    lv_obj_t *list = ui_screen_wifi_list_get_list();
+    if (list) ui_list_nav_prev(list);
+}
+
+static void wifi_on_encoder_press(void)
+{
+    ui_switch_screen(UI_SCREEN_SETTINGS);
+}
+
+static void wifi_on_settings_press(void)
+{
+    int count = wifi_manager_get_scan_count();
+    int selected = ui_screen_wifi_list_get_selected();
+    if (count > 0) {
+        wifi_scan_result_t *result = wifi_manager_get_scan_result(selected);
+        if (result) {
+            ui_password_input_start(result->ssid);
+        }
+    }
+}
+
 static lv_obj_t *wifi_list_title = NULL;
 static lv_obj_t *wifi_list = NULL;
 static lv_obj_t *wifi_list_hint = NULL;
@@ -75,6 +104,14 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     lv_label_set_text(wifi_list_hint, "Rotate: nav | SET: select");
     lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = wifi_on_encoder_cw,
+        .on_encoder_ccw = wifi_on_encoder_ccw,
+        .on_encoder_press = wifi_on_encoder_press,
+        .on_settings_press = wifi_on_settings_press,
+    };
+    ui_register_input_callbacks(UI_SCREEN_WIFI_LIST, &cbs);
 
     ESP_LOGI(TAG, "WiFi list screen created");
     return screen;
@@ -198,6 +235,14 @@ lv_obj_t* ui_screen_password_create(void)
     lv_label_set_text(pwd_hint, "Rotate: nav | SET: input");
     lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    static const ui_input_callbacks_t pwd_cbs = {
+        .on_encoder_cw = NULL,
+        .on_encoder_ccw = NULL,
+        .on_encoder_press = NULL,
+        .on_settings_press = NULL,
+    };
+    ui_register_input_callbacks(UI_SCREEN_PASSWORD_INPUT, &pwd_cbs);
 
     ESP_LOGI(TAG, "Password screen created");
     return screen;

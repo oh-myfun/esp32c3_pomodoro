@@ -1,11 +1,27 @@
 #include "ui_screen_settings_pomodoro.h"
+#include "ui_manager.h"
 #include "ui_list.h"
-#include "pomodoro_engine.h"
+#include "pomodoro/pomodoro_engine.h"
 #include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_SETTINGS_POMODORO";
+
+static void pomo_set_on_encoder_cw(void)
+{
+    ui_settings_adjust_up();
+}
+
+static void pomo_set_on_encoder_ccw(void)
+{
+    ui_settings_adjust_down();
+}
+
+static void pomo_set_on_settings_press(void)
+{
+    ui_switch_screen(UI_SCREEN_SETTINGS);
+}
 
 static lv_obj_t *screen = NULL;
 static lv_obj_t *pomodoro_list = NULL;
@@ -61,6 +77,13 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
     lv_label_set_text(hint, "Rotate: nav | SET: back");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = pomo_set_on_encoder_cw,
+        .on_encoder_ccw = pomo_set_on_encoder_ccw,
+        .on_settings_press = pomo_set_on_settings_press,
+    };
+    ui_register_input_callbacks(UI_SCREEN_SETTINGS_POMODORO, &cbs);
 
     ESP_LOGI(TAG, "Settings Pomodoro screen created");
     return screen;

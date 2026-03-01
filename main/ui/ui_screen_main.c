@@ -1,8 +1,19 @@
 #include "ui_screen_main.h"
+#include "ui_manager.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_MAIN";
+
+static void main_on_encoder_cw(void)
+{
+    ui_switch_screen(UI_SCREEN_POMODORO);
+}
+
+static void main_on_encoder_ccw(void)
+{
+    ui_switch_screen(UI_SCREEN_SETTINGS);
+}
 
 static lv_obj_t *time_label = NULL;
 static lv_obj_t *date_label = NULL;
@@ -52,6 +63,12 @@ lv_obj_t* ui_screen_main_create(void)
     lv_label_set_text(hint, "Rotate: nav | SET: adjust");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = main_on_encoder_cw,
+        .on_encoder_ccw = main_on_encoder_ccw,
+    };
+    ui_register_input_callbacks(UI_SCREEN_MAIN, &cbs);
 
     ESP_LOGI(TAG, "Main screen created");
     return screen;

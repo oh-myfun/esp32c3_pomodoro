@@ -17,9 +17,9 @@
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_wifi.h"
-#include "wifi_manager.h"
-#include "pomodoro_engine.h"
-#include "time_service.h"
+#include "network/wifi_manager.h"
+#include "pomodoro/pomodoro_engine.h"
+#include "time/time_service.h"
 
 static const char *TAG = "MAIN";
 
@@ -32,10 +32,31 @@ static const char *TAG = "MAIN";
 
 static _lock_t lvgl_api_lock;
 static lv_display_t *display = NULL;
+static void *buf1 = NULL;
+static void *buf2 = NULL;
+static esp_timer_handle_t lvgl_tick_timer = NULL;
 
 static void increase_lvgl_tick(void *arg)
 {
     lv_tick_inc(LVGL_TICK_PERIOD_MS);
+}
+
+void lvgl_deinit(void)
+{
+    if (lvgl_tick_timer) {
+        esp_timer_stop(lvgl_tick_timer);
+        esp_timer_delete(lvgl_tick_timer);
+        lvgl_tick_timer = NULL;
+    }
+    
+    if (buf1) {
+        free(buf1);
+        buf1 = NULL;
+    }
+    if (buf2) {
+        free(buf2);
+        buf2 = NULL;
+    }
 }
 
 void lvgl_init(void)
@@ -46,9 +67,9 @@ void lvgl_init(void)
 
     size_t draw_buffer_sz = 240 * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
 
-    void *buf1 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
+    buf1 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
     assert(buf1);
-    void *buf2 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
+    buf2 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
     assert(buf2);
 
     lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
@@ -56,7 +77,6 @@ void lvgl_init(void)
     lv_display_set_flush_cb(display, st7789_lcd_flush);
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {.callback = &increase_lvgl_tick, .name = "lvgl_tick"};
-    esp_timer_handle_t lvgl_tick_timer = NULL;
     esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer);
     esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000);
 }
@@ -86,7 +106,7 @@ static void time_update_task(void *arg)
         ui_update_humidity(65.0f);
         _lock_release(&lvgl_api_lock);
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -117,9 +137,9 @@ static void wifi_status_task(void *arg)
     while (1) {
         _lock_acquire(&lvgl_api_lock);
 
+        // WiFi列表刷新
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
             ui_screen_wifi_list_refresh();
-            
             if (!wifi_manager_is_scan_done()) {
                 _lock_release(&lvgl_api_lock);
                 vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -127,6 +147,7 @@ static void wifi_status_task(void *arg)
             }
         }
 
+        // NTP时间同步
         if (wifi_manager_is_connected()) {
             int interval = wifi_manager_get_ntp_interval();
             int64_t now = esp_timer_get_time() / 1000000;
@@ -136,15 +157,14 @@ static void wifi_status_task(void *arg)
                 has_synced = true;
                 last_sync_time = now;
             } else if (interval > 0 && (now - last_sync_time >= interval * 60)) {
-                ESP_LOGI(TAG, "Periodic NTP sync triggered");
                 wifi_manager_sync_time();
                 last_sync_time = now;
             }
         } else {
             has_synced = false;
-            last_sync_time = 0;
         }
 
+        // 主界面WiFi状态显示
         if (ui_get_current_screen() == UI_SCREEN_MAIN) {
             if (wifi_manager_is_connected()) {
                 const char *ip = wifi_manager_get_ip_address();
@@ -167,17 +187,13 @@ static void wifi_status_task(void *arg)
 
         _lock_release(&lvgl_api_lock);
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "================================");
-    ESP_LOGI(TAG, "ST7789 + LVGL + EC11 WiFi Demo");
-    ESP_LOGI(TAG, "================================");
-    ESP_LOGI(TAG, "LVGL: tick=%dms, max_delay=%dms, priority=%d, buf_lines=%d",
-             LVGL_TICK_PERIOD_MS, LVGL_TASK_MAX_DELAY_MS, LVGL_TASK_PRIORITY, LVGL_DRAW_BUF_LINES);
+    ESP_LOGI(TAG, "Pomodoro Device Starting...");
 
     ESP_ERROR_CHECK(nvs_flash_init());
     
@@ -191,7 +207,7 @@ void app_main(void)
     time_service_init();
 
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-    xTaskCreate(input_handler_task, "Input", 16384, NULL, 2, NULL);
+    xTaskCreate(input_handler_task, "Input", 4096, NULL, 3, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
     xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
     xTaskCreate(pomodoro_task, "Pomodoro", 4096, NULL, 1, NULL);

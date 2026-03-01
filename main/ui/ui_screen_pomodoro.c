@@ -1,10 +1,38 @@
 #include "ui_screen_pomodoro.h"
-#include "pomodoro_engine.h"
+#include "ui_manager.h"
+#include "pomodoro/pomodoro_engine.h"
 #include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_POMODORO";
+
+static void pomo_on_encoder_cw(void)
+{
+    ui_switch_screen(UI_SCREEN_CHAT);
+}
+
+static void pomo_on_encoder_ccw(void)
+{
+    ui_switch_screen(UI_SCREEN_MAIN);
+}
+
+static void pomo_on_encoder_press(void)
+{
+    pomodoro_engine_stop();
+}
+
+static void pomo_on_settings_press(void)
+{
+    pomodoro_state_t state = pomodoro_engine_get_state();
+    if (state.phase == POMODORO_PHASE_IDLE) {
+        pomodoro_engine_start();
+    } else if (state.is_paused) {
+        pomodoro_engine_resume();
+    } else {
+        pomodoro_engine_pause();
+    }
+}
 
 static lv_obj_t *progress_arc = NULL;
 static lv_obj_t *timer_label = NULL;
@@ -99,6 +127,14 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -6);
 
     update_settings_display();
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = pomo_on_encoder_cw,
+        .on_encoder_ccw = pomo_on_encoder_ccw,
+        .on_encoder_press = pomo_on_encoder_press,
+        .on_settings_press = pomo_on_settings_press,
+    };
+    ui_register_input_callbacks(UI_SCREEN_POMODORO, &cbs);
 
     ESP_LOGI(TAG, "Pomodoro screen created");
     return screen;

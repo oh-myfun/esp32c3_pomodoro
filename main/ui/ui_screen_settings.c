@@ -1,9 +1,63 @@
 #include "ui_screen_settings.h"
+#include "ui_manager.h"
+#include "network/wifi_manager.h"
 #include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_SETTINGS";
+
+static void settings_on_encoder_cw(void)
+{
+    settings_mode_t mode = ui_get_settings_mode();
+    if (mode == SETTINGS_MODE_IDLE) {
+        ui_switch_screen(UI_SCREEN_MAIN);
+    } else if (mode == SETTINGS_MODE_SELECT) {
+        ui_settings_select_next();
+    } else if (mode == SETTINGS_MODE_ADJUST) {
+        ui_settings_adjust_up();
+    }
+}
+
+static void settings_on_encoder_ccw(void)
+{
+    settings_mode_t mode = ui_get_settings_mode();
+    if (mode == SETTINGS_MODE_IDLE) {
+        ui_switch_screen(UI_SCREEN_CHAT);
+    } else if (mode == SETTINGS_MODE_SELECT) {
+        ui_settings_select_prev();
+    } else if (mode == SETTINGS_MODE_ADJUST) {
+        ui_settings_adjust_down();
+    }
+}
+
+static void settings_on_encoder_press(void)
+{
+    settings_mode_t mode = ui_get_settings_mode();
+    if (mode == SETTINGS_MODE_ADJUST || mode == SETTINGS_MODE_SELECT) {
+        ui_exit_settings();
+    }
+}
+
+static void settings_on_settings_press(void)
+{
+    settings_mode_t mode = ui_get_settings_mode();
+    if (mode == SETTINGS_MODE_IDLE) {
+        ui_enter_settings();
+    } else if (mode == SETTINGS_MODE_SELECT) {
+        int item = ui_screen_settings_get_current_item();
+        if (item == 4) {  // WiFi
+            wifi_manager_scan_start();
+            ui_switch_screen(UI_SCREEN_WIFI_LIST);
+        } else if (item == 3) {  // Pomodoro
+            ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
+        } else {
+            ui_settings_enter_adjust();
+        }
+    } else if (mode == SETTINGS_MODE_ADJUST) {
+        ui_exit_settings();
+    }
+}
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_item_labels[6];
@@ -48,6 +102,14 @@ lv_obj_t* ui_screen_settings_create(void)
     lv_label_set_text(settings_hint, "Rotate: nav | SET: select");
     lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+
+    static const ui_input_callbacks_t cbs = {
+        .on_encoder_cw = settings_on_encoder_cw,
+        .on_encoder_ccw = settings_on_encoder_ccw,
+        .on_encoder_press = settings_on_encoder_press,
+        .on_settings_press = settings_on_settings_press,
+    };
+    ui_register_input_callbacks(UI_SCREEN_SETTINGS, &cbs);
 
     ESP_LOGI(TAG, "Settings screen created");
     return screen;

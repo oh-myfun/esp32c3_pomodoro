@@ -8,7 +8,6 @@ typedef enum {
     UI_SCREEN_MAIN = 0,
     UI_SCREEN_POMODORO,
     UI_SCREEN_CHAT,
-    UI_SCREEN_TEST,
     UI_SCREEN_SETTINGS,
     UI_SCREEN_SETTINGS_POMODORO,
     UI_SCREEN_WIFI_LIST,
@@ -42,6 +41,26 @@ typedef enum {
     POMODORO_OP_STOP,
     POMODORO_OP_RESET
 } pomodoro_op_t;
+
+// 输入回调接口
+typedef struct {
+    void (*on_encoder_cw)(void);
+    void (*on_encoder_ccw)(void);
+    void (*on_encoder_press)(void);
+    void (*on_encoder_long_press)(void);
+    void (*on_settings_press)(void);
+} ui_input_callbacks_t;
+
+// 注册/注销输入回调
+void ui_register_input_callbacks(ui_screen_id_t screen, const ui_input_callbacks_t *cbs);
+void ui_unregister_input_callbacks(ui_screen_id_t screen);
+
+// 分发输入事件
+void ui_dispatch_encoder_cw(void);
+void ui_dispatch_encoder_ccw(void);
+void ui_dispatch_encoder_press(void);
+void ui_dispatch_encoder_long_press(void);
+void ui_dispatch_settings_press(void);
 
 // 初始化UI系统
 void ui_init(void);

@@ -2,7 +2,7 @@
 #define UI_SCREEN_WIFI_H
 
 #include "lvgl.h"
-#include "wifi_manager.h"
+#include "network/wifi_manager.h"
 #include "ui_manager.h"
 
 lv_obj_t* ui_screen_wifi_list_create(void);
