@@ -65,7 +65,7 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, "Pomodoro");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     pomodoro_list = ui_list_create(screen, 220, 180, 10, 30);
@@ -75,7 +75,7 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
     lv_obj_t *hint = lv_label_create(screen);
     lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint, "Rotate: nav | SET: back");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

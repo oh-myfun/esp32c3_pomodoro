@@ -79,19 +79,19 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     cycle_label = lv_label_create(screen);
     lv_obj_set_style_text_color(cycle_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(cycle_label, "1/4");
-    lv_obj_set_style_text_font(cycle_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(cycle_label, &lv_font_montserrat_16, 0);
     lv_obj_align(cycle_label, LV_ALIGN_TOP_LEFT, 10, 8);
 
     phase_label = lv_label_create(screen);
     lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
     lv_label_set_text(phase_label, "WORK");
-    lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_16, 0);
     lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
 
     completed_label = lv_label_create(screen);
     lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(completed_label, "0");
-    lv_obj_set_style_text_font(completed_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(completed_label, &lv_font_montserrat_16, 0);
     lv_obj_align(completed_label, LV_ALIGN_TOP_RIGHT, -10, 8);
 
     progress_arc = lv_arc_create(screen);
@@ -111,19 +111,19 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     timer_label = lv_label_create(screen);
     lv_obj_set_style_text_color(timer_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(timer_label, "25:00");
-    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_32, 0);
     lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 0);
 
     total_time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(total_time_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(total_time_label, "/ 25:00");
-    lv_obj_set_style_text_font(total_time_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(total_time_label, &lv_font_montserrat_16, 0);
     lv_obj_align(total_time_label, LV_ALIGN_CENTER, 0, 24);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, "Rotate: nav | SET: start/pause");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_16, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -6);
 
     update_settings_display();

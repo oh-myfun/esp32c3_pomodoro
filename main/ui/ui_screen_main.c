@@ -30,38 +30,38 @@ lv_obj_t* ui_screen_main_create(void)
     temp_label = lv_label_create(screen);
     lv_obj_set_style_text_color(temp_label, lv_color_hex(0xFF6B6B), 0);
     lv_label_set_text(temp_label, "25C");
-    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_16, 0);
     lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 10, 10);
 
     humidity_label = lv_label_create(screen);
     lv_obj_set_style_text_color(humidity_label, lv_color_hex(0x4D96FF), 0);
     lv_label_set_text(humidity_label, "65%");
-    lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_16, 0);
     lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
 
     time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(time_label, "12:00:00");
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_40, 0);
     lv_obj_set_style_text_letter_space(time_label, 2, 0);
     lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -15);
 
     date_label = lv_label_create(screen);
     lv_obj_set_style_text_color(date_label, lv_color_hex(0xAAAAAA), 0);
     lv_label_set_text(date_label, "2025-01-01 Mon");
-    lv_obj_set_style_text_font(date_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(date_label, &lv_font_montserrat_16, 0);
     lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 60);
 
     wifi_status_label = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(wifi_status_label, "");
-    lv_obj_set_style_text_font(wifi_status_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(wifi_status_label, &lv_font_montserrat_16, 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 28);
 
     lv_obj_t *hint = lv_label_create(screen);
     lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint, "Rotate: nav | SET: adjust");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

@@ -7,6 +7,7 @@
 #include "ui_screen_chat.h"
 #include "ui_screen_settings_pomodoro.h"
 #include "pomodoro/pomodoro_engine.h"
+#include "esp_lvgl_port.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <string.h>

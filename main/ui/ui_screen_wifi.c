@@ -92,7 +92,7 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(wifi_list_title, "WiFi Networks");
-    lv_obj_set_style_text_font(wifi_list_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(wifi_list_title, &lv_font_montserrat_16, 0);
     lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
 
     // 创建列表，高度设为刚好显示8个项目 (8 * 22 = 176)
@@ -102,7 +102,7 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     wifi_list_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(wifi_list_hint, "Rotate: nav | SET: select");
-    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_16, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
@@ -192,25 +192,25 @@ lv_obj_t* ui_screen_password_create(void)
     pwd_title = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_title, "Password");
-    lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_16, 0);
     lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 5);
 
     pwd_ssid_label = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(pwd_ssid_label, "SSID: ");
-    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_16, 0);
     lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 28);
 
     pwd_display = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
-    lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_16, 0);
     lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 50);
 
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 10; col++) {
             pwd_keyboard[row][col] = lv_label_create(screen);
-            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_montserrat_14, 0);
+            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_montserrat_16, 0);
             
             if (row == 2 && col == 9) {
                 lv_label_set_text(pwd_keyboard[row][col], "A/a");
@@ -233,7 +233,7 @@ lv_obj_t* ui_screen_password_create(void)
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(pwd_hint, "Rotate: nav | SET: input");
-    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_16, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t pwd_cbs = {

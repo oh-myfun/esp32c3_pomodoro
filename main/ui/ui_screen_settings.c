@@ -81,26 +81,26 @@ lv_obj_t* ui_screen_settings_create(void)
     settings_title = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(settings_title, "SETTINGS");
-    lv_obj_set_style_text_font(settings_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(settings_title, &lv_font_montserrat_16, 0);
     lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 15);
 
     for (int i = 0; i < 5; i++) {
         int y_offset = 38 + i * 34;
 
         settings_item_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(settings_item_labels[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(settings_item_labels[i], &lv_font_montserrat_16, 0);
         lv_label_set_text(settings_item_labels[i], settings_names[i]);
         lv_obj_align(settings_item_labels[i], LV_ALIGN_TOP_LEFT, 20, y_offset);
 
         settings_value_labels[i] = lv_label_create(screen);
-        lv_obj_set_style_text_font(settings_value_labels[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(settings_value_labels[i], &lv_font_montserrat_16, 0);
         lv_obj_align(settings_value_labels[i], LV_ALIGN_TOP_RIGHT, -20, y_offset);
     }
 
     settings_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(settings_hint, "Rotate: nav | SET: select");
-    lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_16, 0);
     lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

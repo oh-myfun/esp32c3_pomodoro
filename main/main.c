@@ -7,11 +7,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdio.h>
-#include <sys/lock.h>
 #include <sys/param.h>
 #include <unistd.h>
 
 #include "lvgl.h"
+#include "esp_lvgl_port.h"
 #include "driver/st7789_lcd.h"
 #include "driver/buzzer.h"
 #include "input/input_handler.h"
@@ -30,7 +30,6 @@ static const char *TAG = "MAIN";
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 5
 
-static _lock_t lvgl_api_lock;
 static lv_display_t *display = NULL;
 static void *buf1 = NULL;
 static void *buf2 = NULL;
@@ -86,9 +85,9 @@ static void lvgl_port_task(void *arg)
     ESP_LOGI(TAG, "LVGL task started");
     uint32_t time_till_next_ms = 0;
     while (1) {
-        _lock_acquire(&lvgl_api_lock);
+        lvgl_port_lock(0);
         time_till_next_ms = lv_timer_handler();
-        _lock_release(&lvgl_api_lock);
+        lvgl_port_unlock();
         time_till_next_ms = MAX(time_till_next_ms, LVGL_TASK_MIN_DELAY_MS);
         time_till_next_ms = MIN(time_till_next_ms, LVGL_TASK_MAX_DELAY_MS);
         usleep(1000 * time_till_next_ms);
@@ -100,11 +99,11 @@ static void time_update_task(void *arg)
     ESP_LOGI(TAG, "Time update task started");
 
     while (1) {
-        _lock_acquire(&lvgl_api_lock);
+        lvgl_port_lock(0);
         ui_update_time();
         ui_update_temp(25.5f);
         ui_update_humidity(65.0f);
-        _lock_release(&lvgl_api_lock);
+        lvgl_port_unlock();
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -119,9 +118,9 @@ static void pomodoro_task(void *arg)
         
         pomodoro_state_t state = pomodoro_engine_get_state();
         
-        _lock_acquire(&lvgl_api_lock);
+        lvgl_port_lock(0);
         ui_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
-        _lock_release(&lvgl_api_lock);
+        lvgl_port_unlock();
         
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -135,13 +134,13 @@ static void wifi_status_task(void *arg)
     bool has_synced = false;
 
     while (1) {
-        _lock_acquire(&lvgl_api_lock);
+        lvgl_port_lock(0);
 
         // WiFi列表刷新
         if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
             ui_screen_wifi_list_refresh();
             if (!wifi_manager_is_scan_done()) {
-                _lock_release(&lvgl_api_lock);
+                lvgl_port_unlock();
                 vTaskDelay(100 / portTICK_PERIOD_MS);
                 continue;
             }
@@ -185,7 +184,7 @@ static void wifi_status_task(void *arg)
             }
         }
 
-        _lock_release(&lvgl_api_lock);
+        lvgl_port_unlock();
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -200,6 +199,8 @@ void app_main(void)
     st7789_lcd_init();
     buzzer_init();
     lvgl_init();
+    const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+    lvgl_port_init(&lvgl_cfg);
     ui_init();
     pomodoro_engine_init();
     input_handler_init();
@@ -207,7 +208,7 @@ void app_main(void)
     time_service_init();
 
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-    xTaskCreate(input_handler_task, "Input", 4096, NULL, 3, NULL);
+    xTaskCreate(input_handler_task, "Input", LVGL_TASK_STACK_SIZE, NULL, 3, NULL);
     xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
     xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
     xTaskCreate(pomodoro_task, "Pomodoro", 4096, NULL, 1, NULL);

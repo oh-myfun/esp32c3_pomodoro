@@ -1,5 +1,4 @@
 idf_component_register(SRCS main.c 
-                        driver/encoder.c 
                         driver/st7789_lcd.c 
                         driver/buzzer.c
                         input/input_handler.c

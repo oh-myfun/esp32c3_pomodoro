@@ -50,14 +50,14 @@ static void create_labels(lv_obj_t *list, int visible_count)
     for (int i = 0; i < visible_count; i++) {
         data->key_labels[i] = lv_label_create(list);
         if(data->key_labels[i]) {
-            lv_obj_set_style_text_font(data->key_labels[i], &lv_font_montserrat_14, 0);
+            lv_obj_set_style_text_font(data->key_labels[i], &lv_font_montserrat_16, 0);
             lv_label_set_text(data->key_labels[i], "");
             lv_obj_set_pos(data->key_labels[i], 10, i * ITEM_HEIGHT);
         }
         
         data->value_labels[i] = lv_label_create(list);
         if(data->value_labels[i]) {
-            lv_obj_set_style_text_font(data->value_labels[i], &lv_font_montserrat_14, 0);
+            lv_obj_set_style_text_font(data->value_labels[i], &lv_font_montserrat_16, 0);
             lv_label_set_text(data->value_labels[i], "");
             // 修改value标签位置，使其右对齐
             lv_obj_set_pos(data->value_labels[i], data->list_width - 70, i * ITEM_HEIGHT);
