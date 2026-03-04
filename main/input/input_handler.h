@@ -1,5 +1,4 @@
-#ifndef INPUT_HANDLER_H
-#define INPUT_HANDLER_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -17,5 +16,3 @@ typedef enum {
 
 void input_handler_init(void);
 void input_handler_task(void *arg);
-
-#endif

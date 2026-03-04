@@ -1,7 +1,6 @@
 #include "ui_screen_pomodoro.h"
 #include "ui_manager.h"
 #include "pomodoro/pomodoro_engine.h"
-#include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
 

@@ -1,5 +1,4 @@
-#ifndef UI_SCREEN_SETTINGS_H
-#define UI_SCREEN_SETTINGS_H
+#pragma once
 
 #include "lvgl.h"
 #include "ui_manager.h"
@@ -19,5 +18,3 @@ void ui_screen_settings_adjust_up(void);
 void ui_screen_settings_adjust_down(void);
 int ui_screen_settings_get_current_item(void);
 int* ui_screen_settings_get_values(void);
-
-#endif

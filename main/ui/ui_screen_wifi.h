@@ -1,5 +1,4 @@
-#ifndef UI_SCREEN_WIFI_H
-#define UI_SCREEN_WIFI_H
+#pragma once
 
 #include "lvgl.h"
 #include "network/wifi_manager.h"
@@ -23,5 +22,3 @@ void ui_screen_password_add_char(void);
 void ui_screen_password_delete_char(void);
 void ui_screen_password_confirm(void);
 void ui_screen_password_cancel(void);
-
-#endif

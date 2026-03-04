@@ -1,5 +1,4 @@
-#ifndef WIFI_MANAGER_H
-#define WIFI_MANAGER_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -64,5 +63,3 @@ void wifi_manager_set_ntp_interval(int minutes);
 int wifi_manager_get_ntp_interval(void);
 void wifi_manager_set_timezone(int tz);
 int wifi_manager_get_timezone(void);
-
-#endif

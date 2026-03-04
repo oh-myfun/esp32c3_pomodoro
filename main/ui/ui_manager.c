@@ -1,16 +1,12 @@
 #include "ui_manager.h"
-#include "network/wifi_manager.h"
 #include "ui_screen_main.h"
 #include "ui_screen_pomodoro.h"
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
 #include "ui_screen_chat.h"
 #include "ui_screen_settings_pomodoro.h"
-#include "pomodoro/pomodoro_engine.h"
 #include "esp_lvgl_port.h"
 #include "esp_log.h"
-#include <stdio.h>
-#include <string.h>
 
 static const char *TAG = "UI";
 
@@ -36,7 +32,9 @@ void ui_init(void)
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
     screens[UI_SCREEN_PASSWORD_INPUT] = ui_screen_password_create();
 
+    lvgl_port_lock(0);
     lv_scr_load(screens[UI_SCREEN_MAIN]);
+    lvgl_port_unlock();
     current_screen = UI_SCREEN_MAIN;
     settings_mode = SETTINGS_MODE_IDLE;
 
@@ -51,7 +49,9 @@ void ui_switch_screen(ui_screen_id_t screen_id)
     // 注销当前界面回调
     memset(&input_callbacks[current_screen], 0, sizeof(ui_input_callbacks_t));
 
+    lvgl_port_lock(0);
     lv_scr_load(screens[screen_id]);
+    lvgl_port_unlock();
     current_screen = screen_id;
 
     // 切换到设置界面时更新显示

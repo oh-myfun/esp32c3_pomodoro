@@ -1,5 +1,4 @@
-#ifndef UI_SCREEN_POMODORO_H
-#define UI_SCREEN_POMODORO_H
+#pragma once
 
 #include "lvgl.h"
 #include <stdint.h>
@@ -10,5 +9,3 @@ void ui_screen_pomodoro_update_phase(const char *phase);
 void ui_screen_pomodoro_update_completed(uint32_t count);
 void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed);
 void ui_screen_pomodoro_refresh(void);
-
-#endif

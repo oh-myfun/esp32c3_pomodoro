@@ -1,5 +1,4 @@
-#ifndef UI_MANAGER_H
-#define UI_MANAGER_H
+#pragma once
 
 #include "lvgl.h"
 
@@ -114,5 +113,3 @@ void ui_pomodoro_update_time(uint32_t remaining_seconds);
 void ui_pomodoro_update_phase(const char *phase);
 void ui_pomodoro_update_completed(uint32_t count);
 void ui_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed);
-
-#endif

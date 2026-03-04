@@ -1,5 +1,4 @@
-#ifndef POMODORO_ENGINE_H
-#define POMODORO_ENGINE_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -64,5 +63,3 @@ void pomodoro_engine_clear_completed_count(void);
 void pomodoro_engine_save_state(void);
 
 void pomodoro_engine_load_state(void);
-
-#endif

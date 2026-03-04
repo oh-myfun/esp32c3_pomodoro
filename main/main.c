@@ -1,8 +1,7 @@
-#include "driver/gpio.h"
-#include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_heap_caps.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,7 +9,6 @@
 #include <sys/param.h>
 #include <unistd.h>
 
-#include "lvgl.h"
 #include "esp_lvgl_port.h"
 #include "driver/st7789_lcd.h"
 #include "driver/buzzer.h"
@@ -60,7 +58,9 @@ void lvgl_deinit(void)
 
 void lvgl_init(void)
 {
+    lvgl_port_lock(0);
     lv_init();
+    lvgl_port_unlock();
 
     display = lv_display_create(240, 240);
 
@@ -71,9 +71,11 @@ void lvgl_init(void)
     buf2 = heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA);
     assert(buf2);
 
+    lvgl_port_lock(0);
     lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_display_set_flush_cb(display, st7789_lcd_flush);
+    lvgl_port_unlock();
 
     const esp_timer_create_args_t lvgl_tick_timer_args = {.callback = &increase_lvgl_tick, .name = "lvgl_tick"};
     esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer);
@@ -94,99 +96,84 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-static void time_update_task(void *arg)
+static void ui_update_task(void *arg)
 {
-    ESP_LOGI(TAG, "Time update task started");
-
-    while (1) {
-        lvgl_port_lock(0);
-        ui_update_time();
-        ui_update_temp(25.5f);
-        ui_update_humidity(65.0f);
-        lvgl_port_unlock();
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
-
-static void pomodoro_task(void *arg)
-{
-    ESP_LOGI(TAG, "Pomodoro task started");
+    ESP_LOGI(TAG, "UI update task started");
     
-    while (1) {
-        pomodoro_engine_tick();
-        
-        pomodoro_state_t state = pomodoro_engine_get_state();
-        
-        lvgl_port_lock(0);
-        ui_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
-        lvgl_port_unlock();
-        
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
-
-static void wifi_status_task(void *arg)
-{
-    ESP_LOGI(TAG, "WiFi status task started");
-    
-    int64_t last_sync_time = 0;
+    int64_t last_pomodoro_tick = 0;
+    int64_t last_wifi_sync_time = 0;
     bool has_synced = false;
-
+    wifi_mode_state_t last_wifi_state = WIFI_STATE_NONE;
+    bool last_wifi_connected = false;
+    
     while (1) {
+        int64_t now = esp_timer_get_time() / 1000;
+        
         lvgl_port_lock(0);
-
-        // WiFi列表刷新
-        if (ui_get_current_screen() == UI_SCREEN_WIFI_LIST) {
-            ui_screen_wifi_list_refresh();
-            if (!wifi_manager_is_scan_done()) {
-                lvgl_port_unlock();
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                continue;
+        
+        ui_screen_id_t current_screen = ui_get_current_screen();
+        
+        if (now - last_pomodoro_tick >= 1000) {
+            pomodoro_engine_tick();
+            pomodoro_state_t state = pomodoro_engine_get_state();
+            ui_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
+            last_pomodoro_tick = now;
+        }
+        
+        if (current_screen == UI_SCREEN_MAIN) {
+            ui_update_time();
+            ui_update_temp(25.5f);
+            ui_update_humidity(65.0f);
+            
+            bool wifi_connected = wifi_manager_is_connected();
+            if (wifi_connected != last_wifi_connected) {
+                last_wifi_connected = wifi_connected;
+                if (wifi_connected) {
+                    const char *ip = wifi_manager_get_ip_address();
+                    char status[32];
+                    snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
+                    ui_update_wifi_status_ex(status, 0x00FF00);
+                }
+            } else if (!wifi_connected) {
+                wifi_mode_state_t mode = wifi_manager_get_state();
+                if (mode != last_wifi_state) {
+                    last_wifi_state = mode;
+                    if (mode == WIFI_STATE_CONNECTING) {
+                        ui_update_wifi_status_ex("Connecting...", 0xFFFF00);
+                    } else if (mode == WIFI_STATE_SCANNING) {
+                        ui_update_wifi_status_ex("Scanning...", 0xFFFF00);
+                    } else if (wifi_manager_is_connect_failed()) {
+                        ui_update_wifi_status_ex("Connect Failed", 0xFF0000);
+                    } else {
+                        ui_update_wifi_status_ex("Disconnected", 0x666666);
+                    }
+                }
             }
         }
-
-        // NTP时间同步
+        
+        if (current_screen == UI_SCREEN_WIFI_LIST) {
+            ui_screen_wifi_list_refresh();
+        }
+        
+        lvgl_port_unlock();
+        
         if (wifi_manager_is_connected()) {
             int interval = wifi_manager_get_ntp_interval();
-            int64_t now = esp_timer_get_time() / 1000000;
+            int64_t now_sec = esp_timer_get_time() / 1000000;
             
             if (!has_synced) {
                 wifi_manager_sync_time();
                 has_synced = true;
-                last_sync_time = now;
-            } else if (interval > 0 && (now - last_sync_time >= interval * 60)) {
+                last_wifi_sync_time = now_sec;
+            } else if (interval > 0 && (now_sec - last_wifi_sync_time >= interval * 60)) {
                 wifi_manager_sync_time();
-                last_sync_time = now;
+                last_wifi_sync_time = now_sec;
             }
         } else {
             has_synced = false;
         }
-
-        // 主界面WiFi状态显示
-        if (ui_get_current_screen() == UI_SCREEN_MAIN) {
-            if (wifi_manager_is_connected()) {
-                const char *ip = wifi_manager_get_ip_address();
-                char status[32];
-                sprintf(status, "IP: %s", ip ? ip : "");
-                ui_update_wifi_status_ex(status, 0x00FF00);
-            } else {
-                wifi_mode_state_t mode = wifi_manager_get_state();
-                if (mode == WIFI_STATE_CONNECTING) {
-                    ui_update_wifi_status_ex("Connecting...", 0xFFFF00);
-                } else if (mode == WIFI_STATE_SCANNING) {
-                    ui_update_wifi_status_ex("Scanning...", 0xFFFF00);
-                } else if (wifi_manager_is_connect_failed()) {
-                    ui_update_wifi_status_ex("Connect Failed", 0xFF0000);
-                } else {
-                    ui_update_wifi_status_ex("Disconnected", 0x666666);
-                }
-            }
-        }
-
-        lvgl_port_unlock();
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -207,11 +194,9 @@ void app_main(void)
     wifi_manager_init();
     time_service_init();
 
-    xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-    xTaskCreate(input_handler_task, "Input", LVGL_TASK_STACK_SIZE, NULL, 3, NULL);
-    xTaskCreate(time_update_task, "TimeUpdate", 4096, NULL, 1, NULL);
-    xTaskCreate(wifi_status_task, "WiFiStatus", 4096, NULL, 1, NULL);
-    xTaskCreate(pomodoro_task, "Pomodoro", 4096, NULL, 1, NULL);
+    xTaskCreatePinnedToCore(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL, 0);
+    xTaskCreatePinnedToCore(input_handler_task, "Input", LVGL_TASK_STACK_SIZE, NULL, 3, NULL, 0);
+    xTaskCreatePinnedToCore(ui_update_task, "UIUpdate", 4096, NULL, 1, NULL, 0);
 
     ESP_LOGI(TAG, "All tasks created");
     

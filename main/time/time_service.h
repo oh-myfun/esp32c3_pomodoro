@@ -1,5 +1,4 @@
-#ifndef TIME_SERVICE_H
-#define TIME_SERVICE_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -48,5 +47,3 @@ bool time_service_get_auto_sync(void);
 char* time_service_format_time(char *buffer, size_t len, const char *format);
 
 char* time_service_format_date(char *buffer, size_t len, const char *format);
-
-#endif

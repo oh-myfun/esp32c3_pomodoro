@@ -1,5 +1,4 @@
-#ifndef STORAGE_SERVICE_H
-#define STORAGE_SERVICE_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -35,5 +34,3 @@ bool storage_save_time(uint64_t timestamp);
 bool storage_load_time(uint64_t *timestamp);
 
 void storage_clear_namespace(const char *namespace);
-
-#endif

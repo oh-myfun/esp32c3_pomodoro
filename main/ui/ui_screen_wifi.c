@@ -1,7 +1,6 @@
 #include "ui_screen_wifi.h"
 #include "ui_manager.h"
 #include "ui_list.h"
-#include "lvgl.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <string.h>

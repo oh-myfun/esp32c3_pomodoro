@@ -1,5 +1,4 @@
-#ifndef UI_LIST_H
-#define UI_LIST_H
+#pragma once
 
 #include "lvgl.h"
 
@@ -17,5 +16,3 @@ int ui_list_get_selected(lv_obj_t *list);
 void ui_list_nav_next(lv_obj_t *list);
 void ui_list_nav_prev(lv_obj_t *list);
 void ui_list_set_click_callback(lv_obj_t *list, ui_list_item_cb_t callback);
-
-#endif

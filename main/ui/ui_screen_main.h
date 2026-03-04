@@ -1,5 +1,4 @@
-#ifndef UI_SCREEN_MAIN_H
-#define UI_SCREEN_MAIN_H
+#pragma once
 
 #include "lvgl.h"
 #include <time.h>
@@ -10,5 +9,3 @@ void ui_screen_main_update_time(void);
 void ui_screen_main_update_temp(float temp);
 void ui_screen_main_update_humidity(float humidity);
 void ui_screen_main_update_wifi_status(const char *status, uint32_t color);
-
-#endif

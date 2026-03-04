@@ -1,7 +1,7 @@
 #include "ui_list.h"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define ITEM_HEIGHT 22
 
@@ -22,10 +22,16 @@ typedef struct {
 } ui_list_data_t;
 
 static void update_display(lv_obj_t *list);
+static ui_list_data_t *get_list_data(lv_obj_t *list);
+
+static ui_list_data_t *get_list_data(lv_obj_t *list)
+{
+    return (ui_list_data_t *)lv_obj_get_user_data(list);
+}
 
 static void ensure_visible(lv_obj_t *list)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data || data->count == 0) return;
     
     if (data->selected < data->scroll) {
@@ -44,7 +50,7 @@ static void ensure_visible(lv_obj_t *list)
 
 static void create_labels(lv_obj_t *list, int visible_count)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     
     for (int i = 0; i < visible_count; i++) {
@@ -59,9 +65,7 @@ static void create_labels(lv_obj_t *list, int visible_count)
         if(data->value_labels[i]) {
             lv_obj_set_style_text_font(data->value_labels[i], &lv_font_montserrat_16, 0);
             lv_label_set_text(data->value_labels[i], "");
-            // 修改value标签位置，使其右对齐
             lv_obj_set_pos(data->value_labels[i], data->list_width - 70, i * ITEM_HEIGHT);
-            // 设置右对齐
             lv_obj_set_style_text_align(data->value_labels[i], LV_TEXT_ALIGN_RIGHT, 0);
         }
     }
@@ -69,7 +73,7 @@ static void create_labels(lv_obj_t *list, int visible_count)
 
 static void update_display(lv_obj_t *list)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     
     for (int i = 0; i < data->visible_count; i++) {
@@ -112,7 +116,6 @@ static void update_display(lv_obj_t *list)
     }
 }
 
-// 清理回调函数，用于释放分配的内存
 static void ui_list_cleanup(lv_event_t *event)
 {
     ui_list_data_t *data = (ui_list_data_t *)lv_event_get_user_data(event);
@@ -158,7 +161,6 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     
     create_labels(list, data->visible_count);
     
-    // 创建滚动条
     data->scrollbar = lv_obj_create(list);
     lv_obj_set_size(data->scrollbar, 4, 15);
     lv_obj_set_pos(data->scrollbar, width - 6, 0);
@@ -168,7 +170,6 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     lv_obj_set_style_border_width(data->scrollbar, 0, 0);
     lv_obj_add_flag(data->scrollbar, LV_OBJ_FLAG_HIDDEN);
     
-    // 注册清理回调函数
     lv_obj_add_event_cb(list, (lv_event_cb_t)ui_list_cleanup, LV_EVENT_DELETE, data);
     
     return list;
@@ -176,7 +177,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
 
 void ui_list_set_items(lv_obj_t *list, const ui_list_item_t *items, int count)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     
     data->items = items;
@@ -190,7 +191,7 @@ void ui_list_set_items(lv_obj_t *list, const ui_list_item_t *items, int count)
 
 void ui_list_set_selected(lv_obj_t *list, int index)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data || index < 0 || index >= data->count) return;
     
     data->selected = index;
@@ -200,14 +201,14 @@ void ui_list_set_selected(lv_obj_t *list, int index)
 
 int ui_list_get_selected(lv_obj_t *list)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data) return 0;
     return data->selected;
 }
 
 void ui_list_nav_next(lv_obj_t *list)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data || data->count == 0) return;
     
     data->selected = (data->selected + 1) % data->count;
@@ -217,7 +218,7 @@ void ui_list_nav_next(lv_obj_t *list)
 
 void ui_list_nav_prev(lv_obj_t *list)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data || data->count == 0) return;
     
     data->selected = (data->selected - 1 + data->count) % data->count;
@@ -227,7 +228,7 @@ void ui_list_nav_prev(lv_obj_t *list)
 
 void ui_list_set_click_callback(lv_obj_t *list, ui_list_item_cb_t callback)
 {
-    ui_list_data_t *data = (ui_list_data_t *)lv_obj_get_user_data(list);
+    ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     data->click_callback = callback;
 }
