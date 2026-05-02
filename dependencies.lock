@@ -1,10 +1,4 @@
 dependencies:
-  esp_lcd_st7789:
-    dependencies: []
-    source:
-      path: D:\Project\IOT\pomodoro\components\esp_lcd_st7789
-      type: local
-    version: 1.0.2
   espressif/button:
     component_hash: fccb18c37f1cfe0797b74a53a44d3f400f5fd01f4993b40052dfb7f401915089
     dependencies:
@@ -56,9 +50,8 @@ dependencies:
     version: 9.5.0
 direct_dependencies:
 - espressif/button
-- espressif/esp_lcd_st7789
 - espressif/knob
 - lvgl/lvgl
-manifest_hash: bd9c743aa6226653caea62f232c3c62e79ff88716f621e6c023c785cd58ecbff
+manifest_hash: 0000000000000000000000000000000000000000
 target: esp32c3
 version: 2.0.0
