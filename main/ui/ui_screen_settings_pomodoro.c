@@ -1,5 +1,6 @@
 #include "ui_screen_settings_pomodoro.h"
 #include "ui_manager.h"
+#include "ui_screen_settings.h"
 #include "ui_list.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "esp_log.h"
@@ -9,12 +10,12 @@ static const char *TAG = "UI_SETTINGS_POMODORO";
 
 static void pomo_set_on_encoder_cw(void)
 {
-    ui_settings_adjust_up();
+    ui_screen_settings_adjust_up();
 }
 
 static void pomo_set_on_encoder_ccw(void)
 {
-    ui_settings_adjust_down();
+    ui_screen_settings_adjust_down();
 }
 
 static void pomo_set_on_settings_press(void)

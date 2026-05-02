@@ -14,6 +14,8 @@
 #include "driver/buzzer.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
+#include "ui/ui_screen_main.h"
+#include "ui/ui_screen_pomodoro.h"
 #include "ui/ui_screen_wifi.h"
 #include "service/wifi_service.h"
 #include "pomodoro/pomodoro_engine.h"
@@ -124,14 +126,12 @@ static void ui_update_task(void *arg)
         if (now - last_pomodoro_tick >= 1000) {
             pomodoro_engine_tick();
             pomodoro_state_t state = pomodoro_engine_get_state();
-            ui_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
+            ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
             last_pomodoro_tick = now;
         }
 
         if (current_screen == UI_SCREEN_MAIN) {
-            ui_update_time();
-            ui_update_temp(25.5f);
-            ui_update_humidity(65.0f);
+            ui_screen_main_update_time();
 
             bool wifi_connected = wifi_service_is_connected();
             if (wifi_connected != last_wifi_connected) {
@@ -140,18 +140,18 @@ static void ui_update_task(void *arg)
                     const char *ip = wifi_service_get_ip();
                     char status[32];
                     snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
-                    ui_update_wifi_status_ex(status, 0x00FF00);
+                    ui_screen_main_update_wifi_status(status, 0x00FF00);
                 }
             } else if (!wifi_connected) {
                 wifi_state_t state = wifi_service_get_state();
                 if (state != last_wifi_state) {
                     last_wifi_state = state;
                     if (state == WIFI_STATE_CONNECTING) {
-                        ui_update_wifi_status_ex("Connecting...", 0xFFFF00);
+                        ui_screen_main_update_wifi_status("Connecting...", 0xFFFF00);
                     } else if (state == WIFI_STATE_SCANNING) {
-                        ui_update_wifi_status_ex("Scanning...", 0xFFFF00);
+                        ui_screen_main_update_wifi_status("Scanning...", 0xFFFF00);
                     } else {
-                        ui_update_wifi_status_ex("Disconnected", 0x666666);
+                        ui_screen_main_update_wifi_status("Disconnected", 0x666666);
                     }
                 }
             }

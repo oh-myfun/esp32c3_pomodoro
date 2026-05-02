@@ -36,7 +36,7 @@ lv_obj_t* ui_screen_chat_create(void)
         .on_encoder_cw = chat_on_encoder_cw,
         .on_encoder_ccw = chat_on_encoder_ccw,
     };
-    ui_register_input_callbacks(UI_SCREEN_CHAT, &cbs);
+    ui_register_input_callbacks(UI_SCREEN_BUDDY, &cbs);
 
     ESP_LOGI(TAG, "Chat screen created");
     return screen;

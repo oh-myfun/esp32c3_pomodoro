@@ -8,7 +8,7 @@ static const char *TAG = "UI_POMODORO";
 
 static void pomo_on_encoder_cw(void)
 {
-    ui_switch_screen(UI_SCREEN_CHAT);
+    ui_switch_screen(UI_SCREEN_BUDDY);
 }
 
 static void pomo_on_encoder_ccw(void)

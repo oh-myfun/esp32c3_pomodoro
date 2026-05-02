@@ -8,41 +8,41 @@ static const char *TAG = "UI_SETTINGS";
 
 static void settings_on_encoder_cw(void)
 {
-    settings_mode_t mode = ui_get_settings_mode();
+    settings_mode_t mode = ui_screen_settings_get_mode();
     if (mode == SETTINGS_MODE_IDLE) {
         ui_switch_screen(UI_SCREEN_MAIN);
     } else if (mode == SETTINGS_MODE_SELECT) {
-        ui_settings_select_next();
+        ui_screen_settings_select_next();
     } else if (mode == SETTINGS_MODE_ADJUST) {
-        ui_settings_adjust_up();
+        ui_screen_settings_adjust_up();
     }
 }
 
 static void settings_on_encoder_ccw(void)
 {
-    settings_mode_t mode = ui_get_settings_mode();
+    settings_mode_t mode = ui_screen_settings_get_mode();
     if (mode == SETTINGS_MODE_IDLE) {
-        ui_switch_screen(UI_SCREEN_CHAT);
+        ui_switch_screen(UI_SCREEN_BUDDY);
     } else if (mode == SETTINGS_MODE_SELECT) {
-        ui_settings_select_prev();
+        ui_screen_settings_select_prev();
     } else if (mode == SETTINGS_MODE_ADJUST) {
-        ui_settings_adjust_down();
+        ui_screen_settings_adjust_down();
     }
 }
 
 static void settings_on_encoder_press(void)
 {
-    settings_mode_t mode = ui_get_settings_mode();
+    settings_mode_t mode = ui_screen_settings_get_mode();
     if (mode == SETTINGS_MODE_ADJUST || mode == SETTINGS_MODE_SELECT) {
-        ui_exit_settings();
+        ui_screen_settings_exit();
     }
 }
 
 static void settings_on_settings_press(void)
 {
-    settings_mode_t mode = ui_get_settings_mode();
+    settings_mode_t mode = ui_screen_settings_get_mode();
     if (mode == SETTINGS_MODE_IDLE) {
-        ui_enter_settings();
+        ui_screen_settings_enter();
     } else if (mode == SETTINGS_MODE_SELECT) {
         int item = ui_screen_settings_get_current_item();
         if (item == 4) {  // WiFi
@@ -51,10 +51,10 @@ static void settings_on_settings_press(void)
         } else if (item == 3) {  // Pomodoro
             ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
         } else {
-            ui_settings_enter_adjust();
+            ui_screen_settings_enter_adjust();
         }
     } else if (mode == SETTINGS_MODE_ADJUST) {
-        ui_exit_settings();
+        ui_screen_settings_exit();
     }
 }
 
