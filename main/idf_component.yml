@@ -1,6 +1,5 @@
 dependencies:
-  espressif/esp_lvgl_port: '*'
+  lvgl/lvgl: '*'
   espressif/esp_lcd_st7789: '*'
   espressif/button: '*'
   espressif/knob: '*'
-  # lvgl/lvgl: '*'

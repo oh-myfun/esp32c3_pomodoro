@@ -29,20 +29,6 @@ dependencies:
       registry_url: https://components.espressif.com
       type: service
     version: 0.5.3
-  espressif/esp_lvgl_port:
-    component_hash: b6360960f47b6776462e7092861b3ea66477ffb762a01baa0aecbb3d74cd50f4
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=5.1'
-    - name: lvgl/lvgl
-      registry_url: https://components.espressif.com
-      require: public
-      version: '>=8,<10'
-    source:
-      registry_url: https://components.espressif.com/
-      type: service
-    version: 2.7.2
   espressif/knob:
     component_hash: 138ed090b4c9090a0a678f695b9d1884b368130c729b7333ed35bd7f4e8da80e
     dependencies:
@@ -65,14 +51,14 @@ dependencies:
     component_hash: 184e532558c1c45fefed631f3e235423d22582aafb4630f3e8885c35281a49ae
     dependencies: []
     source:
-      registry_url: https://components.espressif.com
+      registry_url: https://components.espressif.com/
       type: service
     version: 9.5.0
 direct_dependencies:
 - espressif/button
 - espressif/esp_lcd_st7789
-- espressif/esp_lvgl_port
 - espressif/knob
-manifest_hash: c61492145beab41e0c001ba44027e3fe777a62595436731e36e029ccddad0166
+- lvgl/lvgl
+manifest_hash: bd9c743aa6226653caea62f232c3c62e79ff88716f621e6c023c785cd58ecbff
 target: esp32c3
 version: 2.0.0

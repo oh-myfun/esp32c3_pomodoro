@@ -113,3 +113,8 @@ void ui_pomodoro_update_time(uint32_t remaining_seconds);
 void ui_pomodoro_update_phase(const char *phase);
 void ui_pomodoro_update_completed(uint32_t count);
 void ui_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed);
+
+// LVGL 互斥锁
+void lvgl_lock_init(void);
+void lvgl_lock(void);
+void lvgl_unlock(void);

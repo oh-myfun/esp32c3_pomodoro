@@ -7,7 +7,6 @@
 #include "iot_button.h"
 #include "button_gpio.h"
 #include "ui/ui_manager.h"
-#include "esp_lvgl_port.h"
 
 #define ENCODER_A_GPIO   GPIO_NUM_4
 #define ENCODER_B_GPIO  GPIO_NUM_5
@@ -139,7 +138,7 @@ void input_handler_task(void *arg)
 
     while (1) {
         while (xQueueReceive(g_event_queue, &event, 0) == pdTRUE) {
-            lvgl_port_lock(0);
+            lvgl_lock();
             switch (event) {
                 case INPUT_EVENT_ENCODER_CW:
                     ui_dispatch_encoder_cw();
@@ -159,7 +158,7 @@ void input_handler_task(void *arg)
                 default:
                     break;
             }
-            lvgl_port_unlock();
+            lvgl_unlock();
         }
 
         vTaskDelay(10 / portTICK_PERIOD_MS);

@@ -1,7 +1,29 @@
-menu "Example Configuration"
-    config M5STACK
-        bool "Compile the example for M5Stack"
-        default y
+menu "番茄钟与聊天助手配置"
+    config POMODORO_WORK_MINUTES
+        int "默认工作时长（分钟）"
+        default 25
+        range 1 60
         help
-            Enable this option if you wish to compile the example for the M5Stack, as it uses different pins than the default for ESP32
+            番茄钟默认工作时长，单位为分钟
+
+    config POMODORO_BREAK_MINUTES
+        int "默认休息时长（分钟）"
+        default 5
+        range 1 30
+        help
+            番茄钟默认休息时长，单位为分钟
+
+    config NTP_SYNC_INTERVAL
+        int "NTP同步间隔（分钟）"
+        default 10
+        range 0 1440
+        help
+            NTP时间同步间隔，0表示禁用自动同步
+
+    config TIMEZONE_OFFSET
+        int "时区偏移（小时）"
+        default 8
+        range -12 14
+        help
+            相对于UTC的时区偏移，例如东八区为+8
 endmenu
