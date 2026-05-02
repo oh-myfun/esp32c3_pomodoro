@@ -9,17 +9,21 @@
 #include <unistd.h>
 
 #include "lvgl.h"
-#include "esp_lvgl_port.h"
 #include "driver/st7789_lcd.h"
 #include "driver/buzzer.h"
+#include "driver/ws2812.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_main.h"
 #include "ui/ui_screen_pomodoro.h"
+#include "ui/ui_screen_buddy.h"
 #include "ui/ui_screen_wifi.h"
 #include "service/wifi_service.h"
-#include "pomodoro/pomodoro_engine.h"
 #include "service/time_service.h"
+#include "service/storage_service.h"
+#include "service/ble_service.h"
+#include "pomodoro/pomodoro_engine.h"
+#include "buddy/buddy.h"
 
 static const char *TAG = "MAIN";
 
@@ -43,9 +47,6 @@ static void increase_lvgl_tick(void *arg)
 
 void lvgl_init(void)
 {
-    ESP_LOGI(TAG, "Initializing ST7789 LCD");
-    st7789_lcd_init();
-
     ESP_LOGI(TAG, "Initializing LVGL");
     lv_init();
 
@@ -110,78 +111,192 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-static void ui_update_task(void *arg)
-{
-    ESP_LOGI(TAG, "UI update task started");
+/* ---- Callback wiring ---- */
 
-    int64_t last_pomodoro_tick = 0;
-    wifi_state_t last_wifi_state = WIFI_STATE_DISCONNECTED;
-    bool last_wifi_connected = false;
+// WiFi -> time_service + UI
+static void on_wifi_connected(const char *ip) {
+    ESP_LOGI(TAG, "WiFi connected, IP: %s", ip ? ip : "null");
+    time_service_request_sync();
+    lvgl_lock();
+    char status[32];
+    snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
+    ui_screen_main_update_wifi_status(status, 0x00FF00);
+    lvgl_unlock();
+}
+
+static void on_wifi_disconnected(void) {
+    ESP_LOGI(TAG, "WiFi disconnected");
+    lvgl_lock();
+    ui_screen_main_update_wifi_status("Disconnected", 0x666666);
+    lvgl_unlock();
+}
+
+static void on_wifi_scan_complete(int count) {
+    ESP_LOGI(TAG, "WiFi scan complete, %d APs found", count);
+}
+
+static void on_wifi_connect_failed(void) {
+    ESP_LOGI(TAG, "WiFi connect failed");
+    lvgl_lock();
+    ui_screen_main_update_wifi_status("Connect Failed", 0xFF0000);
+    lvgl_unlock();
+}
+
+// BLE -> buddy
+static void on_ble_connected(void) {
+    ESP_LOGI(TAG, "BLE connected");
+    buddy_on_ble_connected();
+}
+
+static void on_ble_disconnected(void) {
+    ESP_LOGI(TAG, "BLE disconnected");
+    buddy_on_ble_disconnected();
+}
+
+static void on_ble_heartbeat(const ble_heartbeat_t *hb) {
+    ESP_LOGD(TAG, "BLE heartbeat: %d running, %d waiting, prompt=%d",
+             hb->running, hb->waiting, hb->has_prompt);
+    buddy_on_heartbeat(hb->running, hb->waiting, hb->has_prompt,
+                       hb->prompt_id, hb->prompt_tool, hb->prompt_hint);
+}
+
+// Buddy -> WS2812 + UI
+static void on_buddy_state_changed(buddy_state_t new_state) {
+    ESP_LOGI(TAG, "Buddy state changed to %d", new_state);
+    if (new_state == BUDDY_ATTENTION) {
+        lvgl_lock();
+        ui_switch_screen(UI_SCREEN_BUDDY);
+        lvgl_unlock();
+    }
+}
+
+/* ---- Tasks ---- */
+
+static void service_task(void *arg) {
+    ESP_LOGI(TAG, "Service task started");
+    int64_t last_buddy_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
 
-        ui_screen_id_t current_screen = ui_get_current_screen();
+        // Time service periodic sync
+        time_service_tick();
 
-        if (now - last_pomodoro_tick >= 1000) {
-            pomodoro_engine_tick();
-            pomodoro_state_t state = pomodoro_engine_get_state();
-            ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
-            last_pomodoro_tick = now;
-        }
+        // BLE maintenance
+        ble_service_tick();
 
-        if (current_screen == UI_SCREEN_MAIN) {
-            ui_screen_main_update_time();
-
-            bool wifi_connected = wifi_service_is_connected();
-            if (wifi_connected != last_wifi_connected) {
-                last_wifi_connected = wifi_connected;
-                if (wifi_connected) {
-                    const char *ip = wifi_service_get_ip();
-                    char status[32];
-                    snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
-                    ui_screen_main_update_wifi_status(status, 0x00FF00);
-                }
-            } else if (!wifi_connected) {
-                wifi_state_t state = wifi_service_get_state();
-                if (state != last_wifi_state) {
-                    last_wifi_state = state;
-                    if (state == WIFI_STATE_CONNECTING) {
-                        ui_screen_main_update_wifi_status("Connecting...", 0xFFFF00);
-                    } else if (state == WIFI_STATE_SCANNING) {
-                        ui_screen_main_update_wifi_status("Scanning...", 0xFFFF00);
-                    } else {
-                        ui_screen_main_update_wifi_status("Disconnected", 0x666666);
-                    }
-                }
-            }
-        }
-
-        if (current_screen == UI_SCREEN_WIFI_LIST) {
-            ui_screen_wifi_list_refresh();
+        // Buddy animation tick every 500ms
+        if (now - last_buddy_tick >= 500) {
+            buddy_tick();
+            last_buddy_tick = now;
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
-void app_main(void)
-{
-    ESP_LOGI(TAG, "Pomodoro Device Starting...");
+static void ui_update_task(void *arg) {
+    ESP_LOGI(TAG, "UI update task started");
+    int64_t last_pomodoro_tick = 0;
 
-    ESP_ERROR_CHECK(nvs_flash_init());
+    while (1) {
+        int64_t now = esp_timer_get_time() / 1000;
+        ui_screen_id_t current_screen = ui_get_current_screen();
 
+        // Pomodoro tick every 1 second
+        if (now - last_pomodoro_tick >= 1000) {
+            pomodoro_engine_tick();
+            pomodoro_state_t state = pomodoro_engine_get_state();
+            lvgl_lock();
+            ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
+            lvgl_unlock();
+            last_pomodoro_tick = now;
+        }
+
+        // Main screen time update
+        if (current_screen == UI_SCREEN_MAIN) {
+            lvgl_lock();
+            ui_screen_main_update_time();
+            lvgl_unlock();
+        }
+
+        // WiFi list refresh
+        if (current_screen == UI_SCREEN_WIFI_LIST) {
+            ui_screen_wifi_list_refresh();
+        }
+
+        // Buddy screen state update
+        if (current_screen == UI_SCREEN_BUDDY) {
+            lvgl_lock();
+            ui_screen_buddy_update_state();
+            lvgl_unlock();
+        }
+
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
+/* ---- Entry point ---- */
+
+void app_main(void) {
+    ESP_LOGI(TAG, "Pomodoro Buddy Device Starting...");
+
+    // 1. Fatal: NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "NVS init failed: %s", esp_err_to_name(ret));
+        ESP_ERROR_CHECK(ret);  // halt
+    }
+
+    // 2. Non-fatal: drivers
     buzzer_init();
+    st7789_lcd_init();
+    if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
+
+    // 3. LVGL + UI (depends on LCD)
     lvgl_init();
     ui_init();
+
+    // 4. Business modules (non-fatal)
     pomodoro_engine_init();
+    if (buddy_init() != 0) ESP_LOGW(TAG, "Buddy init failed, continuing");
+
+    // 5. Input (non-fatal)
     input_handler_init();
-    wifi_service_init();
+
+    // 6. Network services (non-fatal, last)
+    if (wifi_service_init() != 0) ESP_LOGW(TAG, "WiFi service init failed, continuing");
+    if (ble_service_init() != 0) ESP_LOGW(TAG, "BLE service init failed, continuing");
+
+    // 7. Time service (non-fatal)
     time_service_init();
 
-    xTaskCreatePinnedToCore(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL, 0);
-    xTaskCreatePinnedToCore(input_handler_task, "Input", LVGL_TASK_STACK_SIZE, NULL, 3, NULL, 0);
-    xTaskCreatePinnedToCore(ui_update_task, "UIUpdate", 4096, NULL, 1, NULL, 0);
+    // 8. Register callbacks (wiring)
+    static const wifi_callbacks_t wifi_cbs = {
+        .on_connected = on_wifi_connected,
+        .on_disconnected = on_wifi_disconnected,
+        .on_scan_complete = on_wifi_scan_complete,
+        .on_connect_failed = on_wifi_connect_failed,
+    };
+    wifi_service_register_callbacks(&wifi_cbs);
+
+    static const ble_callbacks_t ble_cbs = {
+        .on_connected = on_ble_connected,
+        .on_disconnected = on_ble_disconnected,
+        .on_heartbeat = on_ble_heartbeat,
+    };
+    ble_service_register_callbacks(&ble_cbs);
+
+    static const buddy_callbacks_t buddy_cbs = {
+        .on_state_changed = on_buddy_state_changed,
+    };
+    buddy_register_callbacks(&buddy_cbs);
+
+    // 9. Create tasks
+    xTaskCreatePinnedToCore(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(input_handler_task, "Input",   6144, NULL, 3, NULL, 0);
+    xTaskCreatePinnedToCore(service_task, "Service", 6144, NULL, 2, NULL, 0);
+    xTaskCreatePinnedToCore(ui_update_task, "UI",      4096, NULL, 1, NULL, 0);
 
     ESP_LOGI(TAG, "All tasks created");
 
