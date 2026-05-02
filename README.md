@@ -1,214 +1,42 @@
-# 基于ESP32-C3的番茄钟与智能聊天助手设备
+# Pomodoro Buddy
 
-这是一个基于ESP32-C3的嵌入式物联网设备，集成了番茄钟计时功能和智能聊天助手功能。
-
-## 项目概述
-
-本项目实现了一个功能丰富的智能桌面设备，支持番茄钟计时、WiFi连接、时间显示、智能聊天助手等功能。主要特性包括：
-
-- **硬件支持**：ST7789 240x240 LCD（硬件SPI）
-- **图形界面**：LVGL v9.5.0 图形库
-- **输入控制**：EC11编码器（旋转+按键）
-- **网络功能**：WiFi连接管理、NTP时间同步
-- **核心功能**：番茄钟计时、智能聊天助手
-- **系统设置**：亮度、对比度、语言、时区设置
+基于 ESP32-C3 的番茄钟与 AI Buddy 伴侣设备，通过 BLE 连接 Claude Desktop 实现权限审批交互。
 
 ## 硬件连接
 
-### LCD引脚 (硬件SPI)
-```
-LCD_RS (DC) -> GPIO10
-LCD_SCK -> GPIO6
-LCD_SDA (MOSI) -> GPIO7
-```
+| GPIO | 功能 |
+|------|------|
+| GPIO4 | EC11 编码器 A 相 |
+| GPIO5 | EC11 编码器 B 相 |
+| GPIO6 | LCD SPI 时钟 (SCK) |
+| GPIO7 | LCD SPI 数据 (MOSI) |
+| GPIO8 | WS2812 RGB LED |
+| GPIO9 | SET 按键 (低电平有效) |
+| GPIO10 | LCD 数据/命令 (DC) |
+| GPIO20 | 蜂鸣器 (PWM) |
+| GPIO21 | EC11 编码器按键 |
 
-### EC11编码器引脚
-```
-EC11_A -> GPIO4
-EC11_B -> GPIO5
-EC11_K (按键) -> GPIO21
-设置按键 -> GPIO9
-```
+## 构建与烧录
 
-## 功能模块
-
-### 1. 主界面 (UI_SCREEN_MAIN)
-- 显示当前时间和日期
-- 显示温度和湿度
-- 显示天气信息
-- WiFi连接状态显示
-- 番茄钟状态显示
-
-### 2. 番茄钟界面 (UI_SCREEN_POMODORO)
-- 倒计时显示（分钟:秒）
-- 完成次数记录
-- 开始/暂停/重置操作
-- 工作时长和休息时长可配置
-
-### 3. 聊天助手界面 (UI_SCREEN_CHAT)
-- 助手表情显示
-- 对话内容显示
-- 交互式聊天功能
-
-### 4. 设置界面 (UI_SCREEN_SETTINGS)
-- 亮度调整 (0-100)
-- 对比度调整 (0-100)
-- 语言选择 (English/Chinese)
-- WiFi配置入口
-- 番茄钟设置入口
-- 导航：编码器滚动选择，按键进入调整模式
-
-### 5. WiFi列表界面 (UI_SCREEN_WIFI_LIST)
-- 扫描并显示可用WiFi网络
-- 显示信号强度和安全状态
-- 支持滚动浏览（8个项目/页）
-- 确认连接或返回密码输入
-
-### 6. 密码输入界面 (UI_SCREEN_PASSWORD_INPUT)
-- 弹出式密码键盘
-- 支持大小写切换
-- 字符输入和删除
-- OK按钮确认连接
-
-## 代码结构
-
-```
-main/
-├── main.c              # 主程序入口，硬件初始化
-├── driver/             # 硬件驱动层
-│   ├── st7789_lcd.c/h  # ST7789 LCD驱动
-│   └── buzzer.c/h      # 蜂鸣器驱动
-├── input/              # 输入处理层
-│   └── input_handler.c/h  # 输入事件处理
-├── network/            # 网络服务层
-│   └── wifi_manager.c/h   # WiFi管理模块
-├── pomodoro/           # 番茄钟引擎
-│   └── pomodoro_engine.c/h # 番茄钟核心逻辑
-├── storage/            # 存储服务层
-│   └── storage_service.c/h # NVS存储服务
-├── time/               # 时间服务层
-│   └── time_service.c/h   # NTP时间同步
-└── ui/                 # UI界面层
-    ├── ui_manager.c/h     # UI管理器
-    ├── ui_screen_main.c/h # 主界面
-    ├── ui_screen_pomodoro.c/h # 番茄钟界面
-    ├── ui_screen_chat.c/h # 聊天助手界面
-    ├── ui_screen_settings.c/h # 设置界面
-    ├── ui_screen_wifi.c/h # WiFi列表界面
-    └── ui_screen_password.c/h # 密码输入界面
-```
-
-## 技术栈
-
-- **框架**: ESP-IDF v5.5.2
-- **GUI**: LVGL v9.5.0
-- **系统**: FreeRTOS
-- **语言**: C语言
-- **目标平台**: ESP32-C3 (RISC-V架构)
-
-## 构建和烧录
-
-### 构建项目
 ```bash
+# 设置环境 (PowerShell)
+$env:IDF_PATH="D:\Espressif\frameworks\esp-idf-v5.5.4"
+& "$env:IDF_PATH\export.ps1"
+
+# 构建
 idf.py build
+
+# 烧录
+idf.py -p COM7 flash monitor
 ```
 
-### 烧录固件
-```bash
-idf.py flash
-```
+## 功能特性
 
-### 监控串口
-```bash
-idf.py monitor
-```
-
-## 使用说明
-
-### 基本操作
-1. **开机**：进入主界面，显示时间、温度、WiFi状态、番茄钟状态
-2. **进入设置**：旋转编码器或按设置键进入设置界面
-3. **WiFi连接**：在设置界面选择WiFi，扫描网络，输入密码
-4. **时间同步**：连接WiFi后自动同步网络时间
-5. **番茄钟**：旋转到番茄钟界面，开始专注计时
-
-### 编码器控制
-- **旋转**：滚动菜单选项或切换界面
-- **短按**：确认选择或进入下一级
-- **长按**：返回上级或退出设置
-
-### 设置项说明
-- **亮度/对比度**：0-100的百分比调整
-- **语言**：English / Chinese
-- **番茄钟**：工作时长、休息时长设置
-- **WiFi**：进入WiFi配置流程
-
-## 配置选项
-
-### WiFi配置服务器
-启动后访问 `http://192.168.x.x/` 进行高级设置：
-- 工作时长/短休/长休设置
-- 亮度/对比度调整
-- NTP同步间隔和时区
-
-### 系统参数
-- NTP同步间隔：默认10分钟（0表示禁用）
-- 时区设置：-12到+14小时
-- 屏幕分辨率：240x240
-- 刷新率：1ms LVGL tick
-
-## 技术特点
-
-### 性能优化
-- 硬件SPI驱动ST7789
-- DMA传输优化
-- LVGL任务优先级管理
-- 任务间同步锁机制
-
-### 内存管理
-- DMA内存分配
-- 双缓冲机制
-- 任务栈大小优化
-- 静态分配策略
-
-### 错误处理
-- WiFi连接状态监控
-- NTP同步重试机制
-- 按键消抖处理
-- 内存分配检查
-
-## 扩展性
-
-### 模块化设计
-- 独立WiFi管理模块
-- 独立UI管理模块
-- 独立番茄钟引擎模块
-- 独立输入处理模块
-- 易于添加新功能
-
-### 可配置性
-- 支持多种屏幕分辨率
-- 可扩展输入设备
-- 可添加更多设置项
-- 可集成更多网络功能
-
-## 参考文档
-
-- [LVGL 文档](https://docs.lvgl.io/)
-- [ESP-IDF 文档](https://docs.espressif.com/projects/esp-idf/)
-- [ST7789 规格书](https://www.buydisplay.com/download/ic/ST7789.pdf)
-- [EC11编码器规格书](https://www.buydisplay.com/download/ic/ST7789.pdf)
-
-## 更新日志
-
-### v1.0.0 (2026-02-20)
-- 初始版本发布
-- 完成核心功能实现
-- 集成WiFi管理
-- 实现编码器控制
-- 建立UI框架
-- 实现番茄钟引擎
-
----
-
-**注意**：本项目为嵌入式物联网设备固件，实际使用时请根据具体硬件连接和需求调整配置参数。
+- **番茄钟计时** — 可配置工作/休息/长休息时长，蜂鸣器提醒
+- **AI Buddy 伴侣** — ASCII 像素宠物，多种物种和表情动画
+- **BLE 权限审批** — 通过 Nordic UART Service 接收 Claude Desktop 心跳，实时审批工具权限
+- **WS2812 LED 指示** — 红色闪烁表示等待审批，绿色表示通过，粉色表示心动
+- **WiFi 管理** — 扫描、选择、密码输入，NVS 保存凭据
+- **NTP 时间同步** — 连接 WiFi 后自动同步，支持时区配置
+- **EC11 编码器控制** — 旋转导航界面，按键确认/返回
+- **7 个 LVGL 界面** — 主界面、番茄钟、Buddy、设置、番茄钟设置、WiFi 列表、密码输入
