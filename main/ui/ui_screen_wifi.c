@@ -51,6 +51,37 @@ static lv_obj_t *pwd_keyboard[4][10];
 
 static char password_buffer[64] = {0};
 
+/* Password input screen callbacks */
+static void pwd_on_encoder_cw(void)
+{
+    ui_screen_password_char_next();
+}
+
+static void pwd_on_encoder_ccw(void)
+{
+    ui_screen_password_char_prev();
+}
+
+static void pwd_on_encoder_press(void)
+{
+    ui_screen_password_add_char();
+}
+
+static void pwd_on_settings_press(void)
+{
+    ui_screen_password_add_char();
+}
+
+static void pwd_on_encoder_long_press(void)
+{
+    /* Long press on encoder = delete last character or go back if empty */
+    if (password_len > 0) {
+        ui_screen_password_delete_char();
+    } else {
+        ui_switch_screen(UI_SCREEN_WIFI_LIST);
+    }
+}
+
 // 静态数组用于存储WiFi列表项的键值，避免在ui_screen_wifi_list_update中频繁分配/释放内存
 static char wifi_item_keys[20][33];   // 每个SSID最多32个字符 + '\0'
 static char wifi_item_values[20][32]; // 增大value缓冲区以包含Open字样和信号强度
@@ -238,10 +269,11 @@ lv_obj_t* ui_screen_password_create(void)
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t pwd_cbs = {
-        .on_encoder_cw = NULL,
-        .on_encoder_ccw = NULL,
-        .on_encoder_press = NULL,
-        .on_settings_press = NULL,
+        .on_encoder_cw = pwd_on_encoder_cw,
+        .on_encoder_ccw = pwd_on_encoder_ccw,
+        .on_encoder_press = pwd_on_encoder_press,
+        .on_encoder_long_press = pwd_on_encoder_long_press,
+        .on_settings_press = pwd_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_PASSWORD_INPUT, &pwd_cbs);
 

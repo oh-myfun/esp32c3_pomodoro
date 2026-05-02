@@ -211,12 +211,18 @@ void ui_screen_settings_enter_adjust(void)
 void ui_screen_settings_adjust_up(void)
 {
     if (settings_mode != SETTINGS_MODE_ADJUST) return;
-    
+
     switch (current_settings_item) {
         case 0:  // Brightness
+            if (settings_values[current_settings_item] < 100) {
+                settings_values[current_settings_item]++;
+                ESP_LOGI(TAG, "Brightness set to %d", settings_values[current_settings_item]);
+            }
+            break;
         case 1:  // Contrast
             if (settings_values[current_settings_item] < 100) {
                 settings_values[current_settings_item]++;
+                ESP_LOGI(TAG, "Contrast set to %d", settings_values[current_settings_item]);
             }
             break;
         case 2:  // Language
@@ -234,12 +240,18 @@ void ui_screen_settings_adjust_up(void)
 void ui_screen_settings_adjust_down(void)
 {
     if (settings_mode != SETTINGS_MODE_ADJUST) return;
-    
+
     switch (current_settings_item) {
         case 0:  // Brightness
+            if (settings_values[current_settings_item] > 0) {
+                settings_values[current_settings_item]--;
+                ESP_LOGI(TAG, "Brightness set to %d", settings_values[current_settings_item]);
+            }
+            break;
         case 1:  // Contrast
             if (settings_values[current_settings_item] > 0) {
                 settings_values[current_settings_item]--;
+                ESP_LOGI(TAG, "Contrast set to %d", settings_values[current_settings_item]);
             }
             break;
         case 2:  // Language

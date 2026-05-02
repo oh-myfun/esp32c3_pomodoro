@@ -29,13 +29,13 @@ lv_obj_t* ui_screen_main_create(void)
 
     temp_label = lv_label_create(screen);
     lv_obj_set_style_text_color(temp_label, lv_color_hex(0xFF6B6B), 0);
-    lv_label_set_text(temp_label, "25C");
+    lv_label_set_text(temp_label, "--C");
     lv_obj_set_style_text_font(temp_label, &lv_font_montserrat_16, 0);
     lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 10, 10);
 
     humidity_label = lv_label_create(screen);
     lv_obj_set_style_text_color(humidity_label, lv_color_hex(0x4D96FF), 0);
-    lv_label_set_text(humidity_label, "65%");
+    lv_label_set_text(humidity_label, "--%");
     lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_16, 0);
     lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
 
@@ -93,18 +93,14 @@ void ui_screen_main_update_time(void)
 
 void ui_screen_main_update_temp(float temp)
 {
-    if (temp_label == NULL) return;
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.1fC", temp);
-    lv_label_set_text(temp_label, buf);
+    /* No temperature sensor hardware -- display placeholder */
+    ESP_LOGD(TAG, "update_temp called (%.1f) but no sensor available, keeping placeholder", temp);
 }
 
 void ui_screen_main_update_humidity(float humidity)
 {
-    if (humidity_label == NULL) return;
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.0f%%", humidity);
-    lv_label_set_text(humidity_label, buf);
+    /* No humidity sensor hardware -- display placeholder */
+    ESP_LOGD(TAG, "update_humidity called (%.0f) but no sensor available, keeping placeholder", humidity);
 }
 
 void ui_screen_main_update_wifi_status(const char *status, uint32_t color)
