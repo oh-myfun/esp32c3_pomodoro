@@ -1,4 +1,5 @@
 #include "ui_screen_wifi.h"
+#include "service/wifi_service.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "esp_log.h"
@@ -26,10 +27,10 @@ static void wifi_on_encoder_press(void)
 
 static void wifi_on_settings_press(void)
 {
-    int count = wifi_manager_get_scan_count();
+    int count = wifi_service_get_scan_count();
     int selected = ui_screen_wifi_list_get_selected();
     if (count > 0) {
-        wifi_scan_result_t *result = wifi_manager_get_scan_result(selected);
+        const wifi_ap_info_t *result = wifi_service_get_ap(selected);
         if (result) {
             ui_password_input_start(result->ssid);
         }
@@ -65,7 +66,7 @@ static const char pwd_keys[4][10] = {
     "zxcvbnm._"
 };
 
-static wifi_scan_result_t *wifi_results = NULL;
+static const wifi_ap_info_t *wifi_results = NULL;
 static int wifi_count = 0;
 
 static void wifi_list_item_click(int index)
@@ -74,7 +75,7 @@ static void wifi_list_item_click(int index)
     
     strncpy(selected_ssid, (char*)wifi_results[index].ssid, sizeof(selected_ssid) - 1);
     if (wifi_results[index].open) {
-        wifi_manager_connect(wifi_results[index].ssid, "");
+        wifi_service_connect(wifi_results[index].ssid, "");
     } else {
         ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
         ui_password_input_start((char*)wifi_results[index].ssid);
@@ -121,7 +122,8 @@ lv_obj_t* ui_screen_wifi_list_get_list(void)
     return wifi_list;
 }
 
-void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int selected, const char *hint)
+void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected, const char *hint)
+
 {
     wifi_results = results;
     wifi_count = count;
@@ -131,7 +133,7 @@ void ui_screen_wifi_list_update(int count, wifi_scan_result_t *results, int sele
         int item_count = count > 20 ? 20 : count;
         
         for (int i = 0; i < item_count; i++) {
-            wifi_scan_result_t *ap = &results[i];
+            wifi_ap_info_t *ap = &results[i];
             
             // SSID作为key，如果是开放网络则加上[open]
             if (ap->open) {
@@ -286,16 +288,16 @@ void ui_screen_password_set_hint(const char *hint)
 
 void ui_screen_wifi_list_refresh(void)
 {
-    int count = wifi_manager_get_scan_count();
+    int count = wifi_service_get_scan_count();
     bool scan_done = (count > 0);
-    
-    wifi_scan_result_t *results = NULL;
+
+    const wifi_ap_info_t *results = NULL;
     if (scan_done && count > 0) {
-        results = wifi_manager_get_scan_result(0);
+        results = wifi_service_get_ap(0);
     }
-    
+
     const char *hint = scan_done ? "Rotate: nav | SET: select" : "Scanning...";
-    ui_screen_wifi_list_update(count, results, 0, hint);
+    ui_screen_wifi_list_update(count, (wifi_ap_info_t*)results, 0, hint);
 }
 
 int ui_screen_wifi_list_get_selected(void)
@@ -364,7 +366,7 @@ void ui_screen_password_add_char(void)
     
     if (pwd_selected_row == 3 && pwd_selected_col == 9) {
         if (strlen(password_buffer) > 0) {
-            wifi_manager_connect(selected_ssid, password_buffer);
+            wifi_service_connect(selected_ssid, password_buffer);
             ui_switch_screen(UI_SCREEN_MAIN);
         }
         return;
@@ -393,7 +395,7 @@ void ui_screen_password_delete_char(void)
 void ui_screen_password_confirm(void)
 {
     if (strlen(password_buffer) > 0) {
-        wifi_manager_connect(selected_ssid, password_buffer);
+        wifi_service_connect(selected_ssid, password_buffer);
     }
 }
 

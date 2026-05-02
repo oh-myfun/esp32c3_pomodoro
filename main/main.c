@@ -15,7 +15,7 @@
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
 #include "ui/ui_screen_wifi.h"
-#include "network/wifi_manager.h"
+#include "service/wifi_service.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "time/time_service.h"
 
@@ -113,9 +113,7 @@ static void ui_update_task(void *arg)
     ESP_LOGI(TAG, "UI update task started");
 
     int64_t last_pomodoro_tick = 0;
-    int64_t last_wifi_sync_time = 0;
-    bool has_synced = false;
-    wifi_mode_state_t last_wifi_state = WIFI_STATE_NONE;
+    wifi_state_t last_wifi_state = WIFI_STATE_DISCONNECTED;
     bool last_wifi_connected = false;
 
     while (1) {
@@ -135,25 +133,23 @@ static void ui_update_task(void *arg)
             ui_update_temp(25.5f);
             ui_update_humidity(65.0f);
 
-            bool wifi_connected = wifi_manager_is_connected();
+            bool wifi_connected = wifi_service_is_connected();
             if (wifi_connected != last_wifi_connected) {
                 last_wifi_connected = wifi_connected;
                 if (wifi_connected) {
-                    const char *ip = wifi_manager_get_ip_address();
+                    const char *ip = wifi_service_get_ip();
                     char status[32];
                     snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
                     ui_update_wifi_status_ex(status, 0x00FF00);
                 }
             } else if (!wifi_connected) {
-                wifi_mode_state_t mode = wifi_manager_get_state();
-                if (mode != last_wifi_state) {
-                    last_wifi_state = mode;
-                    if (mode == WIFI_STATE_CONNECTING) {
+                wifi_state_t state = wifi_service_get_state();
+                if (state != last_wifi_state) {
+                    last_wifi_state = state;
+                    if (state == WIFI_STATE_CONNECTING) {
                         ui_update_wifi_status_ex("Connecting...", 0xFFFF00);
-                    } else if (mode == WIFI_STATE_SCANNING) {
+                    } else if (state == WIFI_STATE_SCANNING) {
                         ui_update_wifi_status_ex("Scanning...", 0xFFFF00);
-                    } else if (wifi_manager_is_connect_failed()) {
-                        ui_update_wifi_status_ex("Connect Failed", 0xFF0000);
                     } else {
                         ui_update_wifi_status_ex("Disconnected", 0x666666);
                     }
@@ -163,22 +159,6 @@ static void ui_update_task(void *arg)
 
         if (current_screen == UI_SCREEN_WIFI_LIST) {
             ui_screen_wifi_list_refresh();
-        }
-
-        if (wifi_manager_is_connected()) {
-            int interval = wifi_manager_get_ntp_interval();
-            int64_t now_sec = esp_timer_get_time() / 1000000;
-
-            if (!has_synced) {
-                wifi_manager_sync_time();
-                has_synced = true;
-                last_wifi_sync_time = now_sec;
-            } else if (interval > 0 && (now_sec - last_wifi_sync_time >= interval * 60)) {
-                wifi_manager_sync_time();
-                last_wifi_sync_time = now_sec;
-            }
-        } else {
-            has_synced = false;
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -196,7 +176,7 @@ void app_main(void)
     ui_init();
     pomodoro_engine_init();
     input_handler_init();
-    wifi_manager_init();
+    wifi_service_init();
     time_service_init();
 
     xTaskCreatePinnedToCore(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL, 0);

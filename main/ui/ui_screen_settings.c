@@ -1,6 +1,6 @@
 #include "ui_screen_settings.h"
 #include "ui_manager.h"
-#include "network/wifi_manager.h"
+#include "service/wifi_service.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -46,7 +46,7 @@ static void settings_on_settings_press(void)
     } else if (mode == SETTINGS_MODE_SELECT) {
         int item = ui_screen_settings_get_current_item();
         if (item == 4) {  // WiFi
-            wifi_manager_scan_start();
+            wifi_service_scan();
             ui_switch_screen(UI_SCREEN_WIFI_LIST);
         } else if (item == 3) {  // Pomodoro
             ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
