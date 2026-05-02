@@ -4,6 +4,7 @@
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
 #include "ui_screen_settings_pomodoro.h"
+#include "ui_screen_buddy.h"
 #include "esp_log.h"
 #include "freertos/semphr.h"
 
@@ -40,7 +41,7 @@ void ui_init(void)
 
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
     screens[UI_SCREEN_POMODORO] = ui_screen_pomodoro_create();
-    screens[UI_SCREEN_BUDDY] = lv_obj_create(NULL);  // placeholder for Task 11
+    screens[UI_SCREEN_BUDDY] = ui_screen_buddy_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
     screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();

@@ -9,7 +9,7 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_pomodoro.c
                           ui/ui_screen_settings.c
                           ui/ui_screen_wifi.c
-                          ui/ui_screen_chat.c
+                          ui/ui_screen_buddy.c
                           ui/ui_screen_settings_pomodoro.c
                           service/wifi_service.c
                           pomodoro/pomodoro_engine.c
