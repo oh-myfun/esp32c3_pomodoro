@@ -293,10 +293,10 @@ void app_main(void) {
     buddy_register_callbacks(&buddy_cbs);
 
     // 9. Create tasks
-    xTaskCreatePinnedToCore(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(input_handler_task, "Input",   6144, NULL, 3, NULL, 0);
-    xTaskCreatePinnedToCore(service_task, "Service", 6144, NULL, 2, NULL, 0);
-    xTaskCreatePinnedToCore(ui_update_task, "UI",      4096, NULL, 1, NULL, 0);
+    xTaskCreate(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL);
+    xTaskCreate(input_handler_task, "Input",   6144, NULL, 3, NULL);
+    xTaskCreate(service_task, "Service", 6144, NULL, 2, NULL);
+    xTaskCreate(ui_update_task, "UI",      4096, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "All tasks created");
 
