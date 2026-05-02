@@ -47,3 +47,13 @@ bool time_service_get_auto_sync(void);
 char* time_service_format_time(char *buffer, size_t len, const char *format);
 
 char* time_service_format_date(char *buffer, size_t len, const char *format);
+
+// Request NTP sync (triggered by wifi connected callback)
+void time_service_request_sync(void);
+
+// Periodic tick - call from Service task, handles auto re-sync
+void time_service_tick(void);
+
+// Simple timezone offset (hours only)
+void time_service_set_timezone_offset(int hours);
+int  time_service_get_timezone_offset(void);

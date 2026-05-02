@@ -17,7 +17,7 @@
 #include "ui/ui_screen_wifi.h"
 #include "service/wifi_service.h"
 #include "pomodoro/pomodoro_engine.h"
-#include "time/time_service.h"
+#include "service/time_service.h"
 
 static const char *TAG = "MAIN";
 

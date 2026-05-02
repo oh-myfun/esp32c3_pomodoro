@@ -6,11 +6,18 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/netdb.h"
-#include "service/storage_service.h"
+#include "storage_service.h"
 #include <string.h>
 #include <sys/time.h>
 
 static const char *TAG = "TIME";
+
+static const char *ntp_servers[] = {
+    "pool.ntp.org",
+    "time.windows.com",
+    "time.google.com",
+};
+#define NTP_SERVER_COUNT (sizeof(ntp_servers) / sizeof(ntp_servers[0]))
 
 static bool synced = false;
 static int8_t tz_hours = 8;
@@ -18,6 +25,7 @@ static int8_t tz_minutes = 0;
 static char ntp_server[64] = TIME_SERVICE_DEFAULT_NTP_SERVER;
 static uint16_t sync_interval = TIME_SERVICE_DEFAULT_SYNC_INTERVAL_MIN;
 static bool auto_sync = true;
+static time_t last_sync_time = 0;
 
 static void time_sync_notification(struct timeval *tv)
 {
@@ -28,7 +36,9 @@ static void time_sync_notification(struct timeval *tv)
 void time_service_init(void)
 {
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, ntp_server);
+    for (int i = 0; i < NTP_SERVER_COUNT; i++) {
+        esp_sntp_setservername(i, ntp_servers[i]);
+    }
     esp_sntp_set_time_sync_notification_cb(time_sync_notification);
 
     int32_t stored_tz = 8;
@@ -64,19 +74,20 @@ bool time_service_sync(void)
 
     esp_sntp_restart();
     synced = false;
-    
+
     int retry = 0;
     while (retry < 5) {
         if (synced) {
-            uint64_t now = time(NULL);
-            storage_save_time(now);
-            ESP_LOGI(TAG, "Time saved: %llu", now);
+            time_t now = time(NULL);
+            storage_save_time((uint64_t)now);
+            last_sync_time = now;
+            ESP_LOGI(TAG, "Time saved: %llu", (uint64_t)now);
             return true;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
         retry++;
     }
-    
+
     ESP_LOGW(TAG, "NTP sync failed after retries");
     return false;
 }
@@ -174,14 +185,74 @@ char* time_service_format_time(char *buffer, size_t len, const char *format)
 char* time_service_format_date(char *buffer, size_t len, const char *format)
 {
     if (!buffer || len == 0) return buffer;
-    
+
     time_t now = time(NULL);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
-    
+
     if (strftime(buffer, len, format ? format : "%Y-%m-%d", &timeinfo) == 0) {
         buffer[0] = '\0';
     }
-    
+
     return buffer;
+}
+
+void time_service_request_sync(void)
+{
+    if (synced) {
+        ESP_LOGI(TAG, "Already synced, skipping NTP request");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Requesting NTP sync with %d servers", (int)NTP_SERVER_COUNT);
+    for (int i = 0; i < NTP_SERVER_COUNT; i++) {
+        esp_sntp_setservername(i, ntp_servers[i]);
+    }
+    esp_sntp_restart();
+    synced = false;
+
+    int retry = 0;
+    while (retry < 5) {
+        if (synced) {
+            time_t now = time(NULL);
+            storage_save_time((uint64_t)now);
+            last_sync_time = now;
+            ESP_LOGI(TAG, "NTP sync success, time saved: %llu", (uint64_t)now);
+            return;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        retry++;
+    }
+
+    ESP_LOGW(TAG, "NTP sync request failed");
+}
+
+void time_service_tick(void)
+{
+    if (!auto_sync || sync_interval == 0) {
+        return;
+    }
+
+    time_t now = time(NULL);
+    if (last_sync_time == 0) {
+        last_sync_time = now;
+        return;
+    }
+
+    double elapsed = difftime(now, last_sync_time);
+    if (elapsed >= (double)sync_interval * 60.0) {
+        ESP_LOGI(TAG, "Auto re-sync triggered (interval=%d min, elapsed=%.0f s)",
+                 sync_interval, elapsed);
+        time_service_request_sync();
+    }
+}
+
+void time_service_set_timezone_offset(int hours)
+{
+    time_service_set_timezone((int8_t)hours, 0);
+}
+
+int time_service_get_timezone_offset(void)
+{
+    return (int)tz_hours;
 }

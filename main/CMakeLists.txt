@@ -13,7 +13,7 @@ idf_component_register(SRCS main.c
                           service/wifi_service.c
                           pomodoro/pomodoro_engine.c
                           service/storage_service.c
-                          time/time_service.c
-                          INCLUDE_DIRS "." "ui" "driver" "input" "service" "time" "pomodoro"
+                          service/time_service.c
+                          INCLUDE_DIRS "." "ui" "driver" "input" "service" "pomodoro"
                           REQUIRES esp_timer driver esp_wifi esp_netif nvs_flash lwip button knob
                           )
