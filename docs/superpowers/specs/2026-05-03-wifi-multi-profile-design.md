@@ -99,17 +99,10 @@ SET:select|Press:back
 | 操作 | 行为 |
 |------|------|
 | 编码器旋转 | 上下导航列表 |
-| SET + "Scan..." | 进入 WiFi 扫描列表 |
-| 第一次 SET + 已保存网络 | 提示 "SET:confirm del"，等待确认 |
-| 第二次 SET + 已保存网络 | 执行删除，刷新列表 |
-| 编码器旋转（确认状态下） | 取消确认，恢复正常导航 |
+| 短按 SET + "Scan..." | 进入 WiFi 扫描列表 |
+| 短按 SET + 已保存网络 | 连接该网络 |
+| 长按 SET + 已保存网络 | 直接删除，刷新列表 |
 | 编码器短按 | 返回设置界面 |
-
-#### 删除确认流程
-
-1. SET 按选中网络 → 提示变为 "SET:confirm del"，进入确认状态
-2. 再次 SET → 执行删除，刷新列表，退出确认状态
-3. 编码器旋转离开该项 → 自动取消确认状态
 
 ### 扫描列表改动（ui_screen_wifi.c）
 
@@ -131,7 +124,7 @@ SETTINGS → WiFi(已保存网络列表) → Scan(扫描列表) → PASSWORD_INP
 ```
 SETTINGS → WIFI_SAVED → WIFI_LIST → PASSWORD_INPUT
                ↕
-        SET:连接/扫描/删除(两步确认)
+        短按SET:连接/扫描  长按SET:删除
 ```
 
 ## 不做的事
