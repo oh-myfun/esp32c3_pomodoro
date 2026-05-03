@@ -32,7 +32,8 @@ static void wifi_on_settings_press(void)
     if (count > 0) {
         const wifi_ap_info_t *result = wifi_service_get_ap(selected);
         if (result) {
-            ui_password_input_start(result->ssid);
+            ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
+            ui_screen_password_start((const char *)result->ssid);
         }
     }
 }
@@ -50,6 +51,14 @@ static lv_obj_t *pwd_hint = NULL;
 static lv_obj_t *pwd_keyboard[4][10];
 
 static char password_buffer[64] = {0};
+static int password_len = 0;
+static bool pwd_uppercase = false;
+static int pwd_selected_row = 0;
+static int pwd_selected_col = 0;
+
+// 静态数组用于存储WiFi列表项的键值，避免在ui_screen_wifi_list_update中频繁分配/释放内存
+static char wifi_item_keys[20][33];
+static char wifi_item_values[20][32];
 
 /* Password input screen callbacks */
 static void pwd_on_encoder_cw(void)
@@ -64,7 +73,7 @@ static void pwd_on_encoder_ccw(void)
 
 static void pwd_on_encoder_press(void)
 {
-    ui_screen_password_add_char();
+    ui_switch_screen(UI_SCREEN_WIFI_LIST);
 }
 
 static void pwd_on_settings_press(void)
@@ -74,21 +83,12 @@ static void pwd_on_settings_press(void)
 
 static void pwd_on_encoder_long_press(void)
 {
-    /* Long press on encoder = delete last character or go back if empty */
     if (password_len > 0) {
         ui_screen_password_delete_char();
     } else {
         ui_switch_screen(UI_SCREEN_WIFI_LIST);
     }
 }
-
-// 静态数组用于存储WiFi列表项的键值，避免在ui_screen_wifi_list_update中频繁分配/释放内存
-static char wifi_item_keys[20][33];   // 每个SSID最多32个字符 + '\0'
-static char wifi_item_values[20][32]; // 增大value缓冲区以包含Open字样和信号强度
-static int password_len = 0;
-static bool pwd_uppercase = false;
-static int pwd_selected_row = 0;
-static int pwd_selected_col = 0;
 
 static const char pwd_keys[4][10] = {
     "1234567890",
@@ -109,7 +109,7 @@ static void wifi_list_item_click(int index)
         wifi_service_connect(wifi_results[index].ssid, "");
     } else {
         ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
-        ui_password_input_start((char*)wifi_results[index].ssid);
+        ui_screen_password_start((char*)wifi_results[index].ssid);
     }
 }
 
@@ -132,8 +132,8 @@ lv_obj_t* ui_screen_wifi_list_create(void)
 
     wifi_list_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(wifi_list_hint, "Rotate: nav | SET: select");
-    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_16, 0);
+    lv_label_set_text(wifi_list_hint, "SET:select|Press:back");
+    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
@@ -154,7 +154,6 @@ lv_obj_t* ui_screen_wifi_list_get_list(void)
 }
 
 void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected, const char *hint)
-
 {
     wifi_results = results;
     wifi_count = count;
@@ -245,11 +244,11 @@ lv_obj_t* ui_screen_password_create(void)
             lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_montserrat_16, 0);
             
             if (row == 2 && col == 9) {
-                lv_label_set_text(pwd_keyboard[row][col], "A/a");
+                lv_label_set_text(pwd_keyboard[row][col], "^");
             } else if (row == 3 && col == 8) {
-                lv_label_set_text(pwd_keyboard[row][col], "DEL");
+                lv_label_set_text(pwd_keyboard[row][col], "<");
             } else if (row == 3 && col == 9) {
-                lv_label_set_text(pwd_keyboard[row][col], "OK");
+                lv_label_set_text(pwd_keyboard[row][col], ">");
             } else {
                 char ch[2] = {pwd_keys[row][col], '\0'};
                 lv_label_set_text(pwd_keyboard[row][col], ch);
@@ -264,8 +263,8 @@ lv_obj_t* ui_screen_password_create(void)
 
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(pwd_hint, "Rotate: nav | SET: input");
-    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_16, 0);
+    lv_label_set_text(pwd_hint, "SET:input|Press:back");
+    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t pwd_cbs = {
@@ -293,18 +292,22 @@ void ui_screen_password_update_display(const char *password, int cursor_pos)
 {
     if (pwd_display == NULL) return;
     lv_label_set_text(pwd_display, password ? password : "");
-    
+
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 10; col++) {
+            bool is_letter = false;
+            char c = pwd_keys[row][col];
+            if (c >= 'a' && c <= 'z') is_letter = true;
+
+            /* Update label text for letters when uppercase toggles */
+            if (is_letter) {
+                char ch[2] = { pwd_uppercase ? (c - 'a' + 'A') : c, '\0' };
+                lv_label_set_text(pwd_keyboard[row][col], ch);
+            }
+
+            /* Color: selected = green, else default gray */
             if (row == pwd_selected_row && col == pwd_selected_col) {
                 lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x00FF00), 0);
-            } else if (pwd_uppercase && row < 3 && col < 10) {
-                char c = pwd_keys[row][col];
-                if (c >= 'a' && c <= 'z') {
-                    lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0xFFFFFF), 0);
-                } else {
-                    lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x888888), 0);
-                }
             } else {
                 lv_obj_set_style_text_color(pwd_keyboard[row][col], lv_color_hex(0x888888), 0);
             }
@@ -328,7 +331,7 @@ void ui_screen_wifi_list_refresh(void)
         results = wifi_service_get_ap(0);
     }
 
-    const char *hint = scan_done ? "Rotate: nav | SET: select" : "Scanning...";
+    const char *hint = scan_done ? "SET:select" : "Scanning...";
     ui_screen_wifi_list_update(count, (wifi_ap_info_t*)results, 0, hint);
 }
 
@@ -355,7 +358,7 @@ void ui_screen_password_start(const char *ssid)
     strncpy(selected_ssid, ssid ? ssid : "", sizeof(selected_ssid) - 1);
     ui_screen_password_set_ssid(ssid);
     ui_screen_password_update_display(password_buffer, pwd_selected_col);
-    ui_screen_password_set_hint("Rotate: nav | SET: input");
+    ui_screen_password_set_hint("SET:input|Press:back");
 }
 
 void ui_screen_password_char_next(void)
@@ -364,6 +367,9 @@ void ui_screen_password_char_next(void)
         pwd_selected_col++;
     } else if (pwd_selected_row < 3) {
         pwd_selected_row++;
+        pwd_selected_col = 0;
+    } else {
+        pwd_selected_row = 0;
         pwd_selected_col = 0;
     }
     ui_screen_password_update_display(password_buffer, pwd_selected_col);
@@ -376,6 +382,9 @@ void ui_screen_password_char_prev(void)
     } else if (pwd_selected_row > 0) {
         pwd_selected_row--;
         pwd_selected_col = 9;
+    } else {
+        pwd_selected_row = 3;
+        pwd_selected_col = 9;
     }
     ui_screen_password_update_display(password_buffer, pwd_selected_col);
 }
@@ -385,6 +394,7 @@ void ui_screen_password_add_char(void)
     if (pwd_selected_row == 2 && pwd_selected_col == 9) {
         pwd_uppercase = !pwd_uppercase;
         ui_screen_password_set_hint(pwd_uppercase ? "Uppercase" : "Lowercase");
+        ui_screen_password_update_display(password_buffer, pwd_selected_col);
         return;
     }
     
@@ -392,6 +402,8 @@ void ui_screen_password_add_char(void)
         if (password_len > 0) {
             password_buffer[--password_len] = '\0';
             ui_screen_password_update_display(password_buffer, pwd_selected_col);
+        } else {
+            ui_switch_screen(UI_SCREEN_WIFI_LIST);
         }
         return;
     }

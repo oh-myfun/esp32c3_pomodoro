@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lvgl.h"
+#include <stdbool.h>
 
 lv_obj_t* ui_screen_buddy_create(void);
 void ui_screen_buddy_update_state(void);

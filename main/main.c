@@ -1,4 +1,5 @@
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
@@ -21,7 +22,7 @@
 #include "service/wifi_service.h"
 #include "service/time_service.h"
 #include "service/storage_service.h"
-#include "service/ble_service.h"
+// #include "service/ble_service.h"  // BLE disabled
 #include "pomodoro/pomodoro_engine.h"
 #include "buddy/buddy.h"
 
@@ -104,7 +105,9 @@ static void lvgl_port_task(void *arg)
     ESP_LOGI(TAG, "LVGL task started");
     uint32_t time_till_next_ms = 0;
     while (1) {
+        lvgl_lock();
         time_till_next_ms = lv_timer_handler();
+        lvgl_unlock();
         time_till_next_ms = MAX(time_till_next_ms, LVGL_TASK_MIN_DELAY_MS);
         time_till_next_ms = MIN(time_till_next_ms, LVGL_TASK_MAX_DELAY_MS);
         usleep(1000 * time_till_next_ms);
@@ -142,23 +145,10 @@ static void on_wifi_connect_failed(void) {
     lvgl_unlock();
 }
 
-// BLE -> buddy
-static void on_ble_connected(void) {
-    ESP_LOGI(TAG, "BLE connected");
-    buddy_on_ble_connected();
-}
-
-static void on_ble_disconnected(void) {
-    ESP_LOGI(TAG, "BLE disconnected");
-    buddy_on_ble_disconnected();
-}
-
-static void on_ble_heartbeat(const ble_heartbeat_t *hb) {
-    ESP_LOGD(TAG, "BLE heartbeat: %d running, %d waiting, prompt=%d",
-             hb->running, hb->waiting, hb->has_prompt);
-    buddy_on_heartbeat(hb->running, hb->waiting, hb->has_prompt,
-                       hb->prompt_id, hb->prompt_tool, hb->prompt_hint);
-}
+// BLE callbacks disabled
+// static void on_ble_connected(void) { ... }
+// static void on_ble_disconnected(void) { ... }
+// static void on_ble_heartbeat(const ble_heartbeat_t *hb) { ... }
 
 // Buddy -> WS2812 + UI
 static void on_buddy_state_changed(buddy_state_t new_state) {
@@ -182,8 +172,8 @@ static void service_task(void *arg) {
         // Time service periodic sync
         time_service_tick();
 
-        // BLE maintenance
-        ble_service_tick();
+        // BLE maintenance (disabled)
+        // ble_service_tick();
 
         // Buddy animation tick every 500ms
         if (now - last_buddy_tick >= 500) {
@@ -208,7 +198,7 @@ static void ui_update_task(void *arg) {
             pomodoro_engine_tick();
             pomodoro_state_t state = pomodoro_engine_get_state();
             lvgl_lock();
-            ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count);
+            ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count, state.current_cycle);
             lvgl_unlock();
             last_pomodoro_tick = now;
         }
@@ -266,7 +256,8 @@ void app_main(void) {
 
     // 6. Network services (non-fatal, last)
     if (wifi_service_init() != 0) ESP_LOGW(TAG, "WiFi service init failed, continuing");
-    if (ble_service_init() != 0) ESP_LOGW(TAG, "BLE service init failed, continuing");
+    // BLE disabled temporarily - memory constraints on ESP32-C3
+    // if (ble_service_init() != 0) ESP_LOGW(TAG, "BLE service init failed, continuing");
 
     // 7. Time service (non-fatal)
     time_service_init();
@@ -280,12 +271,13 @@ void app_main(void) {
     };
     wifi_service_register_callbacks(&wifi_cbs);
 
-    static const ble_callbacks_t ble_cbs = {
-        .on_connected = on_ble_connected,
-        .on_disconnected = on_ble_disconnected,
-        .on_heartbeat = on_ble_heartbeat,
-    };
-    ble_service_register_callbacks(&ble_cbs);
+    // BLE callbacks disabled
+    // static const ble_callbacks_t ble_cbs = {
+    //     .on_connected = on_ble_connected,
+    //     .on_disconnected = on_ble_disconnected,
+    //     .on_heartbeat = on_ble_heartbeat,
+    // };
+    // ble_service_register_callbacks(&ble_cbs);
 
     static const buddy_callbacks_t buddy_cbs = {
         .on_state_changed = on_buddy_state_changed,

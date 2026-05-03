@@ -15,9 +15,8 @@ idf_component_register(SRCS main.c
                           pomodoro/pomodoro_engine.c
                           service/storage_service.c
                           service/time_service.c
-                          service/ble_service.c
                           buddy/buddy_chars.c
                           buddy/buddy.c
                           INCLUDE_DIRS "." "ui" "driver" "input" "service" "pomodoro" "buddy"
-                          REQUIRES esp_timer driver esp_wifi esp_netif nvs_flash lwip button knob bt json
+                          REQUIRES esp_timer driver esp_wifi esp_netif nvs_flash lwip button knob json
                           )

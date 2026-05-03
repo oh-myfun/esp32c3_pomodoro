@@ -16,3 +16,5 @@ typedef enum {
 
 void input_handler_init(void);
 void input_handler_task(void *arg);
+void input_handler_set_reverse(bool reverse);
+bool input_handler_get_reverse(void);

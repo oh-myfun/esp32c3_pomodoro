@@ -21,16 +21,16 @@ bool storage_save_pomodoro_settings(void *settings);
 
 bool storage_load_pomodoro_settings(void *settings);
 
-bool storage_save_string(const char *namespace, const char *key, const char *value);
+bool storage_save_string(const char *ns, const char *key, const char *value);
 
-bool storage_load_string(const char *namespace, const char *key, char *value, size_t len);
+bool storage_load_string(const char *ns, const char *key, char *value, size_t len);
 
-bool storage_save_int(const char *namespace, const char *key, int32_t value);
+bool storage_save_int(const char *ns, const char *key, int32_t value);
 
-bool storage_load_int(const char *namespace, const char *key, int32_t *value);
+bool storage_load_int(const char *ns, const char *key, int32_t *value);
 
 bool storage_save_time(uint64_t timestamp);
 
 bool storage_load_time(uint64_t *timestamp);
 
-void storage_clear_namespace(const char *namespace);
+void storage_clear_namespace(const char *ns);

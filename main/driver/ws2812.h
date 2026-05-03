@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "driver/gpio.h"
 
 #define WS2812_GPIO GPIO_NUM_8
 

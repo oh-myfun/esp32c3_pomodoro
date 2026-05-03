@@ -122,14 +122,10 @@ static void buddy_on_settings_press(void)
     if (display_mode == MODE_NORMAL) {
         ui_switch_screen(UI_SCREEN_SETTINGS);
     } else if (display_mode == MODE_ATTENTION) {
-        /* Confirm selection */
-        buddy_info_t info = buddy_get_info();
         if (attn_selection == 0) {
             buddy_approve();
-            ble_service_send_permission(info.prompt_id, "once");
         } else {
             buddy_deny();
-            ble_service_send_permission(info.prompt_id, "deny");
         }
         set_display_mode(MODE_NORMAL);
     } else if (display_mode == MODE_INFO) {
@@ -393,14 +389,14 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_14, 0);
     lv_obj_align(msg_label, LV_ALIGN_BOTTOM_LEFT, 8, -24);
     lv_obj_set_width(msg_label, 224);
-    lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP);
+    lv_label_set_long_mode(msg_label, LV_LABEL_LONG_MODE_WRAP);
 
     /* ---- Navigation hint ---- */
     nav_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(nav_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(nav_hint, "CW:Settings  CCW:Pomo  OK:Info");
+    lv_label_set_text(nav_hint, "SET:info");
     lv_obj_set_style_text_font(nav_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -4);
+    lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     /* ============================================================
      * ATTENTION mode overlay (initially hidden)
@@ -437,7 +433,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_font(attn_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(attn_hint, LV_ALIGN_TOP_LEFT, 10, 166);
     lv_obj_set_width(attn_hint, 216);
-    lv_label_set_long_mode(attn_hint, LV_LABEL_LONG_WRAP);
+    lv_label_set_long_mode(attn_hint, LV_LABEL_LONG_MODE_WRAP);
 
     attn_approve = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_approve, lv_color_hex(0x00FF00), 0);
@@ -492,9 +488,9 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     info_hint = lv_label_create(info_container);
     lv_obj_set_style_text_color(info_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(info_hint, "SET: back");
+    lv_label_set_text(info_hint, "Press: back");
     lv_obj_set_style_text_font(info_hint, &lv_font_montserrat_14, 0);
-    lv_obj_align(info_hint, LV_ALIGN_BOTTOM_MID, 0, -4);
+    lv_obj_align(info_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     /* ---- Register input callbacks ---- */
     static const ui_input_callbacks_t cbs = {

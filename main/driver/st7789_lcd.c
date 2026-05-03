@@ -88,10 +88,10 @@ void st7789_lcd_init(void)
     lcd_gpio_init();
     lcd_spi_init();
 
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(200));
 
     lcd_write_cmd(0x11);
-    vTaskDelay(120 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(120));
 
     lcd_write_cmd(0x36);
     lcd_write_byte(0x00);

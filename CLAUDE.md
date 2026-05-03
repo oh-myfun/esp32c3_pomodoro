@@ -8,19 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 构建命令
 
+Claude Code 的 Bash 环境是 Git Bash (MSys)，ESP-IDF v5.5.4 不再支持 MSys 环境。已封装 `build.sh` 脚本，只硬编码 ESP-IDF 根目录和 Python 虚拟环境路径，工具链版本由 `idf_tools.py export` 动态发现：
+
 ```bash
-# 设置 ESP-IDF 环境 (Windows PowerShell)
+./build.sh          # 构建
+./build.sh flash    # 烧录
+./build.sh -p COM7 flash monitor  # 烧录并监视
+./build.sh clean    # 清理
+./build.sh erase-flash  # 擦除（NVS 损坏时）
+```
+
+用户终端（PowerShell）构建：
+```powershell
 $env:IDF_PATH="D:\Espressif\frameworks\esp-idf-v5.5.4"
 & "$env:IDF_PATH\export.ps1"
-
-# 构建
 idf.py build
-
-# 烧录（串口配置见 .vscode/settings.json）
-idf.py -p COM7 flash monitor
-
-# 增量构建
-ninja -C build
 ```
 
 ## 目录结构
@@ -62,7 +64,7 @@ main/
 |------|--------|--------|------|
 | LVGL | 5 | 8KB | `lv_timer_handler()` 循环，`esp_timer` 驱动 1ms tick |
 | Input | 3 | 6KB | 从 FreeRTOS 队列读取编码器/按键事件，通过 `ui_dispatch_*` 分发到 UI |
-| Service | 2 | 6KB | 100ms 循环：`time_service_tick()`、`ble_service_tick()`、buddy 动画 tick (500ms) |
+| Service | 2 | 6KB | 100ms 循环：`time_service_tick()`、buddy 动画 tick (500ms)（BLE 已禁用） |
 | UIUpdate | 1 | 4KB | 100ms 循环：每 1s 驱动番茄钟引擎，更新主界面时间，刷新 WiFi 列表，更新 Buddy 界面 |
 
 ## 初始化顺序（`app_main`）
@@ -72,7 +74,7 @@ main/
 3. LVGL + UI 界面
 4. 业务模块：pomodoro_engine → buddy
 5. 输入处理：input_handler
-6. 网络服务：wifi_service → ble_service → time_service
+6. 网络服务：wifi_service → time_service（BLE 已禁用）
 7. 注册回调（WiFi/BLE/Buddy）
 8. 创建 4 个任务
 
@@ -94,14 +96,16 @@ SETTINGS_POMODORO ← SETTINGS → WIFI_LIST → PASSWORD_INPUT
 - **service/wifi_service**：WiFi STA（扫描、连接、状态回调，无 HTTP/NTP）
 - **service/time_service**：统一 NTP 同步，时区（POSIX TZ 字符串），自动重同步
 - **service/storage_service**：NVS 封装，4 个命名空间：`wifi`、`pomodoro`、`settings`、`buddy`
-- **service/ble_service**：BLE GATT Server (Nordic UART Service)，解析 JSON 心跳，发送权限决策
+- **service/ble_service**：BLE GATT Server (Nordic UART Service)，解析 JSON 心跳，发送权限决策（**当前已禁用，未编译**）
 - **buddy/**：ASCII 宠物状态机，BLE 驱动状态转换，WS2812 LED 反馈，NVS 持久化统计
 - **pomodoro/**：番茄钟状态机（IDLE/WORK/BREAK/LONG_BREAK/PAUSED），每秒 tick，NVS 持久化
 - **ui/**：界面管理器 + 7 个界面。`ui_manager` 负责调度，每个 `ui_screen_*.c` 自包含
 
 ## 线程安全
 
-LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()` 包裹（FreeRTOS 互斥量）。LVGL 任务本身不需要加锁。
+LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()` 包裹（FreeRTOS 递归互斥量）。**LVGL 任务自身在调用 `lv_timer_handler()` 时也必须持锁**，否则会与其他任务的 LVGL 调用产生竞态。
+
+互斥量必须使用递归类型（`xSemaphoreCreateRecursiveMutex`），因为输入回调可能在持锁期间再次触发需要锁的操作。
 
 ## 代码规范
 
@@ -139,3 +143,39 @@ LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()
 - 设置项（亮度、对比度、语言）未持久化到 NVS
 - WiFi 断开后无自动重连
 - BLE 心跳超时检测尚未实现（`ble_service_tick()` 为空操作）
+
+## 踩坑记录
+
+### BLE 内存不足（ESP32-C3）
+
+ESP32-C3 只有约 400KB 可用 RAM，Bluedroid BLE 协议栈初始化时 `BTU_StartUp` 会申请大块连续内存导致 OOM。**BLE 当前已禁用**（`CMakeLists.txt` 中已移除 `ble_service.c`，`sdkconfig` 中 `CONFIG_BT_ENABLED` 已注释）。未来如需重新启用 BLE，应迁移到 NimBLE（更轻量的 BLE 协议栈）。
+
+### LVGL 递归互斥量
+
+不能用普通 `xSemaphoreCreateMutex()`。输入回调（encoder press → UI 回调 → `ui_switch_screen` → `lv_scr_load`）可能在已持锁的上下文中再次请求锁。必须用 `xSemaphoreCreateRecursiveMutex()` + `xSemaphoreTakeRecursive` / `xSemaphoreGiveRecursive`。
+
+### LVGL 任务竞态
+
+LVGL 任务循环中 `lv_timer_handler()` 会触发屏幕刷新和动画计算，如果此时其他任务也在调用 LVGL API，会产生竞态崩溃。LVGL 任务自身也必须在 `lv_timer_handler()` 前后加锁。
+
+### SNTP 初始化
+
+`esp_sntp_setoperatingmode()` + `esp_sntp_setservername()` 不会自动启动 SNTP，必须显式调用 `esp_sntp_init()` 才会开始时间同步。
+
+### ESP-IDF v5.5.4 API 变更
+
+- `ESP_GATT_UUID_PRIMARY_SERVICE` → `ESP_GATT_UUID_PRI_SERVICE`
+- `esp_read_mac()` 需要 `#include "esp_mac.h"`
+- `BT_BLUEDROID_INIT_DEFAULT_CONFIG` 宏已移除，需要手动初始化 `esp_bluedroid_init_cfg_t` 结构体
+
+### NVS 分区损坏
+
+烧录后首次启动如果 NVS 分区数据无效会报 `ESP_ERR_NVS_NO_FREE_PAGES`，需要 `idf.py erase-flash` 全片擦除后重新烧录。
+
+### 设置界面状态泄漏
+
+从设置界面跳转到 WiFi 列表或番茄钟设置子界面时，如果设置界面处于 SELECT/ADJUST 模式，返回后状态不会自动恢复。跳转前必须将 settings_mode 重置为 IDLE。
+
+### ui_switch_screen 不清回调
+
+`ui_switch_screen()` 只切换屏幕，**不要** `memset` 清空回调表。每个界面的回调在创建时注册一次，全局有效。

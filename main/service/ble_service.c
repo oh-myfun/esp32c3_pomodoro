@@ -1,6 +1,7 @@
 #include "ble_service.h"
 
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
@@ -19,11 +20,14 @@ static const char *TAG = "BLE";
 #define NUS_RX_CHAR_UUID       "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 #define NUS_TX_CHAR_UUID       "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
-// GATT IDs
-#define GATTS_SERVICE_IDX       0
-#define GATTS_RX_CHAR_IDX       1
-#define GATTS_TX_CHAR_IDX       2
-#define GATTS_NUM_HANDLES       6  // service(1) + RX decl(1) + RX val(1) + TX decl(1) + TX val(1) + TX cccd(1)
+// GATT attribute table indices (sequential)
+#define GATTS_ATTR_SERVICE_DECL  0  // Service declaration
+#define GATTS_ATTR_RX_DECL       1  // RX characteristic declaration
+#define GATTS_ATTR_RX_VAL        2  // RX characteristic value
+#define GATTS_ATTR_TX_DECL       3  // TX characteristic declaration
+#define GATTS_ATTR_TX_VAL        4  // TX characteristic value
+#define GATTS_ATTR_TX_CCCD       5  // TX client characteristic configuration descriptor
+#define GATTS_NUM_HANDLES        6
 
 #define LINE_BUF_SIZE           512
 #define DEVICE_NAME_PREFIX      "Claude-Buddy-"
@@ -312,14 +316,14 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t if_val
             esp_ble_gatts_create_attr_tab(
                 (esp_gatts_attr_db_t[]) {
                     // Service declaration
-                    [GATTS_SERVICE_IDX] = {
+                    [GATTS_ATTR_SERVICE_DECL] = {
                         {ESP_GATT_AUTO_RSP},
-                        {ESP_UUID_LEN_16, (uint8_t *)&(uint16_t){ESP_GATT_UUID_PRIMARY_SERVICE},
+                        {ESP_UUID_LEN_16, (uint8_t *)&(uint16_t){ESP_GATT_UUID_PRI_SERVICE},
                          ESP_GATT_PERM_READ, sizeof(uint16_t), sizeof(nus_service_uuid),
                          (uint8_t *)nus_service_uuid}
                     },
                     // RX characteristic declaration
-                    [GATTS_RX_CHAR_IDX] = {
+                    [GATTS_ATTR_RX_DECL] = {
                         {ESP_GATT_AUTO_RSP},
                         {ESP_UUID_LEN_16, (uint8_t *)&(uint16_t){ESP_GATT_UUID_CHAR_DECLARE},
                          ESP_GATT_PERM_READ, sizeof(uint8_t), 1,
@@ -328,13 +332,13 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t if_val
                          }}
                     },
                     // RX characteristic value
-                    {
+                    [GATTS_ATTR_RX_VAL] = {
                         {ESP_GATT_AUTO_RSP},
                         {ESP_UUID_LEN_128, (uint8_t *)nus_rx_char_uuid,
                          ESP_GATT_PERM_WRITE, LINE_BUF_SIZE, 0, NULL}
                     },
                     // TX characteristic declaration
-                    [GATTS_TX_CHAR_IDX - 1] = {
+                    [GATTS_ATTR_TX_DECL] = {
                         {ESP_GATT_AUTO_RSP},
                         {ESP_UUID_LEN_16, (uint8_t *)&(uint16_t){ESP_GATT_UUID_CHAR_DECLARE},
                          ESP_GATT_PERM_READ, sizeof(uint8_t), 1,
@@ -343,13 +347,13 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t if_val
                          }}
                     },
                     // TX characteristic value
-                    {
+                    [GATTS_ATTR_TX_VAL] = {
                         {ESP_GATT_AUTO_RSP},
                         {ESP_UUID_LEN_128, (uint8_t *)nus_tx_char_uuid,
                          0, 0, 0, NULL}
                     },
                     // TX client characteristic configuration descriptor (CCCD)
-                    {
+                    [GATTS_ATTR_TX_CCCD] = {
                         {ESP_GATT_AUTO_RSP},
                         {ESP_UUID_LEN_16, (uint8_t *)&(uint16_t){ESP_GATT_UUID_CHAR_CLIENT_CONFIG},
                          ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
@@ -368,7 +372,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t if_val
                 break;
             }
             if (param->add_attr_tab.svc_uuid.len == ESP_UUID_LEN_16 &&
-                param->add_attr_tab.svc_uuid.uuid.uuid16 == ESP_GATT_UUID_PRIMARY_SERVICE) {
+                param->add_attr_tab.svc_uuid.uuid.uuid16 == ESP_GATT_UUID_PRI_SERVICE) {
                 // Extract handles from the created table
                 // The handles are assigned sequentially
                 rx_handle = param->add_attr_tab.handles[2];   // RX value
@@ -498,7 +502,6 @@ int ble_service_init(void)
 
     // Initialize Bluetooth controller
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    bt_cfg.mode = ESP_BT_MODE_BLE;
 
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret != ESP_OK) {
@@ -513,7 +516,11 @@ int ble_service_init(void)
     }
 
     // Initialize Bluedroid stack
-    ret = esp_bluedroid_init();
+    esp_bluedroid_config_t bluedroid_cfg = {
+        .ssp_en = true,
+        .sc_en = false,
+    };
+    ret = esp_bluedroid_init_with_cfg(&bluedroid_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Bluedroid init failed: %s", esp_err_to_name(ret));
         return -1;

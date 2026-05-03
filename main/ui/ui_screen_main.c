@@ -1,5 +1,7 @@
 #include "ui_screen_main.h"
 #include "ui_manager.h"
+#include "service/time_service.h"
+#include "service/wifi_service.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -13,6 +15,12 @@ static void main_on_encoder_cw(void)
 static void main_on_encoder_ccw(void)
 {
     ui_switch_screen(UI_SCREEN_SETTINGS);
+}
+
+static void main_on_settings_press(void)
+{
+    time_service_request_sync();
+    ESP_LOGI(TAG, "Manual time sync triggered");
 }
 
 static lv_obj_t *time_label = NULL;
@@ -60,13 +68,14 @@ lv_obj_t* ui_screen_main_create(void)
 
     lv_obj_t *hint = lv_label_create(screen);
     lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint, "Rotate: nav | SET: adjust");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
+    lv_label_set_text(hint, "SET:sync");
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = main_on_encoder_cw,
         .on_encoder_ccw = main_on_encoder_ccw,
+        .on_settings_press = main_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_MAIN, &cbs);
 

@@ -1,4 +1,5 @@
 #include "input_handler.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -20,6 +21,7 @@ static QueueHandle_t g_event_queue = NULL;
 static knob_handle_t g_knob = NULL;
 static button_handle_t g_encoder_btn = NULL;
 static button_handle_t g_settings_btn = NULL;
+static bool g_reverse_encoder = false;
 
 static void knob_cb(void *arg, void *data)
 {
@@ -141,10 +143,12 @@ void input_handler_task(void *arg)
             lvgl_lock();
             switch (event) {
                 case INPUT_EVENT_ENCODER_CW:
-                    ui_dispatch_encoder_cw();
+                    if (g_reverse_encoder) ui_dispatch_encoder_ccw();
+                    else ui_dispatch_encoder_cw();
                     break;
                 case INPUT_EVENT_ENCODER_CCW:
-                    ui_dispatch_encoder_ccw();
+                    if (g_reverse_encoder) ui_dispatch_encoder_cw();
+                    else ui_dispatch_encoder_ccw();
                     break;
                 case INPUT_EVENT_ENCODER_PRESS:
                     ui_dispatch_encoder_press();
@@ -163,4 +167,15 @@ void input_handler_task(void *arg)
 
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+}
+
+void input_handler_set_reverse(bool reverse)
+{
+    g_reverse_encoder = reverse;
+    ESP_LOGI(TAG, "Encoder reverse: %s", reverse ? "on" : "off");
+}
+
+bool input_handler_get_reverse(void)
+{
+    return g_reverse_encoder;
 }

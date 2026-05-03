@@ -14,7 +14,10 @@ typedef enum {
 
 static pomo_edit_mode_t pomo_mode = POMO_MODE_NAV;
 static int pomo_selected_item = 0;
-static const int POMO_ITEM_COUNT = 4;
+static const int POMO_ITEM_COUNT = 5;
+static bool reset_confirmed = false;
+
+static void update_display(void);
 
 static void pomo_set_on_encoder_cw(void)
 {
@@ -84,30 +87,35 @@ static void pomo_set_on_encoder_ccw(void)
 
 static void pomo_set_on_encoder_press(void)
 {
-    if (pomo_mode == POMO_MODE_NAV) {
-        /* Enter adjust mode for the selected item */
-        pomo_mode = POMO_MODE_ADJUST;
-        ESP_LOGI(TAG, "Entering adjust mode for item %d", pomo_selected_item);
-    } else {
-        /* Exit adjust mode, save settings */
+    if (pomo_mode == POMO_MODE_ADJUST) {
         pomo_mode = POMO_MODE_NAV;
-        pomodoro_engine_save_state();
-        ESP_LOGI(TAG, "Saved pomodoro settings");
+        pomodoro_engine_load_state();
+        update_display();
+    } else {
+        ui_switch_screen(UI_SCREEN_SETTINGS);
     }
-    update_display();
 }
 
 static void pomo_set_on_settings_press(void)
 {
-    if (pomo_mode == POMO_MODE_ADJUST) {
-        /* Save and go back to nav */
+    if (pomo_mode == POMO_MODE_NAV) {
+        if (pomo_selected_item == 4) {  // Reset
+            if (reset_confirmed) {
+                pomodoro_engine_reset();
+                reset_confirmed = false;
+                ESP_LOGI(TAG, "Pomodoro statistics reset");
+            } else {
+                reset_confirmed = true;
+            }
+            update_display();
+        } else {
+            pomo_mode = POMO_MODE_ADJUST;
+            update_display();
+        }
+    } else {
         pomo_mode = POMO_MODE_NAV;
         pomodoro_engine_save_state();
-        ESP_LOGI(TAG, "Saved pomodoro settings (settings press)");
         update_display();
-    } else {
-        /* Go back to settings screen */
-        ui_switch_screen(UI_SCREEN_SETTINGS);
     }
 }
 
@@ -127,14 +135,16 @@ static void pomo_set_on_encoder_long_press(void)
 
 static lv_obj_t *screen = NULL;
 static lv_obj_t *pomodoro_list = NULL;
+static lv_obj_t *hint_label = NULL;
 
-static char item_keys[4][20];
-static char item_values[4][10];
-static ui_list_item_t items[4];
+static char item_keys[5][20];
+static char item_values[5][12];
+static ui_list_item_t items[5];
 
-void update_display(void)
+static void update_display(void)
 {
     pomodoro_settings_t settings = pomodoro_engine_get_settings();
+    pomodoro_state_t state = pomodoro_engine_get_state();
 
     snprintf(item_keys[0], sizeof(item_keys[0]), "Work");
     snprintf(item_values[0], sizeof(item_values[0]), "%d min", settings.work_minutes);
@@ -148,19 +158,37 @@ void update_display(void)
     snprintf(item_keys[3], sizeof(item_keys[3]), "Cycles");
     snprintf(item_values[3], sizeof(item_values[3]), "%d", settings.cycles_until_long_break);
 
-    for (int i = 0; i < 4; i++) {
+    snprintf(item_keys[4], sizeof(item_keys[4]), "Reset");
+    snprintf(item_values[4], sizeof(item_values[4]), "%lu done", state.completed_count);
+
+    for (int i = 0; i < 5; i++) {
         items[i].key = item_keys[i];
         items[i].value = item_values[i];
     }
 
     if (pomodoro_list) {
-        ui_list_set_items(pomodoro_list, items, 4);
-        /* Highlight the selected item when in adjust mode */
         if (pomo_mode == POMO_MODE_ADJUST) {
-            ui_list_set_selected(pomodoro_list, pomo_selected_item);
+            ui_list_set_selected_color(pomodoro_list, lv_color_hex(0xFFFF00));
         } else {
-            ui_list_set_selected(pomodoro_list, pomo_selected_item);
+            ui_list_set_selected_color(pomodoro_list, lv_color_hex(0x00FF00));
         }
+        ui_list_set_items(pomodoro_list, items, 5);
+        ui_list_set_selected(pomodoro_list, pomo_selected_item);
+    }
+
+    if (hint_label) {
+        if (pomo_selected_item == 4 && reset_confirmed) {
+            lv_label_set_text(hint_label, "SET:confirm reset");
+        } else if (pomo_mode == POMO_MODE_ADJUST) {
+            lv_label_set_text(hint_label, "SET:save|Press:cancel");
+        } else {
+            lv_label_set_text(hint_label, "SET:edit|Press:back");
+        }
+    }
+
+    /* Reset confirmation is per-interaction, clear on nav away */
+    if (pomo_selected_item != 4) {
+        reset_confirmed = false;
     }
 }
 
@@ -182,11 +210,11 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
     pomo_selected_item = 0;
     update_display();
 
-    lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint, "Nav: rotate | Press: edit");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_16, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+    hint_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_label_set_text(hint_label, "SET:edit|Press:back");
+    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = pomo_set_on_encoder_cw,

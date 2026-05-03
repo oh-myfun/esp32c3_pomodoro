@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/netdb.h"
-#include "storage_service.h"
+#include "service/storage_service.h"
 #include <string.h>
 #include <sys/time.h>
 
@@ -61,6 +61,8 @@ void time_service_init(void)
         ESP_LOGI(TAG, "Loaded saved time: %llu", saved_time);
         synced = true;
     }
+
+    esp_sntp_init();
 
     ESP_LOGI(TAG, "Time service initialized: TZ=CST-%d, NTP=%s", tz_hours, ntp_server);
 }
@@ -199,32 +201,9 @@ char* time_service_format_date(char *buffer, size_t len, const char *format)
 
 void time_service_request_sync(void)
 {
-    if (synced) {
-        ESP_LOGI(TAG, "Already synced, skipping NTP request");
-        return;
-    }
-
-    ESP_LOGI(TAG, "Requesting NTP sync with %d servers", (int)NTP_SERVER_COUNT);
-    for (int i = 0; i < NTP_SERVER_COUNT; i++) {
-        esp_sntp_setservername(i, ntp_servers[i]);
-    }
-    esp_sntp_restart();
+    ESP_LOGI(TAG, "Requesting NTP sync (was%s synced)", synced ? "" : " not");
     synced = false;
-
-    int retry = 0;
-    while (retry < 5) {
-        if (synced) {
-            time_t now = time(NULL);
-            storage_save_time((uint64_t)now);
-            last_sync_time = now;
-            ESP_LOGI(TAG, "NTP sync success, time saved: %llu", (uint64_t)now);
-            return;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        retry++;
-    }
-
-    ESP_LOGW(TAG, "NTP sync request failed");
+    esp_sntp_restart();
 }
 
 void time_service_tick(void)

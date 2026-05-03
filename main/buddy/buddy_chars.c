@@ -256,10 +256,6 @@ static const char *const cat_heart[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
     },
 };
 
-static const char *const (*cat_frames[BUDDY_STATE_COUNT])[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
-    cat_sleep, cat_idle, cat_busy, cat_attention, cat_celebrate, cat_dizzy, cat_heart,
-};
-
 /* ============================================================
  * Duck  —  round body, flat beak
  * ============================================================ */
@@ -507,10 +503,6 @@ static const char *const duck_heart[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
         "                  ",
         "                  ",
     },
-};
-
-static const char *const (*duck_frames[BUDDY_STATE_COUNT])[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
-    duck_sleep, duck_idle, duck_busy, duck_attention, duck_celebrate, duck_dizzy, duck_heart,
 };
 
 /* ============================================================
@@ -762,10 +754,6 @@ static const char *const penguin_heart[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
     },
 };
 
-static const char *const (*penguin_frames[BUDDY_STATE_COUNT])[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
-    penguin_sleep, penguin_idle, penguin_busy, penguin_attention, penguin_celebrate, penguin_dizzy, penguin_heart,
-};
-
 /* ============================================================
  * Robot  —  boxy head, antenna, panel body
  * ============================================================ */
@@ -1015,10 +1003,6 @@ static const char *const robot_heart[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
     },
 };
 
-static const char *const (*robot_frames[BUDDY_STATE_COUNT])[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES] = {
-    robot_sleep, robot_idle, robot_busy, robot_attention, robot_celebrate, robot_dizzy, robot_heart,
-};
-
 /* ============================================================
  * Species registry
  * ============================================================ */
@@ -1027,25 +1011,25 @@ const buddy_species_t BUDDY_SPECIES[] = {
     {
         .name = "Cat",
         .personality = "Curious and playful",
-        .frames = (const char *const (*)[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES])cat_frames,
+        .state_frames = { &cat_sleep, &cat_idle, &cat_busy, &cat_attention, &cat_celebrate, &cat_dizzy, &cat_heart },
         .frame_count = { 2, 2, 2, 2, 3, 3, 2 },
     },
     {
         .name = "Duck",
         .personality = "Cheerful and waddly",
-        .frames = (const char *const (*)[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES])duck_frames,
+        .state_frames = { &duck_sleep, &duck_idle, &duck_busy, &duck_attention, &duck_celebrate, &duck_dizzy, &duck_heart },
         .frame_count = { 2, 2, 2, 2, 3, 3, 2 },
     },
     {
         .name = "Penguin",
         .personality = "Cool and collected",
-        .frames = (const char *const (*)[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES])penguin_frames,
+        .state_frames = { &penguin_sleep, &penguin_idle, &penguin_busy, &penguin_attention, &penguin_celebrate, &penguin_dizzy, &penguin_heart },
         .frame_count = { 2, 2, 2, 2, 3, 3, 2 },
     },
     {
         .name = "Robot",
         .personality = "Logical and helpful",
-        .frames = (const char *const (*)[MAX_ANIM_FRAMES][BUDDY_FRAME_LINES])robot_frames,
+        .state_frames = { &robot_sleep, &robot_idle, &robot_busy, &robot_attention, &robot_celebrate, &robot_dizzy, &robot_heart },
         .frame_count = { 2, 2, 2, 2, 3, 3, 2 },
     },
 };

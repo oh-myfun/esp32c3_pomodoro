@@ -6,7 +6,9 @@
 #include "ui_screen_settings_pomodoro.h"
 #include "ui_screen_buddy.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include <string.h>
 
 static const char *TAG = "UI";
 
@@ -18,20 +20,20 @@ static SemaphoreHandle_t lvgl_mutex = NULL;
 
 static void lvgl_lock_init(void)
 {
-    lvgl_mutex = xSemaphoreCreateMutex();
+    lvgl_mutex = xSemaphoreCreateRecursiveMutex();
 }
 
 void lvgl_lock(void)
 {
     if (lvgl_mutex) {
-        xSemaphoreTake(lvgl_mutex, portMAX_DELAY);
+        xSemaphoreTakeRecursive(lvgl_mutex, portMAX_DELAY);
     }
 }
 
 void lvgl_unlock(void)
 {
     if (lvgl_mutex) {
-        xSemaphoreGive(lvgl_mutex);
+        xSemaphoreGiveRecursive(lvgl_mutex);
     }
 }
 
@@ -59,8 +61,6 @@ void ui_switch_screen(ui_screen_id_t screen_id)
 {
     if (screen_id >= UI_SCREEN_COUNT) return;
     if (screen_id == current_screen) return;
-
-    memset(&input_callbacks[current_screen], 0, sizeof(ui_input_callbacks_t));
 
     lvgl_lock();
     lv_scr_load(screens[screen_id]);

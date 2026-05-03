@@ -181,7 +181,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 ESP_LOGI(TAG, "WiFi config saved: %s", connected_ssid);
             }
 
-            invoke_on_connected(ip_address);
+            invoke_on_connected();
         }
     }
 }

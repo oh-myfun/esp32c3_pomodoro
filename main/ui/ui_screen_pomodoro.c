@@ -46,26 +46,31 @@ static uint32_t total_seconds = 25 * 60;
 static void update_settings_display(void)
 {
     pomodoro_settings_t settings = pomodoro_engine_get_settings();
+    pomodoro_state_t state = pomodoro_engine_get_state();
     total_seconds = settings.work_minutes * 60;
-    
+
     if (timer_label) {
         char buf[16];
         snprintf(buf, sizeof(buf), "%02d:00", settings.work_minutes);
         lv_label_set_text(timer_label, buf);
     }
-    
+
     if (total_time_label) {
         char buf[20];
         snprintf(buf, sizeof(buf), "/ %02d:00", settings.work_minutes);
         lv_label_set_text(total_time_label, buf);
     }
-    
+
     if (cycle_label) {
-        pomodoro_state_t state = pomodoro_engine_get_state();
-        uint32_t cycle = (state.completed_count / settings.cycles_until_long_break) + 1;
         char buf[20];
-        snprintf(buf, sizeof(buf), "%u/%u", (unsigned int)cycle, settings.cycles_until_long_break);
+        snprintf(buf, sizeof(buf), "%u/%u", (unsigned int)state.current_cycle, settings.cycles_until_long_break);
         lv_label_set_text(cycle_label, buf);
+    }
+
+    if (completed_label) {
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%lu", (unsigned long)state.completed_count);
+        lv_label_set_text(completed_label, buf);
     }
 }
 
@@ -121,9 +126,9 @@ lv_obj_t* ui_screen_pomodoro_create(void)
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "Rotate: nav | SET: start/pause");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_16, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -6);
+    lv_label_set_text(hint_label, "SET:start/pause|Press:stop");
+    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     update_settings_display();
 
@@ -177,13 +182,8 @@ void ui_screen_pomodoro_update_completed(uint32_t count)
     lv_label_set_text(completed_label, buf);
 }
 
-void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed)
+void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, uint32_t completed, uint16_t current_cycle)
 {
-    ui_screen_pomodoro_update_time(remaining_seconds);
-    ui_screen_pomodoro_update_completed(completed);
-    
-    if (phase_label == NULL) return;
-    
     pomodoro_settings_t settings = pomodoro_engine_get_settings();
     uint32_t color;
     const char *phase_text;
@@ -213,19 +213,23 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
             total_seconds = settings.work_minutes * 60;
             break;
     }
-    
+
+    /* Update time display after total_seconds is set */
+    ui_screen_pomodoro_update_time(remaining_seconds);
+    ui_screen_pomodoro_update_completed(completed);
+
+    if (phase_label == NULL) return;
+
     lv_obj_set_style_text_color(phase_label, lv_color_hex(color), 0);
     lv_label_set_text(phase_label, phase_text);
-    
+
     if (cycle_label) {
-        uint32_t cycle = (completed / settings.cycles_until_long_break) + 1;
         char cycle_buf[20];
-        snprintf(cycle_buf, sizeof(cycle_buf), "%u/%u", (unsigned int)cycle, settings.cycles_until_long_break);
+        snprintf(cycle_buf, sizeof(cycle_buf), "%u/%u", (unsigned int)current_cycle, settings.cycles_until_long_break);
         lv_label_set_text(cycle_label, cycle_buf);
     }
-    
+
     if (progress_arc) {
-        lv_arc_set_value(progress_arc, 360);
         lv_obj_set_style_arc_color(progress_arc, lv_color_hex(color), LV_PART_INDICATOR);
     }
 }

@@ -4,4 +4,3 @@
 
 lv_obj_t* ui_screen_settings_pomodoro_create(void);
 void ui_screen_settings_pomodoro_refresh(void);
-void update_display(void);

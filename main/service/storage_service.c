@@ -17,18 +17,18 @@ static const char *TAG = "STORAGE";
 #define KEY_COMPLETED    "completed"
 #define KEY_CURRENT_CYCLE "cycle"
 
-bool storage_save_string(const char *namespace, const char *key, const char *value)
+bool storage_save_string(const char *ns, const char *key, const char *value)
 {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(namespace, NVS_READWRITE, &handle);
+    esp_err_t err = nvs_open(ns, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to open NVS namespace %s", namespace);
+        ESP_LOGW(TAG, "Failed to open NVS namespace %s", ns);
         return false;
     }
 
     err = nvs_set_str(handle, key, value);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to save %s.%s", namespace, key);
+        ESP_LOGW(TAG, "Failed to save %s.%s", ns, key);
         nvs_close(handle);
         return false;
     }
@@ -38,10 +38,10 @@ bool storage_save_string(const char *namespace, const char *key, const char *val
     return err == ESP_OK;
 }
 
-bool storage_load_string(const char *namespace, const char *key, char *value, size_t len)
+bool storage_load_string(const char *ns, const char *key, char *value, size_t len)
 {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(namespace, NVS_READONLY, &handle);
+    esp_err_t err = nvs_open(ns, NVS_READONLY, &handle);
     if (err != ESP_OK) {
         return false;
     }
@@ -51,10 +51,10 @@ bool storage_load_string(const char *namespace, const char *key, char *value, si
     return err == ESP_OK;
 }
 
-bool storage_save_int(const char *namespace, const char *key, int32_t value)
+bool storage_save_int(const char *ns, const char *key, int32_t value)
 {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(namespace, NVS_READWRITE, &handle);
+    esp_err_t err = nvs_open(ns, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         return false;
     }
@@ -70,10 +70,10 @@ bool storage_save_int(const char *namespace, const char *key, int32_t value)
     return err == ESP_OK;
 }
 
-bool storage_load_int(const char *namespace, const char *key, int32_t *value)
+bool storage_load_int(const char *ns, const char *key, int32_t *value)
 {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(namespace, NVS_READONLY, &handle);
+    esp_err_t err = nvs_open(ns, NVS_READONLY, &handle);
     if (err != ESP_OK) {
         return false;
     }
@@ -205,13 +205,13 @@ bool storage_load_time(uint64_t *timestamp)
     return result;
 }
 
-void storage_clear_namespace(const char *namespace)
+void storage_clear_namespace(const char *ns)
 {
     nvs_handle_t handle;
-    if (nvs_open(namespace, NVS_READWRITE, &handle) == ESP_OK) {
+    if (nvs_open(ns, NVS_READWRITE, &handle) == ESP_OK) {
         nvs_erase_all(handle);
         nvs_commit(handle);
         nvs_close(handle);
-        ESP_LOGI(TAG, "Namespace %s cleared", namespace);
+        ESP_LOGI(TAG, "Namespace %s cleared", ns);
     }
 }

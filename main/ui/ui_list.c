@@ -19,6 +19,7 @@ typedef struct {
     lv_obj_t **value_labels;
     lv_obj_t *scrollbar;
     ui_list_item_cb_t click_callback;
+    lv_color_t selected_color;
 } ui_list_data_t;
 
 static void update_display(lv_obj_t *list);
@@ -88,8 +89,8 @@ static void update_display(lv_obj_t *list)
             lv_label_set_text(data->value_labels[i], data->items[idx].value);
             
             if (idx == data->selected) {
-                lv_obj_set_style_text_color(data->key_labels[i], lv_color_hex(0x00FF00), 0);
-                lv_obj_set_style_text_color(data->value_labels[i], lv_color_hex(0x00FF00), 0);
+                lv_obj_set_style_text_color(data->key_labels[i], data->selected_color, 0);
+                lv_obj_set_style_text_color(data->value_labels[i], data->selected_color, 0);
             } else {
                 lv_obj_set_style_text_color(data->key_labels[i], lv_color_hex(0xFFFFFF), 0);
                 lv_obj_set_style_text_color(data->value_labels[i], lv_color_hex(0xAAAAAA), 0);
@@ -152,6 +153,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     data->list_y = y;
     data->visible_count = height / ITEM_HEIGHT;
     data->click_callback = NULL;
+    data->selected_color = lv_color_hex(0x00FF00);
     lv_obj_set_user_data(list, data);
     
     data->key_labels = (lv_obj_t **)malloc(sizeof(lv_obj_t *) * data->visible_count);
@@ -231,4 +233,12 @@ void ui_list_set_click_callback(lv_obj_t *list, ui_list_item_cb_t callback)
     ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     data->click_callback = callback;
+}
+
+void ui_list_set_selected_color(lv_obj_t *list, lv_color_t color)
+{
+    ui_list_data_t *data = get_list_data(list);
+    if (!data) return;
+    data->selected_color = color;
+    update_display(list);
 }

@@ -272,7 +272,7 @@ void buddy_tick(void)
 const char *const *buddy_get_current_frame(void)
 {
     const buddy_species_t *sp = &BUDDY_SPECIES[s_species];
-    return sp->frames[s_state][s_frame_idx];
+    return (*sp->state_frames[s_state])[s_frame_idx];
 }
 
 /* ---- persistence ---- */
