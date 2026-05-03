@@ -26,6 +26,7 @@
 // #include "service/ble_service.h"  // BLE disabled
 #include "pomodoro/pomodoro_engine.h"
 #include "buddy/buddy.h"
+#include "service/sound_service.h"
 
 static const char *TAG = "MAIN";
 
@@ -123,6 +124,7 @@ static int64_t wifi_fail_time = 0;  // Timestamp of last connect failure
 static void on_wifi_connected(const char *ip) {
     ESP_LOGI(TAG, "WiFi connected, IP: %s", ip ? ip : "null");
     wifi_fail_time = 0;
+    sound_service_play(SOUND_WIFI_CONNECTED);
     time_service_request_sync();
     // Status will be updated by ui_update_task polling
 }
@@ -139,6 +141,7 @@ static void on_wifi_scan_complete(int count) {
 static void on_wifi_connect_failed(void) {
     ESP_LOGI(TAG, "WiFi connect failed");
     wifi_fail_time = esp_timer_get_time() / 1000;
+    sound_service_play(SOUND_WIFI_FAILED);
 }
 
 // BLE callbacks disabled
@@ -192,8 +195,23 @@ static void ui_update_task(void *arg) {
 
         // Pomodoro tick every 1 second
         if (now - last_pomodoro_tick >= 1000) {
+            pomodoro_state_t prev = pomodoro_engine_get_state();
             pomodoro_engine_tick();
             pomodoro_state_t state = pomodoro_engine_get_state();
+
+            if (state.phase != prev.phase) {
+                if (prev.phase == POMODORO_PHASE_WORK) {
+                    if (state.phase == POMODORO_PHASE_LONG_BREAK) {
+                        sound_service_play(SOUND_POMO_LONG_BREAK);
+                    } else if (state.phase == POMODORO_PHASE_BREAK) {
+                        sound_service_play(SOUND_POMO_WORK_DONE);
+                    }
+                } else if (state.phase == POMODORO_PHASE_WORK &&
+                           (prev.phase == POMODORO_PHASE_BREAK || prev.phase == POMODORO_PHASE_LONG_BREAK)) {
+                    sound_service_play(SOUND_POMO_BREAK_DONE);
+                }
+            }
+
             lvgl_lock();
             ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count, state.current_cycle);
             lvgl_unlock();
@@ -283,22 +301,22 @@ void app_main(void) {
     st7789_lcd_init();
     if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
 
-    // 3. LVGL + UI (depends on LCD)
+    // 3. LVGL + display (depends on LCD)
     lvgl_init();
+
+    // 4. Network services (before UI so timezone is available)
+    if (wifi_service_init() != 0) ESP_LOGW(TAG, "WiFi service init failed, continuing");
+    time_service_init();
+
+    // 5. UI (depends on LVGL + time_service for timezone display)
     ui_init();
 
-    // 4. Business modules (non-fatal)
+    // 6. Business modules (non-fatal)
     pomodoro_engine_init();
     if (buddy_init() != 0) ESP_LOGW(TAG, "Buddy init failed, continuing");
 
-    // 5. Input (non-fatal)
+    // 7. Input (non-fatal)
     input_handler_init();
-
-    // 6. Network services (non-fatal)
-    if (wifi_service_init() != 0) ESP_LOGW(TAG, "WiFi service init failed, continuing");
-
-    // 7. Time service (after WiFi init which initializes TCP/IP stack)
-    time_service_init();
 
     // 8. Register callbacks (wiring)
     static const wifi_callbacks_t wifi_cbs = {
@@ -321,6 +339,8 @@ void app_main(void) {
         .on_state_changed = on_buddy_state_changed,
     };
     buddy_register_callbacks(&buddy_cbs);
+
+    sound_service_init();
 
     // 9. Create tasks
     xTaskCreate(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL);

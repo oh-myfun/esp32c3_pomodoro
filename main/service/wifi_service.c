@@ -133,22 +133,21 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 {
                     bool was_connecting = (current_state == WIFI_STATE_CONNECTING);
                     current_state = WIFI_STATE_DISCONNECTED;
-                    connected_ssid[0] = '\0';
                     ip_address[0] = '\0';
 
                     if (was_connecting) {
-                        invoke_on_connect_failed();
-                    }
+                        // Expected disconnect during manual connect — don't clear ssid or reconnect
+                    } else {
+                        connected_ssid[0] = '\0';
+                        invoke_on_disconnected();
 
-                    invoke_on_disconnected();
-
-                    // Auto-reconnect only if not actively connecting to a new network
-                    if (!user_initiated_disconnect) {
-                        if (saved_count > 0 && !auto_connect_pending) {
-                            auto_connect_pending = true;
-                            wifi_service_scan();
-                        } else if (saved_count == 0) {
-                            start_reconnect_timer();
+                        if (!user_initiated_disconnect) {
+                            if (saved_count > 0 && !auto_connect_pending) {
+                                auto_connect_pending = true;
+                                wifi_service_scan();
+                            } else if (saved_count == 0) {
+                                start_reconnect_timer();
+                            }
                         }
                     }
                 }
@@ -196,7 +195,15 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                             for (int i = 0; i < saved_count; i++) {
                                 if (strcmp(saved_profiles[i].ssid, ssid) == 0) {
                                     ESP_LOGI(TAG, "Auto-connecting to saved network: %s (rssi %d)", ssid, best_rssi);
-                                    wifi_service_connect(ssid, saved_profiles[i].password);
+                                    // Direct connect — we're already disconnected, no need for disconnect+delay
+                                    wifi_config_t wifi_config = {0};
+                                    strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
+                                    strncpy((char*)wifi_config.sta.password, saved_profiles[i].password, sizeof(wifi_config.sta.password) - 1);
+                                    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+                                    current_state = WIFI_STATE_CONNECTING;
+                                    strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
+                                    ip_address[0] = '\0';
+                                    esp_wifi_connect();
                                     break;
                                 }
                             }
@@ -212,7 +219,15 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
             snprintf(ip_address, sizeof(ip_address), IPSTR, IP2STR(&event->ip_info.ip));
             current_state = WIFI_STATE_CONNECTED;
-            ESP_LOGI(TAG, "Got IP: %s", ip_address);
+
+            // Recover connected_ssid from wifi config as safety net
+            wifi_config_t cfg;
+            esp_wifi_get_config(WIFI_IF_STA, &cfg);
+            if (strlen((char*)cfg.sta.ssid) > 0) {
+                strncpy(connected_ssid, (char*)cfg.sta.ssid, sizeof(connected_ssid) - 1);
+            }
+
+            ESP_LOGI(TAG, "Got IP: %s (ssid: %s)", ip_address, connected_ssid);
 
             // Reset reconnect backoff on successful connection
             reset_reconnect_delay();
@@ -220,8 +235,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             // Save WiFi credentials to profile storage
             if (strlen(connected_ssid) > 0) {
                 char password[65] = {0};
-                wifi_config_t cfg;
-                esp_wifi_get_config(WIFI_IF_STA, &cfg);
                 strncpy(password, (char*)cfg.sta.password, sizeof(password) - 1);
                 storage_add_wifi_profile(connected_ssid, password);
                 wifi_service_load_profiles();
@@ -355,6 +368,11 @@ void wifi_service_connect(const char *ssid, const char *password)
     stop_reconnect_timer();
     reset_reconnect_delay();
 
+    // Set state BEFORE disconnect so DISCONNECT handler knows we're connecting
+    current_state = WIFI_STATE_CONNECTING;
+    strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
+    ip_address[0] = '\0';
+
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(100));
 
@@ -363,11 +381,6 @@ void wifi_service_connect(const char *ssid, const char *password)
     strncpy((char*)wifi_config.sta.password, password, sizeof(wifi_config.sta.password) - 1);
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-
-    current_state = WIFI_STATE_CONNECTING;
-    strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
-    ip_address[0] = '\0';
-
     ESP_ERROR_CHECK(esp_wifi_connect());
     ESP_LOGI(TAG, "Connecting to: %s", ssid);
 }

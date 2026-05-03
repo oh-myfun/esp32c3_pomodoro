@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include "lwip/netdb.h"
 #include "service/storage_service.h"
+#include "service/sound_service.h"
 #include <string.h>
 #include <sys/time.h>
 
@@ -34,6 +35,7 @@ static void time_sync_notification(struct timeval *tv)
     time_t now = time(NULL);
     storage_save_time((uint64_t)now);
     last_sync_time = now;
+    sound_service_play(SOUND_SYNC_DONE);
 }
 
 void time_service_init(void)
@@ -53,7 +55,7 @@ void time_service_init(void)
     sync_interval = (uint16_t)stored_interval;
 
     char tz_buffer[32];
-    snprintf(tz_buffer, sizeof(tz_buffer), "CST-%d", tz_hours);
+    snprintf(tz_buffer, sizeof(tz_buffer), "CST%d", -(int)tz_hours);
     setenv("TZ", tz_buffer, 1);
     tzset();
 
@@ -117,7 +119,7 @@ void time_service_set_timezone(int8_t hours, int8_t minutes)
     tz_minutes = minutes;
     
     char tz_buffer[32];
-    snprintf(tz_buffer, sizeof(tz_buffer), "CST%+d", hours);
+    snprintf(tz_buffer, sizeof(tz_buffer), "CST%d", -(int)hours);
     setenv("TZ", tz_buffer, 1);
     tzset();
     
@@ -224,6 +226,7 @@ void time_service_tick(void)
     if (elapsed >= (double)sync_interval * 60.0) {
         ESP_LOGI(TAG, "Auto re-sync triggered (interval=%d min, elapsed=%.0f s)",
                  sync_interval, elapsed);
+        last_sync_time = now;
         time_service_request_sync();
     }
 }

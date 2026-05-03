@@ -1,6 +1,7 @@
 #include "buddy.h"
 #include "driver/ws2812.h"
 #include "service/storage_service.h"
+#include "service/sound_service.h"
 #include "esp_log.h"
 #include <string.h>
 
@@ -57,6 +58,10 @@ static void set_state(buddy_state_t new_state)
 
     if (s_cbs.on_state_changed) {
         s_cbs.on_state_changed(new_state);
+    }
+
+    if (new_state == BUDDY_ATTENTION) {
+        sound_service_play(SOUND_BUDDY_ATTENTION);
     }
 }
 
@@ -163,6 +168,7 @@ void buddy_approve(void)
     buddy_save_stats();
     ESP_LOGI(TAG, "approved  total=%lu", (unsigned long)s_approved);
     set_state(BUDDY_CELEBRATE);
+    sound_service_play(SOUND_BUDDY_HAPPY);
 }
 
 void buddy_deny(void)
@@ -175,6 +181,7 @@ void buddy_deny(void)
     buddy_save_stats();
     ESP_LOGI(TAG, "denied  total=%lu", (unsigned long)s_denied);
     set_state(BUDDY_IDLE);
+    sound_service_play(SOUND_BUDDY_SAD);
 }
 
 void buddy_trigger_dizzy(void)

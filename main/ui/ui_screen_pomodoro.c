@@ -1,6 +1,7 @@
 #include "ui_screen_pomodoro.h"
 #include "ui_manager.h"
 #include "pomodoro/pomodoro_engine.h"
+#include "service/sound_service.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -26,10 +27,13 @@ static void pomo_on_settings_press(void)
     pomodoro_state_t state = pomodoro_engine_get_state();
     if (state.phase == POMODORO_PHASE_IDLE) {
         pomodoro_engine_start();
+        sound_service_play(SOUND_POMO_START);
     } else if (state.is_paused) {
         pomodoro_engine_resume();
+        sound_service_play(SOUND_CONFIRM);
     } else {
         pomodoro_engine_pause();
+        sound_service_play(SOUND_CONFIRM);
     }
 }
 

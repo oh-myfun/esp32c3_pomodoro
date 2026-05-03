@@ -4,20 +4,21 @@
 #include "service/wifi_service.h"
 #include "service/time_service.h"
 #include "service/storage_service.h"
+#include "service/sound_service.h"
 #include "input/input_handler.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 7
+#define SETTINGS_ITEM_COUNT 9
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
 static lv_obj_t *settings_hint = NULL;
 
 static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
-static int settings_values[SETTINGS_ITEM_COUNT] = {50, 50, 0, 8, 25, 0, 0};
+static int settings_values[SETTINGS_ITEM_COUNT] = {50, 50, 0, 8, 25, 0, 0, 1, 10};
 static int current_settings_item = 0;
 
 static char item_keys[SETTINGS_ITEM_COUNT][16];
@@ -87,7 +88,7 @@ static void settings_on_settings_press(void)
 
 static const char *settings_names[SETTINGS_ITEM_COUNT] = {
     "Brightness", "Contrast", "Language",
-    "Timezone", "Pomodoro", "WiFi", "Direction"
+    "Timezone", "Pomodoro", "WiFi", "Direction", "Sound", "NTP Interval"
 };
 
 static void update_display(void)
@@ -110,6 +111,12 @@ static void update_display(void)
                 break;
             case 6:  // Direction
                 snprintf(item_values[i], sizeof(item_values[i]), "%s", settings_values[i] ? "Rev" : "Normal");
+                break;
+            case 7:  // Sound
+                snprintf(item_values[i], sizeof(item_values[i]), "%s", settings_values[i] ? "On" : "Off");
+                break;
+            case 8:  // NTP Interval
+                snprintf(item_values[i], sizeof(item_values[i]), "%d min", settings_values[i]);
                 break;
             default:
                 snprintf(item_values[i], sizeof(item_values[i]), "%d", settings_values[i]);
@@ -182,6 +189,13 @@ lv_obj_t* ui_screen_settings_create(void)
     storage_load_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", &stored_rev);
     settings_values[6] = stored_rev;
     input_handler_set_reverse(stored_rev != 0);
+
+    int32_t sound_val = 1;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, "sound_on", &sound_val);
+    settings_values[7] = sound_val;
+
+    settings_values[8] = time_service_get_sync_interval();
+
     update_display();
 
     ESP_LOGI(TAG, "Settings screen created");
@@ -286,6 +300,16 @@ void ui_screen_settings_adjust_up(void)
             input_handler_set_reverse(settings_values[current_settings_item]);
             storage_save_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", settings_values[current_settings_item]);
             break;
+        case 7:  // Sound
+            settings_values[current_settings_item] = !settings_values[current_settings_item];
+            sound_service_set_enabled(settings_values[current_settings_item]);
+            break;
+        case 8:  // NTP Interval
+            if (settings_values[current_settings_item] < 60) {
+                settings_values[current_settings_item]++;
+                time_service_set_sync_interval(settings_values[current_settings_item]);
+            }
+            break;
     }
     update_display();
 }
@@ -325,6 +349,16 @@ void ui_screen_settings_adjust_down(void)
             settings_values[current_settings_item] = !settings_values[current_settings_item];
             input_handler_set_reverse(settings_values[current_settings_item]);
             storage_save_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", settings_values[current_settings_item]);
+            break;
+        case 7:  // Sound
+            settings_values[current_settings_item] = !settings_values[current_settings_item];
+            sound_service_set_enabled(settings_values[current_settings_item]);
+            break;
+        case 8:  // NTP Interval
+            if (settings_values[current_settings_item] > 1) {
+                settings_values[current_settings_item]--;
+                time_service_set_sync_interval(settings_values[current_settings_item]);
+            }
             break;
     }
     update_display();

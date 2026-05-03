@@ -8,6 +8,7 @@
 #include "iot_button.h"
 #include "button_gpio.h"
 #include "ui/ui_manager.h"
+#include "service/sound_service.h"
 
 #define ENCODER_A_GPIO   GPIO_NUM_4
 #define ENCODER_B_GPIO  GPIO_NUM_5
@@ -151,12 +152,15 @@ void input_handler_task(void *arg)
                     else ui_dispatch_encoder_ccw();
                     break;
                 case INPUT_EVENT_ENCODER_PRESS:
+                    sound_service_play(SOUND_KEY_CLICK);
                     ui_dispatch_encoder_press();
                     break;
                 case INPUT_EVENT_ENCODER_LONG_PRESS:
+                    sound_service_play(SOUND_KEY_CLICK);
                     ui_dispatch_encoder_long_press();
                     break;
                 case INPUT_EVENT_SETTINGS_PRESS:
+                    sound_service_play(SOUND_KEY_CLICK);
                     ui_dispatch_settings_press();
                     break;
                 default:

@@ -4,7 +4,16 @@
       "mcp__zread__get_repo_structure",
       "mcp__zread__read_file",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git mv *)",
+      "Bash(ls main/time/)",
+      "Bash(rmdir main/time)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"& 'D:/Espressif/Initialize-Idf.ps1' -IdfId esp-idf-19bf15883d5988831b99b02a2227c33e; cd D:/Project/IOT/pomodoro; idf.py build 2>&1\")",
+      "Bash(\"D:/Espressif/tools/ninja/1.12.1/ninja\" -C build)",
+      "Bash(powershell.exe -NoProfile -Command '$env:IDF_PATH=\"D:\\\\Espressif\\\\frameworks\\\\esp-idf-v5.5.4\"; $env:MSYSTEM=\"\"; $env:IDF_PYTHON_ENV_PATH=\"D:\\\\Espressif\\\\python_env\\\\idf5.5_py3.11_env\"; $env:Path = \"D:\\\\Espressif\\\\tools\\\\cmake\\\\3.30.2\\\\bin;D:\\\\Espressif\\\\tools\\\\ninja\\\\1.12.1;D:\\\\Espressif\\\\tools\\\\idf-exe;D:\\\\Espressif\\\\tools\\\\riscv32-esp-elf\\\\esp-14.2.0_20260121\\\\riscv32-esp-elf\\\\bin;\" + $env:Path; & \"D:\\\\Espressif\\\\python_env\\\\idf5.5_py3.11_env\\\\Scripts\\\\python.exe\" \"$env:IDF_PATH\\\\tools\\\\idf.py\" build')",
+      "Bash(D:/Project/IOT/pomodoro/build.sh build *)",
+      "Bash(powershell.exe -NoProfile -Command ' *)",
+      "Bash(./build.sh build *)"
     ]
   }
 }

@@ -15,6 +15,8 @@ static pomodoro_state_t current_state = {
     .is_paused = false
 };
 
+static pomodoro_phase_t paused_from_phase = POMODORO_PHASE_IDLE;
+
 static pomodoro_settings_t settings = {
     .work_minutes = POMODORO_DEFAULT_WORK_MINUTES,
     .break_minutes = POMODORO_DEFAULT_BREAK_MINUTES,
@@ -43,12 +45,13 @@ void pomodoro_engine_start(void)
 
 void pomodoro_engine_pause(void)
 {
-    if (current_state.phase == POMODORO_PHASE_WORK || 
+    if (current_state.phase == POMODORO_PHASE_WORK ||
         current_state.phase == POMODORO_PHASE_BREAK ||
         current_state.phase == POMODORO_PHASE_LONG_BREAK) {
+        paused_from_phase = current_state.phase;
         current_state.phase = POMODORO_PHASE_PAUSED;
         current_state.is_paused = true;
-        ESP_LOGI(TAG, "Paused");
+        ESP_LOGI(TAG, "Paused (from phase %d)", paused_from_phase);
     }
 }
 
@@ -56,8 +59,9 @@ void pomodoro_engine_resume(void)
 {
     if (current_state.phase == POMODORO_PHASE_PAUSED) {
         current_state.is_paused = false;
-        current_state.phase = POMODORO_PHASE_WORK;
-        ESP_LOGI(TAG, "Resumed");
+        current_state.phase = paused_from_phase;
+        paused_from_phase = POMODORO_PHASE_IDLE;
+        ESP_LOGI(TAG, "Resumed to phase %d", current_state.phase);
     }
 }
 

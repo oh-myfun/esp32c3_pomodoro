@@ -3,6 +3,7 @@
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -17,7 +18,7 @@ static const char *TAG = "BUZZER";
 
 static bool buzzer_initialized = false;
 static uint32_t current_freq = BUZZER_DEFAULT_FREQ;
-static uint8_t current_volume = 128;
+static uint8_t current_volume = 50;
 
 void buzzer_init(void)
 {
@@ -97,4 +98,74 @@ void buzzer_beep(uint32_t freq_hz, uint32_t duration_ms)
     buzzer_on();
     vTaskDelay(pdMS_TO_TICKS(duration_ms));
     buzzer_off();
+}
+
+static esp_timer_handle_t play_timer = NULL;
+static const buzzer_note_t *play_notes = NULL;
+static uint8_t play_count = 0;
+static uint8_t play_index = 0;
+static bool playing = false;
+
+static void play_timer_callback(void *arg)
+{
+    buzzer_off();
+    play_index++;
+
+    if (play_index < play_count) {
+        const buzzer_note_t *note = &play_notes[play_index];
+        if (note->freq_hz > 0) {
+            buzzer_set_frequency(note->freq_hz);
+            buzzer_on();
+        }
+        esp_timer_start_once(play_timer, note->duration_ms * 1000);
+    } else {
+        playing = false;
+    }
+}
+
+void buzzer_play_melody(const buzzer_note_t *notes, uint8_t count)
+{
+    if (!buzzer_initialized || count == 0 || !notes) return;
+
+    // Stop current playback
+    if (play_timer) {
+        esp_timer_stop(play_timer);
+        esp_timer_delete(play_timer);
+        play_timer = NULL;
+    }
+    buzzer_off();
+
+    play_notes = notes;
+    play_count = count;
+    play_index = 0;
+    playing = true;
+
+    const esp_timer_create_args_t timer_args = {
+        .callback = &play_timer_callback,
+        .name = "buzzer_play"
+    };
+    esp_timer_create(&timer_args, &play_timer);
+
+    const buzzer_note_t *note = &play_notes[0];
+    if (note->freq_hz > 0) {
+        buzzer_set_frequency(note->freq_hz);
+        buzzer_on();
+    }
+    esp_timer_start_once(play_timer, note->duration_ms * 1000);
+}
+
+void buzzer_stop(void)
+{
+    if (play_timer) {
+        esp_timer_stop(play_timer);
+        esp_timer_delete(play_timer);
+        play_timer = NULL;
+    }
+    buzzer_off();
+    playing = false;
+}
+
+bool buzzer_is_playing(void)
+{
+    return playing;
 }
