@@ -19,6 +19,7 @@
 #include "ui/ui_screen_pomodoro.h"
 #include "ui/ui_screen_buddy.h"
 #include "ui/ui_screen_wifi.h"
+#include "ui/ui_screen_wifi_saved.h"
 #include "service/wifi_service.h"
 #include "service/time_service.h"
 #include "service/storage_service.h"
@@ -116,22 +117,19 @@ static void lvgl_port_task(void *arg)
 
 /* ---- Callback wiring ---- */
 
+static int64_t wifi_fail_time = 0;  // Timestamp of last connect failure
+
 // WiFi -> time_service + UI
 static void on_wifi_connected(const char *ip) {
     ESP_LOGI(TAG, "WiFi connected, IP: %s", ip ? ip : "null");
+    wifi_fail_time = 0;
     time_service_request_sync();
-    lvgl_lock();
-    char status[32];
-    snprintf(status, sizeof(status), "IP: %s", ip ? ip : "");
-    ui_screen_main_update_wifi_status(status, 0x00FF00);
-    lvgl_unlock();
+    // Status will be updated by ui_update_task polling
 }
 
 static void on_wifi_disconnected(void) {
     ESP_LOGI(TAG, "WiFi disconnected");
-    lvgl_lock();
-    ui_screen_main_update_wifi_status("Disconnected", 0x666666);
-    lvgl_unlock();
+    // Status will be updated by ui_update_task polling
 }
 
 static void on_wifi_scan_complete(int count) {
@@ -140,9 +138,7 @@ static void on_wifi_scan_complete(int count) {
 
 static void on_wifi_connect_failed(void) {
     ESP_LOGI(TAG, "WiFi connect failed");
-    lvgl_lock();
-    ui_screen_main_update_wifi_status("Connect Failed", 0xFF0000);
-    lvgl_unlock();
+    wifi_fail_time = esp_timer_get_time() / 1000;
 }
 
 // BLE callbacks disabled
@@ -188,6 +184,7 @@ static void service_task(void *arg) {
 static void ui_update_task(void *arg) {
     ESP_LOGI(TAG, "UI update task started");
     int64_t last_pomodoro_tick = 0;
+    int64_t last_wifi_ui_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -203,16 +200,59 @@ static void ui_update_task(void *arg) {
             last_pomodoro_tick = now;
         }
 
-        // Main screen time update
+        // Main screen time + WiFi status update
         if (current_screen == UI_SCREEN_MAIN) {
             lvgl_lock();
             ui_screen_main_update_time();
+
+            // Update WiFi status based on current state
+            wifi_state_t wifi_state = wifi_service_get_state();
+            int64_t now_ms = esp_timer_get_time() / 1000;
+
+            if (wifi_fail_time > 0 && (now_ms - wifi_fail_time) < 3000) {
+                ui_screen_main_update_wifi_status("Connect Failed", 0xFF4444);
+            } else {
+                wifi_fail_time = 0;
+                switch (wifi_state) {
+                    case WIFI_STATE_DISCONNECTED:
+                        ui_screen_main_update_wifi_status("No WiFi", 0x666666);
+                        break;
+                    case WIFI_STATE_SCANNING:
+                        ui_screen_main_update_wifi_status("Scanning...", 0xAAAAAA);
+                        break;
+                    case WIFI_STATE_CONNECTING:
+                        ui_screen_main_update_wifi_status("Connecting...", 0xFFAA00);
+                        break;
+                    case WIFI_STATE_CONNECTED: {
+                        const char *ip = wifi_service_get_ip();
+                        bool synced = time_service_is_synced();
+                        char status[40];
+                        if (synced) {
+                            snprintf(status, sizeof(status), "IP:%s [OK]", ip ? ip : "");
+                        } else {
+                            snprintf(status, sizeof(status), "IP:%s [Sync..]", ip ? ip : "");
+                        }
+                        ui_screen_main_update_wifi_status(status, synced ? 0x00FF00 : 0xFFFF00);
+                        break;
+                    }
+                }
+            }
             lvgl_unlock();
         }
 
-        // WiFi list refresh
-        if (current_screen == UI_SCREEN_WIFI_LIST) {
-            ui_screen_wifi_list_refresh();
+        // WiFi list & saved list refresh every 1 second
+        if (now - last_wifi_ui_tick >= 1000) {
+            if (current_screen == UI_SCREEN_WIFI_LIST) {
+                ui_screen_wifi_list_refresh();
+            }
+
+            if (current_screen == UI_SCREEN_WIFI_SAVED) {
+                lvgl_lock();
+                ui_screen_wifi_saved_refresh();
+                lvgl_unlock();
+            }
+
+            last_wifi_ui_tick = now;
         }
 
         // Buddy screen state update
@@ -254,12 +294,10 @@ void app_main(void) {
     // 5. Input (non-fatal)
     input_handler_init();
 
-    // 6. Network services (non-fatal, last)
+    // 6. Network services (non-fatal)
     if (wifi_service_init() != 0) ESP_LOGW(TAG, "WiFi service init failed, continuing");
-    // BLE disabled temporarily - memory constraints on ESP32-C3
-    // if (ble_service_init() != 0) ESP_LOGW(TAG, "BLE service init failed, continuing");
 
-    // 7. Time service (non-fatal)
+    // 7. Time service (after WiFi init which initializes TCP/IP stack)
     time_service_init();
 
     // 8. Register callbacks (wiring)

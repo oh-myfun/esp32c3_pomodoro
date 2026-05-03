@@ -31,5 +31,12 @@ const wifi_ap_info_t* wifi_service_get_ap(int index);
 void wifi_service_connect(const char *ssid, const char *password);
 void wifi_service_disconnect(void);
 bool wifi_service_is_connected(void);
+const char* wifi_service_get_connected_ssid(void);
 const char* wifi_service_get_ip(void);
 wifi_state_t wifi_service_get_state(void);
+
+// Saved profile management
+int         wifi_service_get_saved_count(void);
+const char* wifi_service_get_saved_ssid(int index);
+void        wifi_service_delete_saved(int index);
+bool        wifi_service_is_saved(const char *ssid);

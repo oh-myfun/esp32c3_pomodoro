@@ -5,6 +5,7 @@
 #include "ui_screen_wifi.h"
 #include "ui_screen_settings_pomodoro.h"
 #include "ui_screen_buddy.h"
+#include "ui_screen_wifi_saved.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -48,6 +49,7 @@ void ui_init(void)
     screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
     screens[UI_SCREEN_PASSWORD_INPUT] = ui_screen_password_create();
+    screens[UI_SCREEN_WIFI_SAVED] = ui_screen_wifi_saved_create();
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);

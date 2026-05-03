@@ -32,9 +32,21 @@ static wifi_callbacks_t callbacks = {0};
 static esp_timer_handle_t reconnect_timer = NULL;
 static int reconnect_delay_ms = RECONNECT_DELAY_INITIAL_MS;
 
+#define MAX_SAVED_PROFILES 10
+
+typedef struct {
+    char ssid[33];
+    char password[65];
+} wifi_saved_profile_t;
+
+static wifi_saved_profile_t saved_profiles[MAX_SAVED_PROFILES];
+static int saved_count = 0;
+static bool auto_connect_pending = false;
+
 // Forward declarations
 static void start_reconnect_timer(void);
 static void stop_reconnect_timer(void);
+static void wifi_service_load_profiles(void);
 
 static void invoke_on_connected(void)
 {
@@ -130,9 +142,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
                     invoke_on_disconnected();
 
-                    // Auto-reconnect if not user-initiated
+                    // Auto-reconnect only if not actively connecting to a new network
                     if (!user_initiated_disconnect) {
-                        start_reconnect_timer();
+                        if (saved_count > 0 && !auto_connect_pending) {
+                            auto_connect_pending = true;
+                            wifi_service_scan();
+                        } else if (saved_count == 0) {
+                            start_reconnect_timer();
+                        }
                     }
                 }
                 break;
@@ -158,6 +175,35 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                     }
                     ESP_LOGI(TAG, "Scan done, found %d APs", scan_count);
                     invoke_on_scan_complete(scan_count);
+
+                    // Auto-connect: find strongest saved network from scan results
+                    if (auto_connect_pending && scan_count > 0) {
+                        auto_connect_pending = false;
+                        int best_idx = -1;
+                        int best_rssi = -128;
+
+                        for (int i = 0; i < scan_count; i++) {
+                            if (wifi_service_is_saved(scan_results[i].ssid)) {
+                                if (scan_results[i].rssi > best_rssi) {
+                                    best_rssi = scan_results[i].rssi;
+                                    best_idx = i;
+                                }
+                            }
+                        }
+
+                        if (best_idx >= 0) {
+                            const char *ssid = scan_results[best_idx].ssid;
+                            for (int i = 0; i < saved_count; i++) {
+                                if (strcmp(saved_profiles[i].ssid, ssid) == 0) {
+                                    ESP_LOGI(TAG, "Auto-connecting to saved network: %s (rssi %d)", ssid, best_rssi);
+                                    wifi_service_connect(ssid, saved_profiles[i].password);
+                                    break;
+                                }
+                            }
+                        } else {
+                            ESP_LOGI(TAG, "No saved networks found in scan results");
+                        }
+                    }
                 }
                 break;
         }
@@ -171,19 +217,60 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             // Reset reconnect backoff on successful connection
             reset_reconnect_delay();
 
-            // Save WiFi credentials
+            // Save WiFi credentials to profile storage
             if (strlen(connected_ssid) > 0) {
                 char password[65] = {0};
                 wifi_config_t cfg;
                 esp_wifi_get_config(WIFI_IF_STA, &cfg);
                 strncpy(password, (char*)cfg.sta.password, sizeof(password) - 1);
-                storage_save_wifi_config(connected_ssid, password);
-                ESP_LOGI(TAG, "WiFi config saved: %s", connected_ssid);
+                storage_add_wifi_profile(connected_ssid, password);
+                wifi_service_load_profiles();
+                ESP_LOGI(TAG, "WiFi profile saved: %s", connected_ssid);
             }
 
             invoke_on_connected();
         }
     }
+}
+
+static void wifi_service_load_profiles(void)
+{
+    saved_count = storage_get_wifi_profile_count();
+    if (saved_count > MAX_SAVED_PROFILES) saved_count = MAX_SAVED_PROFILES;
+
+    for (int i = 0; i < saved_count; i++) {
+        memset(&saved_profiles[i], 0, sizeof(wifi_saved_profile_t));
+        storage_load_wifi_profile(i, saved_profiles[i].ssid, sizeof(saved_profiles[i].ssid),
+                                  saved_profiles[i].password, sizeof(saved_profiles[i].password));
+    }
+    ESP_LOGI(TAG, "Loaded %d WiFi profiles", saved_count);
+}
+
+int wifi_service_get_saved_count(void)
+{
+    return saved_count;
+}
+
+const char* wifi_service_get_saved_ssid(int index)
+{
+    if (index < 0 || index >= saved_count) return NULL;
+    return saved_profiles[index].ssid;
+}
+
+void wifi_service_delete_saved(int index)
+{
+    if (index < 0 || index >= saved_count) return;
+    storage_delete_wifi_profile(index);
+    wifi_service_load_profiles();
+}
+
+bool wifi_service_is_saved(const char *ssid)
+{
+    if (!ssid) return false;
+    for (int i = 0; i < saved_count; i++) {
+        if (strcmp(saved_profiles[i].ssid, ssid) == 0) return true;
+    }
+    return false;
 }
 
 int wifi_service_init(void)
@@ -201,14 +288,15 @@ int wifi_service_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    // Load and apply saved WiFi credentials
-    char saved_ssid[33] = {0};
-    char saved_password[65] = {0};
-    if (storage_load_wifi_config(saved_ssid, sizeof(saved_ssid), saved_password, sizeof(saved_password))) {
-        if (strlen(saved_ssid) > 0) {
-            ESP_LOGI(TAG, "Loading saved WiFi config: %s", saved_ssid);
-            wifi_service_connect(saved_ssid, saved_password);
-        }
+    // Migrate old config and load saved profiles
+    storage_migrate_wifi_config();
+    wifi_service_load_profiles();
+
+    // Auto-connect: scan first, then connect to strongest saved network
+    if (saved_count > 0) {
+        ESP_LOGI(TAG, "%d saved WiFi profiles, starting auto-connect scan", saved_count);
+        auto_connect_pending = true;
+        wifi_service_scan();
     }
 
     ESP_LOGI(TAG, "WiFi service initialized");
@@ -226,6 +314,9 @@ void wifi_service_scan(void)
 {
     if (current_state == WIFI_STATE_SCANNING) return;
 
+    // Don't scan while connecting — WiFi driver rejects it
+    if (current_state == WIFI_STATE_CONNECTING) return;
+
     current_state = WIFI_STATE_SCANNING;
     scan_count = 0;
 
@@ -236,7 +327,12 @@ void wifi_service_scan(void)
         .show_hidden = false,
     };
 
-    ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, false));
+    esp_err_t ret = esp_wifi_scan_start(&scan_config, false);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Scan start failed: %s (state=%d)", esp_err_to_name(ret), current_state);
+        current_state = WIFI_STATE_DISCONNECTED;
+        return;
+    }
     ESP_LOGI(TAG, "WiFi scan started");
 }
 
@@ -253,6 +349,8 @@ const wifi_ap_info_t* wifi_service_get_ap(int index)
 
 void wifi_service_connect(const char *ssid, const char *password)
 {
+    // Suppress auto-reconnect during manual connect
+    auto_connect_pending = false;
     user_initiated_disconnect = false;
     stop_reconnect_timer();
     reset_reconnect_delay();
@@ -294,6 +392,11 @@ bool wifi_service_is_connected(void)
 const char* wifi_service_get_ip(void)
 {
     return ip_address[0] ? ip_address : NULL;
+}
+
+const char* wifi_service_get_connected_ssid(void)
+{
+    return connected_ssid[0] ? connected_ssid : NULL;
 }
 
 wifi_state_t wifi_service_get_state(void)

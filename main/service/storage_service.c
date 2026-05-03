@@ -215,3 +215,171 @@ void storage_clear_namespace(const char *ns)
         ESP_LOGI(TAG, "Namespace %s cleared", ns);
     }
 }
+
+// --- WiFi multi-profile ---
+
+#define KEY_WIFI_COUNT "count"
+#define KEY_SSID_PREFIX "ssid_"
+#define KEY_PWD_PREFIX  "pwd_"
+
+static void wifi_profile_save_at(int index, const char *ssid, const char *password)
+{
+    char key[20];
+    snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, index);
+    storage_save_string(STORAGE_NAMESPACE_WIFI, key, ssid);
+    snprintf(key, sizeof(key), "%s%d", KEY_PWD_PREFIX, index);
+    storage_save_string(STORAGE_NAMESPACE_WIFI, key, password ? password : "");
+}
+
+static void wifi_profile_shift_forward(int from, int to)
+{
+    // Shift entries [from..to-1] to [from-1..to-2], effectively removing slot (from-1).
+    if (from >= to) return;
+    for (int i = from; i < to; i++) {
+        char key[20];
+        char s[64] = {0}, p[64] = {0};
+        snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, i);
+        storage_load_string(STORAGE_NAMESPACE_WIFI, key, s, sizeof(s));
+        snprintf(key, sizeof(key), "%s%d", KEY_PWD_PREFIX, i);
+        storage_load_string(STORAGE_NAMESPACE_WIFI, key, p, sizeof(p));
+        wifi_profile_save_at(i - 1, s, p);
+    }
+}
+
+static void wifi_profile_erase_slot(int index)
+{
+    nvs_handle_t handle;
+    if (nvs_open(STORAGE_NAMESPACE_WIFI, NVS_READWRITE, &handle) != ESP_OK) return;
+    char key[20];
+    snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, index);
+    nvs_erase_key(handle, key);
+    snprintf(key, sizeof(key), "%s%d", KEY_PWD_PREFIX, index);
+    nvs_erase_key(handle, key);
+    nvs_commit(handle);
+    nvs_close(handle);
+}
+
+static bool wifi_key_exists(const char *key)
+{
+    nvs_handle_t handle;
+    if (nvs_open(STORAGE_NAMESPACE_WIFI, NVS_READONLY, &handle) != ESP_OK) return false;
+    size_t len = 0;
+    esp_err_t err = nvs_get_str(handle, key, NULL, &len);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+static bool wifi_int_key_exists(const char *key)
+{
+    nvs_handle_t handle;
+    if (nvs_open(STORAGE_NAMESPACE_WIFI, NVS_READONLY, &handle) != ESP_OK) return false;
+    int32_t val;
+    esp_err_t err = nvs_get_i32(handle, key, &val);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+static int wifi_profile_find_ssid(const char *ssid)
+{
+    char key[20], buf[64];
+    for (int i = 0; i < WIFI_PROFILE_MAX; i++) {
+        snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, i);
+        if (storage_load_string(STORAGE_NAMESPACE_WIFI, key, buf, sizeof(buf))) {
+            if (strcmp(buf, ssid) == 0) return i;
+        }
+    }
+    return -1;
+}
+
+int storage_get_wifi_profile_count(void)
+{
+    int32_t count = 0;
+    storage_load_int(STORAGE_NAMESPACE_WIFI, KEY_WIFI_COUNT, &count);
+    return (int)count;
+}
+
+void storage_add_wifi_profile(const char *ssid, const char *password)
+{
+    if (!ssid || ssid[0] == '\0') return;
+
+    int count = storage_get_wifi_profile_count();
+
+    // Check if SSID already exists; if so, remove old slot
+    int existing = wifi_profile_find_ssid(ssid);
+    if (existing >= 0 && existing < count) {
+        wifi_profile_shift_forward(existing + 1, count);
+        wifi_profile_erase_slot(count - 1);
+        count--;
+    }
+
+    // If full, evict oldest (index 0)
+    if (count >= WIFI_PROFILE_MAX) {
+        wifi_profile_shift_forward(1, count);
+        wifi_profile_erase_slot(count - 1);
+        count = WIFI_PROFILE_MAX - 1;
+    }
+
+    // Append new profile at index count
+    wifi_profile_save_at(count, ssid, password ? password : "");
+    storage_save_int(STORAGE_NAMESPACE_WIFI, KEY_WIFI_COUNT, count + 1);
+    ESP_LOGI(TAG, "WiFi profile added: %s (total %d)", ssid, count + 1);
+}
+
+bool storage_load_wifi_profile(int index, char *ssid, size_t ssid_len, char *password, size_t pwd_len)
+{
+    if (index < 0 || index >= WIFI_PROFILE_MAX) return false;
+    char key[20];
+    snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, index);
+    bool ok = storage_load_string(STORAGE_NAMESPACE_WIFI, key, ssid, ssid_len);
+    snprintf(key, sizeof(key), "%s%d", KEY_PWD_PREFIX, index);
+    storage_load_string(STORAGE_NAMESPACE_WIFI, key, password, pwd_len);
+    return ok;
+}
+
+void storage_delete_wifi_profile(int index)
+{
+    int count = storage_get_wifi_profile_count();
+    if (index < 0 || index >= count) return;
+
+    // Shift entries [index+1..count-1] to [index..count-2]
+    for (int i = index + 1; i < count; i++) {
+        char key[20], s[64] = {0}, p[64] = {0};
+        snprintf(key, sizeof(key), "%s%d", KEY_SSID_PREFIX, i);
+        storage_load_string(STORAGE_NAMESPACE_WIFI, key, s, sizeof(s));
+        snprintf(key, sizeof(key), "%s%d", KEY_PWD_PREFIX, i);
+        storage_load_string(STORAGE_NAMESPACE_WIFI, key, p, sizeof(p));
+        wifi_profile_save_at(i - 1, s, p);
+    }
+
+    // Erase the last slot
+    wifi_profile_erase_slot(count - 1);
+    storage_save_int(STORAGE_NAMESPACE_WIFI, KEY_WIFI_COUNT, count - 1);
+    ESP_LOGI(TAG, "WiFi profile deleted at index %d (total %d)", index, count - 1);
+}
+
+void storage_migrate_wifi_config(void)
+{
+    bool has_count = wifi_int_key_exists(KEY_WIFI_COUNT);
+    bool has_old_ssid = wifi_key_exists(KEY_WIFI_SSID);
+
+    if (!has_count && has_old_ssid) {
+        char ssid[64] = {0}, pwd[64] = {0};
+        storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid, sizeof(ssid));
+        storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, pwd, sizeof(pwd));
+
+        // Save as profile 0
+        wifi_profile_save_at(0, ssid, pwd);
+        storage_save_int(STORAGE_NAMESPACE_WIFI, KEY_WIFI_COUNT, 1);
+
+        // Erase old keys
+        nvs_handle_t handle;
+        if (nvs_open(STORAGE_NAMESPACE_WIFI, NVS_READWRITE, &handle) == ESP_OK) {
+            nvs_erase_key(handle, KEY_WIFI_SSID);
+            nvs_erase_key(handle, KEY_WIFI_PASSWORD);
+            nvs_commit(handle);
+            nvs_close(handle);
+        }
+
+        ESP_LOGI(TAG, "WiFi config migrated: %s -> profile 0", ssid);
+    }
+}

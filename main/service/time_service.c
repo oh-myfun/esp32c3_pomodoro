@@ -31,6 +31,9 @@ static void time_sync_notification(struct timeval *tv)
 {
     ESP_LOGI(TAG, "Time synchronized");
     synced = true;
+    time_t now = time(NULL);
+    storage_save_time((uint64_t)now);
+    last_sync_time = now;
 }
 
 void time_service_init(void)
@@ -59,7 +62,7 @@ void time_service_init(void)
         struct timeval tv = { .tv_sec = (time_t)saved_time, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         ESP_LOGI(TAG, "Loaded saved time: %llu", saved_time);
-        synced = true;
+        // Don't set synced=true — let SNTP callback confirm real sync
     }
 
     esp_sntp_init();
@@ -202,7 +205,6 @@ char* time_service_format_date(char *buffer, size_t len, const char *format)
 void time_service_request_sync(void)
 {
     ESP_LOGI(TAG, "Requesting NTP sync (was%s synced)", synced ? "" : " not");
-    synced = false;
     esp_sntp_restart();
 }
 

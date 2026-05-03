@@ -34,3 +34,12 @@ bool storage_save_time(uint64_t timestamp);
 bool storage_load_time(uint64_t *timestamp);
 
 void storage_clear_namespace(const char *ns);
+
+// WiFi multi-profile storage (max 10)
+#define WIFI_PROFILE_MAX 10
+
+int  storage_get_wifi_profile_count(void);
+void storage_add_wifi_profile(const char *ssid, const char *password);
+bool storage_load_wifi_profile(int index, char *ssid, size_t ssid_len, char *password, size_t pwd_len);
+void storage_delete_wifi_profile(int index);
+void storage_migrate_wifi_config(void);

@@ -70,8 +70,7 @@ static void settings_on_settings_press(void)
         if (item == 5) {  // WiFi
             settings_mode = SETTINGS_MODE_IDLE;
             update_display();
-            wifi_service_scan();
-            ui_switch_screen(UI_SCREEN_WIFI_LIST);
+            ui_switch_screen(UI_SCREEN_WIFI_SAVED);
         } else if (item == 4) {  // Pomodoro
             settings_mode = SETTINGS_MODE_IDLE;
             update_display();
@@ -105,7 +104,8 @@ static void update_display(void)
             case 3:  // Timezone
                 snprintf(item_values[i], sizeof(item_values[i]), "UTC%+d", settings_values[i]);
                 break;
-            case 5:  // WiFi
+            case 4:  // Pomodoro (sub-screen)
+            case 5:  // WiFi (sub-screen)
                 snprintf(item_values[i], sizeof(item_values[i]), ">");
                 break;
             case 6:  // Direction

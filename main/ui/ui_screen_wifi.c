@@ -22,7 +22,7 @@ static void wifi_on_encoder_ccw(void)
 
 static void wifi_on_encoder_press(void)
 {
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    ui_switch_screen(UI_SCREEN_WIFI_SAVED);
 }
 
 static void wifi_on_settings_press(void)
@@ -73,7 +73,7 @@ static void pwd_on_encoder_ccw(void)
 
 static void pwd_on_encoder_press(void)
 {
-    ui_switch_screen(UI_SCREEN_WIFI_LIST);
+    ui_switch_screen(UI_SCREEN_WIFI_SAVED);
 }
 
 static void pwd_on_settings_press(void)
@@ -86,7 +86,7 @@ static void pwd_on_encoder_long_press(void)
     if (password_len > 0) {
         ui_screen_password_delete_char();
     } else {
-        ui_switch_screen(UI_SCREEN_WIFI_LIST);
+        ui_switch_screen(UI_SCREEN_WIFI_SAVED);
     }
 }
 
@@ -166,11 +166,13 @@ void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected
             wifi_ap_info_t *ap = &results[i];
             
             // SSID作为key，如果是开放网络则加上[open]
+            bool is_saved = wifi_service_is_saved((const char*)ap->ssid);
             if (ap->open) {
-                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%.*s[open]", 32 - 6, ap->ssid);
+                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s[open]",
+                         is_saved ? "*" : "", 32 - 8, ap->ssid);
             } else {
-                strncpy(wifi_item_keys[i], (char*)ap->ssid, sizeof(wifi_item_keys[i]) - 1);
-                wifi_item_keys[i][sizeof(wifi_item_keys[i]) - 1] = '\0';
+                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s",
+                         is_saved ? "*" : "", 32 - 1, ap->ssid);
             }
             
             // 信号强度作为value，10档竖线表示
@@ -185,7 +187,7 @@ void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected
             else if (ap->rssi > -95) rssi_bars = "|||";
             else if (ap->rssi > -100) rssi_bars = "||";
             else rssi_bars = "|";
-            
+
             snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_bars);
             
             items[i].key = wifi_item_keys[i];
@@ -321,17 +323,22 @@ void ui_screen_password_set_hint(const char *hint)
     lv_label_set_text(pwd_hint, hint ? hint : "");
 }
 
+static int last_scan_count = -1;
+
 void ui_screen_wifi_list_refresh(void)
 {
     int count = wifi_service_get_scan_count();
-    bool scan_done = (count > 0);
+
+    // Only update when scan count changes
+    if (count == last_scan_count) return;
+    last_scan_count = count;
 
     const wifi_ap_info_t *results = NULL;
-    if (scan_done && count > 0) {
+    if (count > 0) {
         results = wifi_service_get_ap(0);
     }
 
-    const char *hint = scan_done ? "SET:select" : "Scanning...";
+    const char *hint = count > 0 ? "SET:select" : "Scanning...";
     ui_screen_wifi_list_update(count, (wifi_ap_info_t*)results, 0, hint);
 }
 
@@ -403,7 +410,7 @@ void ui_screen_password_add_char(void)
             password_buffer[--password_len] = '\0';
             ui_screen_password_update_display(password_buffer, pwd_selected_col);
         } else {
-            ui_switch_screen(UI_SCREEN_WIFI_LIST);
+            ui_switch_screen(UI_SCREEN_WIFI_SAVED);
         }
         return;
     }
