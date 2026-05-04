@@ -16,6 +16,7 @@ idf_component_register(SRCS main.c
                           pomodoro/pomodoro_engine.c
                           service/storage_service.c
                           service/sound_service.c
+                          service/led_service.c
                           service/time_service.c
                           buddy/buddy_chars.c
                           buddy/buddy.c
