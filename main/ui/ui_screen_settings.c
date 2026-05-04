@@ -11,14 +11,14 @@
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 9
+#define SETTINGS_ITEM_COUNT 7
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
 static lv_obj_t *settings_hint = NULL;
 
 static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
-static int settings_values[SETTINGS_ITEM_COUNT] = {50, 50, 0, 8, 25, 0, 0, 1, 10};
+static int settings_values[SETTINGS_ITEM_COUNT] = {0, 8, 25, 0, 0, 1, 10};
 static int current_settings_item = 0;
 
 static char item_keys[SETTINGS_ITEM_COUNT][16];
@@ -68,11 +68,11 @@ static void settings_on_settings_press(void)
         ui_screen_settings_enter();
     } else if (mode == SETTINGS_MODE_SELECT) {
         int item = ui_screen_settings_get_current_item();
-        if (item == 5) {  // WiFi
+        if (item == 3) {  // WiFi
             settings_mode = SETTINGS_MODE_IDLE;
             update_display();
             ui_switch_screen(UI_SCREEN_WIFI_SAVED);
-        } else if (item == 4) {  // Pomodoro
+        } else if (item == 2) {  // Pomodoro
             settings_mode = SETTINGS_MODE_IDLE;
             update_display();
             ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
@@ -87,8 +87,7 @@ static void settings_on_settings_press(void)
 /* ---- Display ---- */
 
 static const char *settings_names[SETTINGS_ITEM_COUNT] = {
-    "Brightness", "Contrast", "Language",
-    "Timezone", "Pomodoro", "WiFi", "Direction", "Sound", "NTP Interval"
+    "Language", "Timezone", "Pomodoro", "WiFi", "Direction", "Sound", "NTP Interval"
 };
 
 static void update_display(void)
@@ -99,23 +98,23 @@ static void update_display(void)
         strncpy(item_keys[i], settings_names[i], sizeof(item_keys[i]) - 1);
 
         switch (i) {
-            case 2:  // Language
+            case 0:  // Language
                 snprintf(item_values[i], sizeof(item_values[i]), "%s", lang_opts[settings_values[i] % 2]);
                 break;
-            case 3:  // Timezone
+            case 1:  // Timezone
                 snprintf(item_values[i], sizeof(item_values[i]), "UTC%+d", settings_values[i]);
                 break;
-            case 4:  // Pomodoro (sub-screen)
-            case 5:  // WiFi (sub-screen)
+            case 2:  // Pomodoro (sub-screen)
+            case 3:  // WiFi (sub-screen)
                 snprintf(item_values[i], sizeof(item_values[i]), ">");
                 break;
-            case 6:  // Direction
+            case 4:  // Direction
                 snprintf(item_values[i], sizeof(item_values[i]), "%s", settings_values[i] ? "Rev" : "Normal");
                 break;
-            case 7:  // Sound
+            case 5:  // Sound
                 snprintf(item_values[i], sizeof(item_values[i]), "%s", settings_values[i] ? "On" : "Off");
                 break;
-            case 8:  // NTP Interval
+            case 6:  // NTP Interval
                 snprintf(item_values[i], sizeof(item_values[i]), "%d min", settings_values[i]);
                 break;
             default:
@@ -184,17 +183,17 @@ lv_obj_t* ui_screen_settings_create(void)
     ui_register_input_callbacks(UI_SCREEN_SETTINGS, &cbs);
 
     /* Load stored values */
-    settings_values[3] = time_service_get_timezone_offset();
+    settings_values[1] = time_service_get_timezone_offset();
     int32_t stored_rev = 0;
     storage_load_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", &stored_rev);
-    settings_values[6] = stored_rev;
+    settings_values[4] = stored_rev;
     input_handler_set_reverse(stored_rev != 0);
 
     int32_t sound_val = 1;
     storage_load_int(STORAGE_NAMESPACE_SETTINGS, "sound_on", &sound_val);
-    settings_values[7] = sound_val;
+    settings_values[5] = sound_val;
 
-    settings_values[8] = time_service_get_sync_interval();
+    settings_values[6] = time_service_get_sync_interval();
 
     update_display();
 
@@ -269,42 +268,25 @@ void ui_screen_settings_adjust_up(void)
     if (settings_mode != SETTINGS_MODE_ADJUST) return;
 
     switch (current_settings_item) {
-        case 0:  // Brightness
-            if (settings_values[current_settings_item] < 100) {
-                settings_values[current_settings_item]++;
-                ESP_LOGI(TAG, "Brightness set to %d", settings_values[current_settings_item]);
-            }
-            break;
-        case 1:  // Contrast
-            if (settings_values[current_settings_item] < 100) {
-                settings_values[current_settings_item]++;
-                ESP_LOGI(TAG, "Contrast set to %d", settings_values[current_settings_item]);
-            }
-            break;
-        case 2:  // Language
+        case 0:  // Language
             settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 2;
             break;
-        case 3:  // Timezone
+        case 1:  // Timezone
             if (settings_values[current_settings_item] < 14) {
                 settings_values[current_settings_item]++;
                 time_service_set_timezone_offset(settings_values[current_settings_item]);
             }
             break;
-        case 4:  // Pomodoro work time
-            if (settings_values[current_settings_item] < 60) {
-                settings_values[current_settings_item]++;
-            }
-            break;
-        case 6:  // Direction
+        case 4:  // Direction
             settings_values[current_settings_item] = !settings_values[current_settings_item];
             input_handler_set_reverse(settings_values[current_settings_item]);
             storage_save_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", settings_values[current_settings_item]);
             break;
-        case 7:  // Sound
+        case 5:  // Sound
             settings_values[current_settings_item] = !settings_values[current_settings_item];
             sound_service_set_enabled(settings_values[current_settings_item]);
             break;
-        case 8:  // NTP Interval
+        case 6:  // NTP Interval
             if (settings_values[current_settings_item] < 60) {
                 settings_values[current_settings_item]++;
                 time_service_set_sync_interval(settings_values[current_settings_item]);
@@ -319,42 +301,25 @@ void ui_screen_settings_adjust_down(void)
     if (settings_mode != SETTINGS_MODE_ADJUST) return;
 
     switch (current_settings_item) {
-        case 0:  // Brightness
-            if (settings_values[current_settings_item] > 0) {
-                settings_values[current_settings_item]--;
-                ESP_LOGI(TAG, "Brightness set to %d", settings_values[current_settings_item]);
-            }
-            break;
-        case 1:  // Contrast
-            if (settings_values[current_settings_item] > 0) {
-                settings_values[current_settings_item]--;
-                ESP_LOGI(TAG, "Contrast set to %d", settings_values[current_settings_item]);
-            }
-            break;
-        case 2:  // Language
+        case 0:  // Language
             settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + 2) % 2;
             break;
-        case 3:  // Timezone
+        case 1:  // Timezone
             if (settings_values[current_settings_item] > -12) {
                 settings_values[current_settings_item]--;
                 time_service_set_timezone_offset(settings_values[current_settings_item]);
             }
             break;
-        case 4:  // Pomodoro work time
-            if (settings_values[current_settings_item] > 1) {
-                settings_values[current_settings_item]--;
-            }
-            break;
-        case 6:  // Direction
+        case 4:  // Direction
             settings_values[current_settings_item] = !settings_values[current_settings_item];
             input_handler_set_reverse(settings_values[current_settings_item]);
             storage_save_int(STORAGE_NAMESPACE_SETTINGS, "enc_rev", settings_values[current_settings_item]);
             break;
-        case 7:  // Sound
+        case 5:  // Sound
             settings_values[current_settings_item] = !settings_values[current_settings_item];
             sound_service_set_enabled(settings_values[current_settings_item]);
             break;
-        case 8:  // NTP Interval
+        case 6:  // NTP Interval
             if (settings_values[current_settings_item] > 1) {
                 settings_values[current_settings_item]--;
                 time_service_set_sync_interval(settings_values[current_settings_item]);

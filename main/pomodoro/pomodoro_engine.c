@@ -17,6 +17,8 @@ static pomodoro_state_t current_state = {
 
 static pomodoro_phase_t paused_from_phase = POMODORO_PHASE_IDLE;
 
+static bool manual_mode = false;
+
 static pomodoro_settings_t settings = {
     .work_minutes = POMODORO_DEFAULT_WORK_MINUTES,
     .break_minutes = POMODORO_DEFAULT_BREAK_MINUTES,
@@ -95,26 +97,41 @@ void pomodoro_engine_tick(void)
     if (current_state.remaining_seconds > 0) {
         current_state.remaining_seconds--;
     } else {
+        pomodoro_phase_t next_phase = POMODORO_PHASE_IDLE;
+        uint32_t next_seconds = 0;
+
         if (current_state.phase == POMODORO_PHASE_WORK) {
             current_state.completed_count++;
             current_state.current_cycle++;
-            
+
             if (current_state.current_cycle >= settings.cycles_until_long_break) {
-                current_state.phase = POMODORO_PHASE_LONG_BREAK;
-                current_state.remaining_seconds = settings.long_break_minutes * 60;
+                next_phase = POMODORO_PHASE_LONG_BREAK;
+                next_seconds = settings.long_break_minutes * 60;
                 current_state.current_cycle = 0;
-                ESP_LOGI(TAG, "Long break started, completed: %lu", current_state.completed_count);
+                ESP_LOGI(TAG, "Long break ready, completed: %lu", current_state.completed_count);
             } else {
-                current_state.phase = POMODORO_PHASE_BREAK;
-                current_state.remaining_seconds = settings.break_minutes * 60;
-                ESP_LOGI(TAG, "Break started, completed: %lu", current_state.completed_count);
+                next_phase = POMODORO_PHASE_BREAK;
+                next_seconds = settings.break_minutes * 60;
+                ESP_LOGI(TAG, "Break ready, completed: %lu", current_state.completed_count);
             }
             pomodoro_engine_save_state();
-        } else if (current_state.phase == POMODORO_PHASE_BREAK || 
+        } else if (current_state.phase == POMODORO_PHASE_BREAK ||
                    current_state.phase == POMODORO_PHASE_LONG_BREAK) {
-            current_state.phase = POMODORO_PHASE_WORK;
-            current_state.remaining_seconds = settings.work_minutes * 60;
-            ESP_LOGI(TAG, "Work phase started");
+            next_phase = POMODORO_PHASE_WORK;
+            next_seconds = settings.work_minutes * 60;
+            ESP_LOGI(TAG, "Work phase ready");
+        }
+
+        if (next_phase != POMODORO_PHASE_IDLE) {
+            if (manual_mode) {
+                paused_from_phase = next_phase;
+                current_state.phase = POMODORO_PHASE_PAUSED;
+                current_state.is_paused = true;
+                current_state.remaining_seconds = next_seconds;
+            } else {
+                current_state.phase = next_phase;
+                current_state.remaining_seconds = next_seconds;
+            }
         }
     }
 }
@@ -187,14 +204,30 @@ void pomodoro_engine_load_state(void)
 {
     int32_t state_data[2] = {0, 0};
     int32_t settings_data[4] = {25, 5, 15, 4};
-    
+
     storage_load_pomodoro_state(state_data);
     storage_load_pomodoro_settings(settings_data);
-    
+
     current_state.completed_count = state_data[0];
     current_state.current_cycle = state_data[1];
     settings.work_minutes = settings_data[0];
     settings.break_minutes = settings_data[1];
     settings.long_break_minutes = settings_data[2];
     settings.cycles_until_long_break = settings_data[3];
+
+    int32_t stored_manual = 0;
+    storage_load_int(STORAGE_NAMESPACE_POMODORO, "manual", &stored_manual);
+    manual_mode = (stored_manual != 0);
+}
+
+void pomodoro_engine_set_manual_mode(bool manual)
+{
+    manual_mode = manual;
+    storage_save_int(STORAGE_NAMESPACE_POMODORO, "manual", manual ? 1 : 0);
+    ESP_LOGI(TAG, "Manual mode %s", manual ? "enabled" : "disabled");
+}
+
+bool pomodoro_engine_get_manual_mode(void)
+{
+    return manual_mode;
 }

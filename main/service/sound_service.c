@@ -57,6 +57,12 @@ static const buzzer_note_t mel_sync_done[] = {
 static const buzzer_note_t mel_pomo_start[] = {
     {NOTE_C5, 100}, {NOTE_E5, 100}, {NOTE_G5, 100}, {NOTE_C6, 150},
 };
+static const buzzer_note_t mel_pomo_work_start[] = {
+    {NOTE_C5, 80}, {NOTE_E5, 80}, {NOTE_G5, 120},
+};
+static const buzzer_note_t mel_pomo_break_start[] = {
+    {NOTE_G5, 100}, {NOTE_E5, 120},
+};
 static const buzzer_note_t mel_pomo_work_done[] = {
     {NOTE_G5, 150}, {NOTE_E5, 150}, {NOTE_C5, 200},
 };
@@ -93,6 +99,8 @@ static const buzzer_melody_t melodies[SOUND_COUNT] = {
     [SOUND_SYNC_START]       = {mel_sync_start,        1},
     [SOUND_SYNC_DONE]        = {mel_sync_done,         2},
     [SOUND_POMO_START]       = {mel_pomo_start,        4},
+    [SOUND_POMO_WORK_START]  = {mel_pomo_work_start,   3},
+    [SOUND_POMO_BREAK_START] = {mel_pomo_break_start,  2},
     [SOUND_POMO_WORK_DONE]   = {mel_pomo_work_done,    3},
     [SOUND_POMO_BREAK_DONE]  = {mel_pomo_break_done,   5},
     [SOUND_POMO_LONG_BREAK]  = {mel_pomo_long_break,   4},

@@ -7,13 +7,21 @@
 
 static const char *TAG = "UI_POMODORO";
 
+static bool pomo_is_running(void)
+{
+    pomodoro_state_t state = pomodoro_engine_get_state();
+    return state.phase != POMODORO_PHASE_IDLE && state.phase != POMODORO_PHASE_PAUSED;
+}
+
 static void pomo_on_encoder_cw(void)
 {
+    if (pomo_is_running()) return;
     ui_switch_screen(UI_SCREEN_BUDDY);
 }
 
 static void pomo_on_encoder_ccw(void)
 {
+    if (pomo_is_running()) return;
     ui_switch_screen(UI_SCREEN_MAIN);
 }
 
@@ -30,7 +38,14 @@ static void pomo_on_settings_press(void)
         sound_service_play(SOUND_POMO_START);
     } else if (state.is_paused) {
         pomodoro_engine_resume();
-        sound_service_play(SOUND_CONFIRM);
+        pomodoro_state_t resumed = pomodoro_engine_get_state();
+        if (resumed.phase == POMODORO_PHASE_WORK) {
+            sound_service_play(SOUND_POMO_WORK_START);
+        } else if (resumed.phase == POMODORO_PHASE_BREAK) {
+            sound_service_play(SOUND_POMO_BREAK_START);
+        } else if (resumed.phase == POMODORO_PHASE_LONG_BREAK) {
+            sound_service_play(SOUND_POMO_LONG_BREAK);
+        }
     } else {
         pomodoro_engine_pause();
         sound_service_play(SOUND_CONFIRM);
@@ -198,12 +213,12 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
             total_seconds = settings.work_minutes * 60;
             break;
         case 2:
-            color = 0x4D96FF;
+            color = 0x4CAF50;
             phase_text = "BREAK";
             total_seconds = settings.break_minutes * 60;
             break;
         case 3:
-            color = 0x9B59B6;
+            color = 0x4D96FF;
             phase_text = "LONG BREAK";
             total_seconds = settings.long_break_minutes * 60;
             break;
