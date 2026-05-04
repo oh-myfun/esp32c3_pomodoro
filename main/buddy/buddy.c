@@ -1,5 +1,5 @@
 #include "buddy.h"
-#include "driver/ws2812.h"
+#include "service/led_service.h"
 #include "service/storage_service.h"
 #include "service/sound_service.h"
 #include "esp_log.h"
@@ -41,7 +41,6 @@ static buddy_callbacks_t s_cbs = { NULL };
 /* ---- forward declarations ---- */
 
 static void set_state(buddy_state_t new_state);
-static void update_led(void);
 
 /* ---- helpers ---- */
 
@@ -54,34 +53,13 @@ static void set_state(buddy_state_t new_state)
     s_frame_idx  = 0;
     s_tick_count = 0;
 
-    update_led();
-
     if (s_cbs.on_state_changed) {
         s_cbs.on_state_changed(new_state);
     }
 
     if (new_state == BUDDY_ATTENTION) {
         sound_service_play(SOUND_BUDDY_ATTENTION);
-    }
-}
-
-static void update_led(void)
-{
-    switch (s_state) {
-    case BUDDY_ATTENTION:
-        ws2812_set_color(255, 0, 0);
-        break;
-    case BUDDY_CELEBRATE:
-        ws2812_set_color(0, 255, 0);
-        break;
-    case BUDDY_HEART:
-        ws2812_set_color(255, 50, 80);
-        break;
-    case BUDDY_SLEEP:
-    case BUDDY_IDLE:
-    default:
-        ws2812_off();
-        break;
+        led_service_play(LED_COLOR_ATTENTION);
     }
 }
 
@@ -169,6 +147,7 @@ void buddy_approve(void)
     ESP_LOGI(TAG, "approved  total=%lu", (unsigned long)s_approved);
     set_state(BUDDY_CELEBRATE);
     sound_service_play(SOUND_BUDDY_HAPPY);
+    led_service_play(LED_COLOR_CELEBRATE);
 }
 
 void buddy_deny(void)
@@ -182,6 +161,7 @@ void buddy_deny(void)
     ESP_LOGI(TAG, "denied  total=%lu", (unsigned long)s_denied);
     set_state(BUDDY_IDLE);
     sound_service_play(SOUND_BUDDY_SAD);
+    led_service_play(LED_COLOR_SAD);
 }
 
 void buddy_trigger_dizzy(void)
@@ -259,9 +239,9 @@ void buddy_tick(void)
     case BUDDY_ATTENTION:
         /* Blink LED: toggle red/off each tick */
         if (s_tick_count % 2 == 0) {
-            ws2812_set_color(255, 0, 0);
+            led_service_wait(LED_COLOR_ATTENTION);
         } else {
-            ws2812_off();
+            led_service_stop();
         }
         /* Timeout after 30s */
         if (s_tick_count >= ATTENTION_TICKS) {

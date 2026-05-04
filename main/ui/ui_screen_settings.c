@@ -5,23 +5,27 @@
 #include "service/time_service.h"
 #include "service/storage_service.h"
 #include "service/sound_service.h"
+#include "service/led_service.h"
 #include "input/input_handler.h"
 #include "esp_log.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 7
+#define SETTINGS_ITEM_COUNT 13
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
 static lv_obj_t *settings_hint = NULL;
 
 static settings_mode_t settings_mode = SETTINGS_MODE_IDLE;
-static int settings_values[SETTINGS_ITEM_COUNT] = {0, 8, 25, 0, 0, 1, 10};
+static int settings_values[SETTINGS_ITEM_COUNT] = {
+    0, 8, 25, 0, 0, 1, 10,  // 0-6: existing
+    1, 5, 1, 0, 2, 0         // 7-12: LED on=1, bright=5, speed=Medium(1), style=Pure(0), anim=Scan(2), demo_color=0(Red)
+};
 static int current_settings_item = 0;
 
-static char item_keys[SETTINGS_ITEM_COUNT][16];
+static char item_keys[SETTINGS_ITEM_COUNT][20];
 static char item_values[SETTINGS_ITEM_COUNT][12];
 static ui_list_item_t items[SETTINGS_ITEM_COUNT];
 
@@ -56,8 +60,13 @@ static void settings_on_encoder_ccw(void)
 static void settings_on_encoder_press(void)
 {
     settings_mode_t mode = ui_screen_settings_get_mode();
-    if (mode == SETTINGS_MODE_ADJUST || mode == SETTINGS_MODE_SELECT) {
+    if (mode == SETTINGS_MODE_ADJUST) {
+        if (current_settings_item == 12 && led_service_is_demo_active()) {
+            led_service_demo_stop();
+        }
         ui_screen_settings_exit();
+    } else if (mode == SETTINGS_MODE_SELECT) {
+        ui_switch_screen(UI_SCREEN_MAIN);
     }
 }
 
@@ -76,10 +85,17 @@ static void settings_on_settings_press(void)
             settings_mode = SETTINGS_MODE_IDLE;
             update_display();
             ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO);
+        } else if (item == 12) {  // LED Demo
+            settings_mode = SETTINGS_MODE_ADJUST;
+            led_service_demo_start(led_demo_colors[settings_values[12] % LED_DEMO_COLOR_COUNT]);
+            update_display();
         } else {
             ui_screen_settings_enter_adjust();
         }
     } else if (mode == SETTINGS_MODE_ADJUST) {
+        if (current_settings_item == 12 && led_service_is_demo_active()) {
+            led_service_demo_stop();
+        }
         ui_screen_settings_exit();
     }
 }
@@ -87,7 +103,8 @@ static void settings_on_settings_press(void)
 /* ---- Display ---- */
 
 static const char *settings_names[SETTINGS_ITEM_COUNT] = {
-    "Language", "Timezone", "Pomodoro", "WiFi", "Direction", "Sound", "NTP Interval"
+    "Language", "Timezone", "Pomodoro", "WiFi", "Direction", "Sound", "NTP Interval",
+    "LED", "LED Bright", "LED Speed", "LED Style", "LED Anim", "LED Demo"
 };
 
 static void update_display(void)
@@ -116,6 +133,27 @@ static void update_display(void)
                 break;
             case 6:  // NTP Interval
                 snprintf(item_values[i], sizeof(item_values[i]), "%d min", settings_values[i]);
+                break;
+            case 7:  // LED on/off
+                snprintf(item_values[i], sizeof(item_values[i]), "%s", settings_values[i] ? "On" : "Off");
+                break;
+            case 8:  // LED Brightness
+                snprintf(item_values[i], sizeof(item_values[i]), "%d", settings_values[i]);
+                break;
+            case 9:  // LED Speed
+                snprintf(item_values[i], sizeof(item_values[i]), "%s",
+                         (const char*[]){"Slow", "Med", "Fast"}[settings_values[i] % 3]);
+                break;
+            case 10: // LED Style
+                snprintf(item_values[i], sizeof(item_values[i]), "%s",
+                         (const char*[]){"Pure", "Color"}[settings_values[i] % 2]);
+                break;
+            case 11: // LED Anim
+                snprintf(item_values[i], sizeof(item_values[i]), "%s",
+                         (const char*[]){"Breath", "Scan", "Gradient"}[settings_values[i] % 3]);
+                break;
+            case 12: // LED Demo
+                snprintf(item_values[i], sizeof(item_values[i]), "%s", led_demo_color_names[settings_values[i] % LED_DEMO_COLOR_COUNT]);
                 break;
             default:
                 snprintf(item_values[i], sizeof(item_values[i]), "%d", settings_values[i]);
@@ -194,6 +232,13 @@ lv_obj_t* ui_screen_settings_create(void)
     settings_values[5] = sound_val;
 
     settings_values[6] = time_service_get_sync_interval();
+
+    settings_values[7] = led_service_is_enabled() ? 1 : 0;
+    settings_values[8] = led_service_get_brightness();
+    settings_values[9] = (int)led_service_get_speed();
+    settings_values[10] = (int)led_service_get_style();
+    settings_values[11] = (int)led_service_get_animation();
+    settings_values[12] = 0;
 
     update_display();
 
@@ -292,6 +337,34 @@ void ui_screen_settings_adjust_up(void)
                 time_service_set_sync_interval(settings_values[current_settings_item]);
             }
             break;
+        case 7:  // LED on/off
+            settings_values[current_settings_item] = !settings_values[current_settings_item];
+            led_service_set_enabled(settings_values[current_settings_item]);
+            break;
+        case 8:  // LED Brightness
+            if (settings_values[current_settings_item] < 10) {
+                settings_values[current_settings_item]++;
+                led_service_set_brightness(settings_values[current_settings_item]);
+            }
+            break;
+        case 9:  // LED Speed
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 3;
+            led_service_set_speed((led_speed_t)settings_values[current_settings_item]);
+            break;
+        case 10: // LED Style
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 2;
+            led_service_set_style((led_style_t)settings_values[current_settings_item]);
+            break;
+        case 11: // LED Anim
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 3;
+            led_service_set_animation((led_anim_t)settings_values[current_settings_item]);
+            break;
+        case 12: // LED Demo color change
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % LED_DEMO_COLOR_COUNT;
+            if (led_service_is_demo_active()) {
+                led_service_demo_change_color(led_demo_colors[settings_values[current_settings_item]]);
+            }
+            break;
     }
     update_display();
 }
@@ -323,6 +396,34 @@ void ui_screen_settings_adjust_down(void)
             if (settings_values[current_settings_item] > 1) {
                 settings_values[current_settings_item]--;
                 time_service_set_sync_interval(settings_values[current_settings_item]);
+            }
+            break;
+        case 7:
+            settings_values[current_settings_item] = !settings_values[current_settings_item];
+            led_service_set_enabled(settings_values[current_settings_item]);
+            break;
+        case 8:
+            if (settings_values[current_settings_item] > 1) {
+                settings_values[current_settings_item]--;
+                led_service_set_brightness(settings_values[current_settings_item]);
+            }
+            break;
+        case 9:
+            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + 3) % 3;
+            led_service_set_speed((led_speed_t)settings_values[current_settings_item]);
+            break;
+        case 10:
+            settings_values[current_settings_item] = (settings_values[current_settings_item] + 1) % 2;
+            led_service_set_style((led_style_t)settings_values[current_settings_item]);
+            break;
+        case 11:
+            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + 3) % 3;
+            led_service_set_animation((led_anim_t)settings_values[current_settings_item]);
+            break;
+        case 12:
+            settings_values[current_settings_item] = (settings_values[current_settings_item] - 1 + LED_DEMO_COLOR_COUNT) % LED_DEMO_COLOR_COUNT;
+            if (led_service_is_demo_active()) {
+                led_service_demo_change_color(led_demo_colors[settings_values[current_settings_item]]);
             }
             break;
     }

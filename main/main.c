@@ -27,6 +27,7 @@
 #include "pomodoro/pomodoro_engine.h"
 #include "buddy/buddy.h"
 #include "service/sound_service.h"
+#include "service/led_service.h"
 
 static const char *TAG = "MAIN";
 
@@ -204,19 +205,26 @@ static void ui_update_task(void *arg) {
                     if (state.phase == POMODORO_PHASE_PAUSED) {
                         // Manual: work ended, waiting for user
                         sound_service_play(SOUND_POMO_WORK_DONE);
+                        led_service_play(LED_COLOR_BREAK);
+                        led_service_wait(LED_COLOR_BREAK);
                     } else if (state.phase == POMODORO_PHASE_BREAK) {
                         // Auto: directly starting break
                         sound_service_play(SOUND_POMO_BREAK_START);
+                        led_service_play(LED_COLOR_BREAK);
                     } else if (state.phase == POMODORO_PHASE_LONG_BREAK) {
                         sound_service_play(SOUND_POMO_LONG_BREAK);
+                        led_service_play(LED_COLOR_LONG_BREAK);
                     }
                 } else if (prev.phase == POMODORO_PHASE_BREAK || prev.phase == POMODORO_PHASE_LONG_BREAK) {
                     if (state.phase == POMODORO_PHASE_PAUSED) {
                         // Manual: break ended, waiting for user
                         sound_service_play(SOUND_POMO_BREAK_DONE);
+                        led_service_play(LED_COLOR_WORK);
+                        led_service_wait(LED_COLOR_WORK);
                     } else if (state.phase == POMODORO_PHASE_WORK) {
                         // Auto: directly starting work
                         sound_service_play(SOUND_POMO_WORK_START);
+                        led_service_play(LED_COLOR_WORK);
                     }
                 }
             }

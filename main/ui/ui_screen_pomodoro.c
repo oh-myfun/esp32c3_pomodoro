@@ -2,6 +2,7 @@
 #include "ui_manager.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "service/sound_service.h"
+#include "service/led_service.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -28,6 +29,7 @@ static void pomo_on_encoder_ccw(void)
 static void pomo_on_encoder_press(void)
 {
     pomodoro_engine_stop();
+    led_service_stop();
 }
 
 static void pomo_on_settings_press(void)
@@ -36,6 +38,7 @@ static void pomo_on_settings_press(void)
     if (state.phase == POMODORO_PHASE_IDLE) {
         pomodoro_engine_start();
         sound_service_play(SOUND_POMO_START);
+        led_service_play(LED_COLOR_WORK);
     } else if (state.is_paused) {
         pomodoro_engine_resume();
         pomodoro_state_t resumed = pomodoro_engine_get_state();
@@ -46,9 +49,11 @@ static void pomo_on_settings_press(void)
         } else if (resumed.phase == POMODORO_PHASE_LONG_BREAK) {
             sound_service_play(SOUND_POMO_LONG_BREAK);
         }
+        led_service_stop();
     } else {
         pomodoro_engine_pause();
         sound_service_play(SOUND_CONFIRM);
+        led_service_wait((led_color_t){255, 255, 0});
     }
 }
 
