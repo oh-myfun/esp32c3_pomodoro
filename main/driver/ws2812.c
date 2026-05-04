@@ -1,6 +1,7 @@
 #include "ws2812.h"
 #include "driver/rmt_tx.h"
 #include "esp_log.h"
+#include <stdlib.h>
 
 static const char *TAG = "ws2812";
 static rmt_channel_handle_t rmt_chan = NULL;
@@ -54,6 +55,21 @@ void ws2812_set_color(uint8_t r, uint8_t g, uint8_t b) {
     rmt_transmit_config_t tx_cfg = { .loop_count = 0 };
     rmt_transmit(rmt_chan, encoder, grb, 3, &tx_cfg);
     rmt_tx_wait_all_done(rmt_chan, -1);
+}
+
+void ws2812_set_pixels(const rgb_t *pixels, uint8_t count) {
+    if (!rmt_chan || !encoder || !pixels || count == 0) return;
+    uint8_t *grb = malloc(count * 3);
+    if (!grb) return;
+    for (int i = 0; i < count; i++) {
+        grb[i * 3 + 0] = pixels[i].g;
+        grb[i * 3 + 1] = pixels[i].r;
+        grb[i * 3 + 2] = pixels[i].b;
+    }
+    rmt_transmit_config_t tx_cfg = { .loop_count = 0 };
+    rmt_transmit(rmt_chan, encoder, grb, count * 3, &tx_cfg);
+    rmt_tx_wait_all_done(rmt_chan, -1);
+    free(grb);
 }
 
 void ws2812_off(void) {
