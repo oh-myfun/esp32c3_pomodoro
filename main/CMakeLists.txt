@@ -15,6 +15,7 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_settings_buddy.c
                           ui/ui_screen_settings_time.c
                           ui/ui_screen_settings_system.c
+                          ui/ui_screen_settings_debug.c
                           ui/ui_screen_wifi_saved.c
                           service/wifi_service.c
                           pomodoro/pomodoro_engine.c

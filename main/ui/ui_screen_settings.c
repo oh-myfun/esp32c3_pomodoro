@@ -6,7 +6,7 @@
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 6
+#define SETTINGS_ITEM_COUNT 7
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
@@ -20,7 +20,7 @@ static char item_values[SETTINGS_ITEM_COUNT][4];
 static ui_list_item_t items[SETTINGS_ITEM_COUNT];
 
 static const char *settings_names[SETTINGS_ITEM_COUNT] = {
-    "Pomodoro", "Buddy", "Light", "WiFi", "Time", "System"
+    "Pomodoro", "Buddy", "Light", "WiFi", "Time", "System", "Debug"
 };
 
 static void update_display(void)
@@ -95,6 +95,7 @@ static void navigate_to_subpage(void)
         case 3: ui_switch_screen(UI_SCREEN_WIFI_SAVED);        break;
         case 4: ui_switch_screen(UI_SCREEN_SETTINGS_TIME);     break;
         case 5: ui_switch_screen(UI_SCREEN_SETTINGS_SYSTEM);   break;
+        case 6: ui_switch_screen(UI_SCREEN_SETTINGS_DEBUG);    break;
     }
 }
 

@@ -10,6 +10,7 @@
 #include "ui_screen_settings_buddy.h"
 #include "ui_screen_settings_time.h"
 #include "ui_screen_settings_system.h"
+#include "ui_screen_settings_debug.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -36,7 +37,8 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_LIGHT ||
            id == UI_SCREEN_SETTINGS_BUDDY ||
            id == UI_SCREEN_SETTINGS_TIME ||
-           id == UI_SCREEN_SETTINGS_SYSTEM;
+           id == UI_SCREEN_SETTINGS_SYSTEM ||
+           id == UI_SCREEN_SETTINGS_DEBUG;
 }
 
 static void log_mem(const char *label)
@@ -90,6 +92,7 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_SETTINGS_BUDDY] = ui_screen_settings_buddy_create;
     lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
     lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
+    lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);

@@ -28,10 +28,11 @@
 #include "buddy/buddy.h"
 #include "service/sound_service.h"
 #include "service/led_service.h"
+#include "ui/ui_screen_settings_debug.h"
 
 static const char *TAG = "MAIN";
 
-#define LVGL_DRAW_BUF_LINES 30
+#define LVGL_DRAW_BUF_LINES 20
 #define LVGL_TICK_PERIOD_MS 1
 #define LVGL_TASK_MAX_DELAY_MS 10
 #define LVGL_TASK_MIN_DELAY_MS 1
@@ -190,6 +191,7 @@ static void ui_update_task(void *arg) {
     int64_t last_pomodoro_tick = 0;
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
+    int64_t last_debug_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -298,6 +300,14 @@ static void ui_update_task(void *arg) {
             lvgl_unlock();
         }
 
+        // Debug screen refresh every 1 second
+        if (current_screen == UI_SCREEN_SETTINGS_DEBUG && now - last_debug_tick >= 1000) {
+            lvgl_lock();
+            ui_screen_settings_debug_refresh();
+            lvgl_unlock();
+            last_debug_tick = now;
+        }
+
         // Memory monitor every 30 seconds
         if (now - last_mem_tick >= 30000) {
             multi_heap_info_t info;
@@ -376,9 +386,9 @@ void app_main(void) {
 
     // 9. Create tasks
     xTaskCreate(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL);
-    xTaskCreate(input_handler_task, "Input",   6144, NULL, 3, NULL);
-    xTaskCreate(service_task, "Service", 6144, NULL, 2, NULL);
-    xTaskCreate(ui_update_task, "UI",      4096, NULL, 1, NULL);
+    xTaskCreate(input_handler_task, "Input",   5120, NULL, 3, NULL);
+    xTaskCreate(service_task, "Service", 4096, NULL, 2, NULL);
+    xTaskCreate(ui_update_task, "UI",      4608, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "All tasks created");
 
