@@ -313,10 +313,14 @@ void app_main(void) {
         ESP_ERROR_CHECK(ret);  // halt
     }
 
+    // 1.5. Migrate old NVS keys
+    storage_migrate_settings_keys();
+
     // 2. Non-fatal: drivers
     buzzer_init();
     st7789_lcd_init();
     if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
+    led_service_init();
 
     // 3. LVGL + display (depends on LCD)
     lvgl_init();
