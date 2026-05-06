@@ -15,10 +15,22 @@ static const char *TAG = "TIME";
 
 static const char *ntp_servers[] = {
     "pool.ntp.org",
-    "time.windows.com",
+    "cn.ntp.org.cn",
+    "ntp.aliyun.com",
     "time.google.com",
+    "time.windows.com",
 };
-#define NTP_SERVER_COUNT (sizeof(ntp_servers) / sizeof(ntp_servers[0]))
+#define NTP_SERVER_COUNT TIME_SERVICE_NTP_SERVER_COUNT
+
+static const char *ntp_server_names[] = {
+    "NTP Pool",
+    "China",
+    "Aliyun",
+    "Google",
+    "Windows",
+};
+
+static int ntp_server_index = 0;
 
 static bool synced = false;
 static int8_t tz_hours = 8;
@@ -40,10 +52,17 @@ static void time_sync_notification(struct timeval *tv)
 
 void time_service_init(void)
 {
-    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    for (int i = 0; i < NTP_SERVER_COUNT; i++) {
-        esp_sntp_setservername(i, ntp_servers[i]);
+    // Load NTP server index
+    int32_t stored_ntp_idx = 0;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_NTP_SERVER, &stored_ntp_idx);
+    if (stored_ntp_idx >= 0 && stored_ntp_idx < NTP_SERVER_COUNT) {
+        ntp_server_index = (int)stored_ntp_idx;
     }
+
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, ntp_servers[ntp_server_index]);
+    esp_sntp_setservername(1, NULL);
+    esp_sntp_setservername(2, NULL);
     esp_sntp_set_time_sync_notification_cb(time_sync_notification);
 
     int32_t stored_tz = 8;
@@ -239,4 +258,33 @@ void time_service_set_timezone_offset(int hours)
 int time_service_get_timezone_offset(void)
 {
     return (int)tz_hours;
+}
+
+void time_service_set_ntp_server_index(int index)
+{
+    if (index < 0 || index >= NTP_SERVER_COUNT) return;
+    ntp_server_index = index;
+    strncpy(ntp_server, ntp_servers[index], sizeof(ntp_server) - 1);
+    esp_sntp_setservername(0, ntp_server);
+    esp_sntp_setservername(1, NULL);
+    esp_sntp_setservername(2, NULL);
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_NTP_SERVER, (int32_t)index);
+    ESP_LOGI(TAG, "NTP server set to %s (%s)", ntp_server_names[index], ntp_servers[index]);
+}
+
+int time_service_get_ntp_server_index(void)
+{
+    return ntp_server_index;
+}
+
+const char* time_service_get_ntp_server_name(int index)
+{
+    if (index < 0 || index >= NTP_SERVER_COUNT) return "Unknown";
+    return ntp_server_names[index];
+}
+
+const char* time_service_get_ntp_server_address(int index)
+{
+    if (index < 0 || index >= NTP_SERVER_COUNT) return "";
+    return ntp_servers[index];
 }
