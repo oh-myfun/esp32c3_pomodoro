@@ -9,6 +9,7 @@
 #include "button_gpio.h"
 #include "ui/ui_manager.h"
 #include "service/sound_service.h"
+#include "service/storage_service.h"
 
 #define ENCODER_A_GPIO   GPIO_NUM_4
 #define ENCODER_B_GPIO  GPIO_NUM_5
@@ -133,6 +134,12 @@ void input_handler_init(void)
     } else {
         iot_button_register_cb(g_settings_btn, BUTTON_PRESS_DOWN, NULL, settings_btn_cb, NULL);
     }
+
+    // Load encoder direction from NVS
+    int32_t enc_dir = 0;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_ENC_DIR, &enc_dir);
+    g_reverse_encoder = (enc_dir != 0);
+    ESP_LOGI(TAG, "Encoder direction: %s", g_reverse_encoder ? "reversed" : "normal");
 }
 
 void input_handler_task(void *arg)

@@ -114,7 +114,7 @@ static bool sound_enabled = true;
 void sound_service_init(void)
 {
     int32_t val = 1;
-    storage_load_int(STORAGE_NAMESPACE_SETTINGS, "sound_on", &val);
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SOUND, &val);
     sound_enabled = (val != 0);
     ESP_LOGI(TAG, "Sound service initialized, enabled=%d", sound_enabled);
 }
@@ -136,7 +136,7 @@ bool sound_service_is_enabled(void)
 void sound_service_set_enabled(bool enabled)
 {
     sound_enabled = enabled;
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "sound_on", enabled ? 1 : 0);
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_SOUND, enabled ? 1 : 0);
     if (!enabled) {
         buzzer_stop();
     }

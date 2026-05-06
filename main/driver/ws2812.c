@@ -1,17 +1,26 @@
 #include "ws2812.h"
 #include "driver/rmt_tx.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <stdlib.h>
 
 static const char *TAG = "ws2812";
 static rmt_channel_handle_t rmt_chan = NULL;
 static rmt_encoder_handle_t encoder = NULL;
+static SemaphoreHandle_t rmt_mutex = NULL;
 
 // WS2812 timing: T0H=0.4us, T0L=0.85us, T1H=0.8us, T1L=0.45us, RESET>280us
 // At 10MHz resolution (100ns tick):
 //   T0H = 4 ticks, T0L = 9 ticks, T1H = 8 ticks, T1L = 5 ticks
 
 int ws2812_init(void) {
+    rmt_mutex = xSemaphoreCreateMutex();
+    if (!rmt_mutex) {
+        ESP_LOGE(TAG, "Failed to create RMT mutex");
+        return -1;
+    }
+
     rmt_tx_channel_config_t chan_cfg = {
         .gpio_num = WS2812_GPIO,
         .clk_src = RMT_CLK_SRC_DEFAULT,
@@ -48,17 +57,23 @@ int ws2812_init(void) {
     return 0;
 }
 
-void ws2812_set_color(uint8_t r, uint8_t g, uint8_t b) {
+static void transmit_grb(const uint8_t *grb, int len)
+{
     if (!rmt_chan || !encoder) return;
-    // WS2812 expects GRB byte order
-    uint8_t grb[3] = { g, r, b };
+    xSemaphoreTake(rmt_mutex, portMAX_DELAY);
     rmt_transmit_config_t tx_cfg = { .loop_count = 0 };
-    rmt_transmit(rmt_chan, encoder, grb, 3, &tx_cfg);
+    rmt_transmit(rmt_chan, encoder, grb, len, &tx_cfg);
     rmt_tx_wait_all_done(rmt_chan, -1);
+    xSemaphoreGive(rmt_mutex);
+}
+
+void ws2812_set_color(uint8_t r, uint8_t g, uint8_t b) {
+    uint8_t grb[3] = { g, r, b };
+    transmit_grb(grb, 3);
 }
 
 void ws2812_set_pixels(const rgb_t *pixels, uint8_t count) {
-    if (!rmt_chan || !encoder || !pixels || count == 0) return;
+    if (!pixels || count == 0) return;
     uint8_t *grb = malloc(count * 3);
     if (!grb) return;
     for (int i = 0; i < count; i++) {
@@ -66,9 +81,7 @@ void ws2812_set_pixels(const rgb_t *pixels, uint8_t count) {
         grb[i * 3 + 1] = pixels[i].r;
         grb[i * 3 + 2] = pixels[i].b;
     }
-    rmt_transmit_config_t tx_cfg = { .loop_count = 0 };
-    rmt_transmit(rmt_chan, encoder, grb, count * 3, &tx_cfg);
-    rmt_tx_wait_all_done(rmt_chan, -1);
+    transmit_grb(grb, count * 3);
     free(grb);
 }
 

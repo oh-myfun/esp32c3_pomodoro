@@ -189,6 +189,7 @@ static void ui_update_task(void *arg) {
     ESP_LOGI(TAG, "UI update task started");
     int64_t last_pomodoro_tick = 0;
     int64_t last_wifi_ui_tick = 0;
+    int64_t last_mem_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -295,6 +296,16 @@ static void ui_update_task(void *arg) {
             lvgl_lock();
             ui_screen_buddy_update_state();
             lvgl_unlock();
+        }
+
+        // Memory monitor every 30 seconds
+        if (now - last_mem_tick >= 30000) {
+            multi_heap_info_t info;
+            heap_caps_get_info(&info, MALLOC_CAP_8BIT);
+            ESP_LOGI(TAG, "[MEM] heap_free=%u  heap_min=%u",
+                     (unsigned)info.total_free_bytes,
+                     (unsigned)info.minimum_free_bytes);
+            last_mem_tick = now;
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS);

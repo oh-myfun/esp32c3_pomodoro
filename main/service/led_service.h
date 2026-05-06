@@ -11,14 +11,14 @@ typedef enum { LED_ANIM_BREATH, LED_ANIM_SCAN, LED_ANIM_GRADIENT } led_anim_t;
 typedef enum { LED_STYLE_PURE, LED_STYLE_COLORFUL } led_style_t;
 typedef enum { LED_SPEED_SLOW, LED_SPEED_MEDIUM, LED_SPEED_FAST } led_speed_t;
 
-// Color constants
-#define LED_COLOR_WORK       (led_color_t){255, 107, 107}
-#define LED_COLOR_BREAK      (led_color_t){76, 175, 80}
-#define LED_COLOR_LONG_BREAK (led_color_t){77, 150, 255}
+// Color constants (fully saturated for max contrast on WS2812)
+#define LED_COLOR_WORK       (led_color_t){255, 0, 0}
+#define LED_COLOR_BREAK      (led_color_t){0, 255, 0}
+#define LED_COLOR_LONG_BREAK (led_color_t){0, 80, 255}
 #define LED_COLOR_PAUSED     (led_color_t){255, 255, 0}
 #define LED_COLOR_ATTENTION  (led_color_t){255, 0, 0}
 #define LED_COLOR_CELEBRATE  (led_color_t){0, 255, 0}
-#define LED_COLOR_SAD        (led_color_t){255, 80, 120}
+#define LED_COLOR_SAD        (led_color_t){255, 0, 100}
 
 // Demo color list
 #define LED_DEMO_COLOR_COUNT 5

@@ -153,9 +153,13 @@ static void time_on_encoder_long_press(void)
 
 lv_obj_t* ui_screen_settings_time_create(void)
 {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_size(screen, 240, 240);
+    if (!screen) {
+        screen = lv_obj_create(NULL);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_size(screen, 240, 240);
+    }
+    time_list = NULL;
+    hint_label = NULL;
 
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, "Time");
