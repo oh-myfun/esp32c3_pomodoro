@@ -128,12 +128,20 @@ static void on_wifi_connected(const char *ip) {
     wifi_fail_time = 0;
     sound_service_play(SOUND_WIFI_CONNECTED);
     time_service_request_sync();
-    // Status will be updated by ui_update_task polling
+    if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
+        lvgl_lock();
+        ui_screen_wifi_saved_refresh();
+        lvgl_unlock();
+    }
 }
 
 static void on_wifi_disconnected(void) {
     ESP_LOGI(TAG, "WiFi disconnected");
-    // Status will be updated by ui_update_task polling
+    if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
+        lvgl_lock();
+        ui_screen_wifi_saved_refresh();
+        lvgl_unlock();
+    }
 }
 
 static void on_wifi_scan_complete(int count) {
@@ -283,13 +291,6 @@ static void ui_update_task(void *arg) {
             if (current_screen == UI_SCREEN_WIFI_LIST) {
                 ui_screen_wifi_list_refresh();
             }
-
-            if (current_screen == UI_SCREEN_WIFI_SAVED) {
-                lvgl_lock();
-                ui_screen_wifi_saved_refresh();
-                lvgl_unlock();
-            }
-
             last_wifi_ui_tick = now;
         }
 

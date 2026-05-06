@@ -11,6 +11,7 @@
 #include "ui_screen_settings_time.h"
 #include "ui_screen_settings_system.h"
 #include "ui_screen_settings_debug.h"
+#include "ui_screen_wifi_saved.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -132,6 +133,11 @@ void ui_switch_screen(ui_screen_id_t screen_id)
 
     lv_scr_load(screens[screen_id]);
     current_screen = screen_id;
+
+    // Refresh data-driven screens on entry
+    if (screen_id == UI_SCREEN_WIFI_SAVED) {
+        ui_screen_wifi_saved_refresh();
+    }
 
     // Clean old disposable screen: remove children to free memory
     if (screen_is_disposable(old_screen) && screens[old_screen]) {

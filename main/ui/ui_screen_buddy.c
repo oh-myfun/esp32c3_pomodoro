@@ -105,11 +105,12 @@ static void buddy_on_encoder_ccw(void)
 static void buddy_on_encoder_press(void)
 {
     if (display_mode == MODE_NORMAL) {
-        set_display_mode(MODE_INFO);
+        ui_switch_screen(UI_SCREEN_POMODORO);
+    } else if (display_mode == MODE_ATTENTION) {
+        set_display_mode(MODE_NORMAL);
     } else if (display_mode == MODE_INFO) {
         set_display_mode(MODE_NORMAL);
     }
-    /* ATTENTION mode: encoder press is no-op */
 }
 
 static void buddy_on_encoder_long_press(void)
@@ -120,7 +121,7 @@ static void buddy_on_encoder_long_press(void)
 static void buddy_on_settings_press(void)
 {
     if (display_mode == MODE_NORMAL) {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        set_display_mode(MODE_INFO);
     } else if (display_mode == MODE_ATTENTION) {
         if (attn_selection == 0) {
             buddy_approve();
@@ -394,7 +395,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     /* ---- Navigation hint ---- */
     nav_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(nav_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(nav_hint, "SET:info");
+    lv_label_set_text(nav_hint, "Press:back | SET:info");
     lv_obj_set_style_text_font(nav_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
@@ -488,7 +489,7 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     info_hint = lv_label_create(info_container);
     lv_obj_set_style_text_color(info_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(info_hint, "Press: back");
+    lv_label_set_text(info_hint, "Press:back | SET:select");
     lv_obj_set_style_text_font(info_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(info_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 

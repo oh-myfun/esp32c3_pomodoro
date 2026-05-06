@@ -107,6 +107,7 @@ static void wifi_list_item_click(int index)
     strncpy(selected_ssid, (char*)wifi_results[index].ssid, sizeof(selected_ssid) - 1);
     if (wifi_results[index].open) {
         wifi_service_connect(wifi_results[index].ssid, "");
+        ui_switch_screen(UI_SCREEN_WIFI_SAVED);
     } else {
         ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
         ui_screen_password_start((char*)wifi_results[index].ssid);
@@ -418,7 +419,7 @@ void ui_screen_password_add_char(void)
     if (pwd_selected_row == 3 && pwd_selected_col == 9) {
         if (strlen(password_buffer) > 0) {
             wifi_service_connect(selected_ssid, password_buffer);
-            ui_switch_screen(UI_SCREEN_MAIN);
+            ui_switch_screen(UI_SCREEN_WIFI_SAVED);
         }
         return;
     }

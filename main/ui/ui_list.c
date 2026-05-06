@@ -53,21 +53,29 @@ static void create_labels(lv_obj_t *list, int visible_count)
 {
     ui_list_data_t *data = get_list_data(list);
     if (!data) return;
-    
+
+    int key_w = (data->list_width * 55) / 100;
+    int value_x = (data->list_width * 52) / 100;
+    int value_w = data->list_width - value_x - 8;
+
     for (int i = 0; i < visible_count; i++) {
         data->key_labels[i] = lv_label_create(list);
         if(data->key_labels[i]) {
             lv_obj_set_style_text_font(data->key_labels[i], &lv_font_montserrat_16, 0);
             lv_label_set_text(data->key_labels[i], "");
-            lv_obj_set_pos(data->key_labels[i], 10, i * ITEM_HEIGHT);
+            lv_obj_set_pos(data->key_labels[i], 4, i * ITEM_HEIGHT);
+            lv_obj_set_size(data->key_labels[i], key_w, ITEM_HEIGHT);
+            lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_DOT);
         }
-        
+
         data->value_labels[i] = lv_label_create(list);
         if(data->value_labels[i]) {
             lv_obj_set_style_text_font(data->value_labels[i], &lv_font_montserrat_16, 0);
             lv_label_set_text(data->value_labels[i], "");
-            lv_obj_set_pos(data->value_labels[i], data->list_width - 70, i * ITEM_HEIGHT);
+            lv_obj_set_pos(data->value_labels[i], value_x, i * ITEM_HEIGHT);
+            lv_obj_set_size(data->value_labels[i], value_w, ITEM_HEIGHT);
             lv_obj_set_style_text_align(data->value_labels[i], LV_TEXT_ALIGN_RIGHT, 0);
+            lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_CLIP);
         }
     }
 }
@@ -76,24 +84,42 @@ static void update_display(lv_obj_t *list)
 {
     ui_list_data_t *data = get_list_data(list);
     if (!data) return;
-    
+
     for (int i = 0; i < data->visible_count; i++) {
         if (data->key_labels[i] == NULL) continue;
-        
+
         int idx = data->scroll + i;
         if (idx < data->count && data->items) {
             lv_obj_clear_flag(data->key_labels[i], LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(data->value_labels[i], LV_OBJ_FLAG_HIDDEN);
-            
-            lv_label_set_text(data->key_labels[i], data->items[idx].key);
-            lv_label_set_text(data->value_labels[i], data->items[idx].value);
-            
-            if (idx == data->selected) {
+
+            const char *new_key = data->items[idx].key;
+            const char *new_val = data->items[idx].value;
+            bool text_changed = false;
+
+            if (strcmp(lv_label_get_text(data->key_labels[i]), new_key) != 0) {
+                lv_label_set_text(data->key_labels[i], new_key);
+                text_changed = true;
+            }
+            if (strcmp(lv_label_get_text(data->value_labels[i]), new_val) != 0) {
+                lv_label_set_text(data->value_labels[i], new_val);
+                text_changed = true;
+            }
+
+            bool is_selected = (idx == data->selected);
+
+            if (is_selected) {
                 lv_obj_set_style_text_color(data->key_labels[i], data->selected_color, 0);
                 lv_obj_set_style_text_color(data->value_labels[i], data->selected_color, 0);
+                if (text_changed) {
+                    lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_SCROLL);
+                    lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_SCROLL);
+                }
             } else {
                 lv_obj_set_style_text_color(data->key_labels[i], lv_color_hex(0xFFFFFF), 0);
                 lv_obj_set_style_text_color(data->value_labels[i], lv_color_hex(0xAAAAAA), 0);
+                lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_DOT);
+                lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_CLIP);
             }
         } else {
             lv_obj_add_flag(data->key_labels[i], LV_OBJ_FLAG_HIDDEN);

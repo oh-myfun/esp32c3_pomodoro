@@ -163,7 +163,7 @@ static void saved_on_settings_press(void)
                 if (storage_load_wifi_profile(action_profile_index, ssid, sizeof(ssid), password, sizeof(password))) {
                     wifi_service_connect(ssid, password);
                     mode = SAVED_MODE_LIST;
-                    ui_switch_screen(UI_SCREEN_MAIN);
+                    update_display();
                 }
                 break;
             }
