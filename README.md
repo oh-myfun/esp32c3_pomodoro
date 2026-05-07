@@ -1,6 +1,6 @@
 # Pomodoro Buddy
 
-基于 ESP32-C3 的番茄钟与 AI Buddy 伴侣设备，通过 BLE 连接 Claude Desktop 实现权限审批交互。
+基于 ESP32-C3 的番茄钟与 AI Buddy 伴侣设备，通过 TCP 连接 Claude Code 实现权限审批交互。
 
 ## 硬件连接
 
