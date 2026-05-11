@@ -1,4 +1,5 @@
 #include "ui_screen_settings_debug.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -174,7 +175,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
 
     stats_label = lv_label_create(screen);
     lv_obj_set_style_text_color(stats_label, lv_color_hex(0x00FF00), 0);
-    lv_obj_set_style_text_font(stats_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(stats_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(stats_label, LV_ALIGN_TOP_LEFT, 4, 2);
 
     // Clipping container: fixed height, hides overflow
@@ -189,7 +190,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
 
     log_label = lv_label_create(log_cont);
     lv_obj_set_style_text_color(log_label, lv_color_hex(0xCCCCCC), 0);
-    lv_obj_set_style_text_font(log_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(log_label, &lv_font_notosanssc_14, 0);
     lv_obj_set_width(log_label, 228);
     lv_label_set_long_mode(log_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_pos(log_label, 0, 0);
@@ -197,7 +198,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, "Any key:back | Encoder:scroll");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -2);
 
     capture_start();

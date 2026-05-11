@@ -1,4 +1,6 @@
 #include "ui_screen_buddy.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "buddy/buddy.h"
 #include "service/ble_service.h"
@@ -250,13 +252,21 @@ static void update_attention_selection(void)
 
     lvgl_lock();
     if (attn_selection == 0) {
-        lv_label_set_text(attn_approve, "> Approve");
-        lv_label_set_text(attn_deny,    "  Deny");
+        char buf_approve[32];
+        snprintf(buf_approve, sizeof(buf_approve), "> %s", i18n(STR_APPROVE));
+        char buf_deny[32];
+        snprintf(buf_deny, sizeof(buf_deny), "  %s", i18n(STR_DENY));
+        lv_label_set_text(attn_approve, buf_approve);
+        lv_label_set_text(attn_deny,    buf_deny);
         lv_obj_set_style_text_color(attn_approve, lv_color_hex(0x00FF00), 0);
         lv_obj_set_style_text_color(attn_deny,    lv_color_hex(0xFFFFFF), 0);
     } else {
-        lv_label_set_text(attn_approve, "  Approve");
-        lv_label_set_text(attn_deny,    "> Deny");
+        char buf_approve[32];
+        snprintf(buf_approve, sizeof(buf_approve), "  %s", i18n(STR_APPROVE));
+        char buf_deny[32];
+        snprintf(buf_deny, sizeof(buf_deny), "> %s", i18n(STR_DENY));
+        lv_label_set_text(attn_approve, buf_approve);
+        lv_label_set_text(attn_deny,    buf_deny);
         lv_obj_set_style_text_color(attn_approve, lv_color_hex(0xFFFFFF), 0);
         lv_obj_set_style_text_color(attn_deny,    lv_color_hex(0xFF4444), 0);
     }
@@ -277,37 +287,42 @@ static void update_info_content(void)
 
     if (info_labels[0]) {
         char buf[48];
-        snprintf(buf, sizeof(buf), "Pet: %s",
+        snprintf(buf, sizeof(buf), "%s%s",
+                 i18n(STR_PET_LABEL),
                  buddy_get_species_name(info.species_index) ?
                  buddy_get_species_name(info.species_index) : "--");
         lv_label_set_text(info_labels[0], buf);
     }
     if (info_labels[1]) {
         char buf[48];
-        snprintf(buf, sizeof(buf), "Owner: %s",
+        snprintf(buf, sizeof(buf), "%s%s",
+                 i18n(STR_OWNER_LABEL),
                  info.owner_name[0] ? info.owner_name : "--");
         lv_label_set_text(info_labels[1], buf);
     }
     if (info_labels[2]) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "Approved: %lu", (unsigned long)info.approved_count);
+        snprintf(buf, sizeof(buf), "%s%lu", i18n(STR_APPROVED_LABEL), (unsigned long)info.approved_count);
         lv_label_set_text(info_labels[2], buf);
     }
     if (info_labels[3]) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "Denied: %lu", (unsigned long)info.denied_count);
+        snprintf(buf, sizeof(buf), "%s%lu", i18n(STR_DENIED_LABEL), (unsigned long)info.denied_count);
         lv_label_set_text(info_labels[3], buf);
     }
     if (info_labels[4]) {
         lv_label_set_text(info_labels[4],
-                          ble_connected ? "BLE: Connected" : "BLE: Disconnected");
+                          ble_connected ? i18n(STR_BLE_CONN) : i18n(STR_BLE_DISCONN));
     }
 
     if (info_action) {
+        char buf[32];
         if (info_scroll == 0) {
-            lv_label_set_text(info_action, "> Next Pet");
+            snprintf(buf, sizeof(buf), "> %s", i18n(STR_NEXT_PET));
+            lv_label_set_text(info_action, buf);
         } else {
-            lv_label_set_text(info_action, "  Back");
+            snprintf(buf, sizeof(buf), "  %s", i18n(STR_BACK));
+            lv_label_set_text(info_action, buf);
         }
     }
 
@@ -335,13 +350,13 @@ static uint32_t state_to_color(buddy_state_t state)
 static const char *state_to_text(buddy_state_t state)
 {
     switch (state) {
-    case BUDDY_SLEEP:     return "Sleep";
-    case BUDDY_IDLE:      return "Idle";
-    case BUDDY_BUSY:      return "Busy";
-    case BUDDY_ATTENTION: return "Attention!";
-    case BUDDY_CELEBRATE: return "Celebrate!";
-    case BUDDY_DIZZY:     return "Dizzy...";
-    case BUDDY_HEART:     return "<3";
+    case BUDDY_SLEEP:     return i18n(STR_STATE_SLEEP);
+    case BUDDY_IDLE:      return i18n(STR_STATE_IDLE);
+    case BUDDY_BUSY:      return i18n(STR_STATE_BUSY);
+    case BUDDY_ATTENTION: return i18n(STR_STATE_ATTENTION);
+    case BUDDY_CELEBRATE: return i18n(STR_STATE_CELEBRATE);
+    case BUDDY_DIZZY:     return i18n(STR_STATE_DIZZY);
+    case BUDDY_HEART:     return i18n(STR_STATE_HEART);
     default:              return "?";
     }
 }
@@ -360,13 +375,13 @@ lv_obj_t* ui_screen_buddy_create(void)
     ble_icon = lv_label_create(screen);
     lv_obj_set_style_text_color(ble_icon, lv_color_hex(0x666666), 0);
     lv_label_set_text(ble_icon, "[x]");
-    lv_obj_set_style_text_font(ble_icon, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(ble_icon, &lv_font_notosanssc_14, 0);
     lv_obj_align(ble_icon, LV_ALIGN_TOP_LEFT, 8, 6);
 
     name_label = lv_label_create(screen);
     lv_obj_set_style_text_color(name_label, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(name_label, "Buddy");
-    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(name_label, i18n(STR_BUDDY_NAME));
+    lv_obj_set_style_text_font(name_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(name_label, LV_ALIGN_TOP_LEFT, 35, 6);
 
     /* ---- Pet animation (center) ---- */
@@ -379,15 +394,17 @@ lv_obj_t* ui_screen_buddy_create(void)
     /* ---- State label ---- */
     state_label = lv_label_create(screen);
     lv_obj_set_style_text_color(state_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(state_label, "State: Sleep");
-    lv_obj_set_style_text_font(state_label, &lv_font_montserrat_14, 0);
+    char init_state_buf[40];
+    snprintf(init_state_buf, sizeof(init_state_buf), i18n(STR_FMT_STATE), i18n(STR_STATE_SLEEP));
+    lv_label_set_text(state_label, init_state_buf);
+    lv_obj_set_style_text_font(state_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(state_label, LV_ALIGN_BOTTOM_LEFT, 8, -40);
 
     /* ---- Message label ---- */
     msg_label = lv_label_create(screen);
     lv_obj_set_style_text_color(msg_label, lv_color_hex(0xAAAAAA), 0);
     lv_label_set_text(msg_label, "");
-    lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(msg_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(msg_label, LV_ALIGN_BOTTOM_LEFT, 8, -24);
     lv_obj_set_width(msg_label, 224);
     lv_label_set_long_mode(msg_label, LV_LABEL_LONG_MODE_WRAP);
@@ -395,8 +412,8 @@ lv_obj_t* ui_screen_buddy_create(void)
     /* ---- Navigation hint ---- */
     nav_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(nav_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(nav_hint, "Press:back | SET:info");
-    lv_obj_set_style_text_font(nav_hint, &lv_font_montserrat_14, 0);
+    lv_label_set_text(nav_hint, i18n(STR_H_PRESS_BACK_SET_INFO));
+    lv_obj_set_style_text_font(nav_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     /* ============================================================
@@ -412,8 +429,8 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     attn_title = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_title, lv_color_hex(0xFF4444), 0);
-    lv_label_set_text(attn_title, "!! PERMISSION !!");
-    lv_obj_set_style_text_font(attn_title, &lv_font_montserrat_16, 0);
+    lv_label_set_text(attn_title, i18n(STR_PERMISSION));
+    lv_obj_set_style_text_font(attn_title, &lv_font_notosanssc_16, 0);
     lv_obj_align(attn_title, LV_ALIGN_TOP_MID, 0, 8);
 
     attn_pet = lv_label_create(attn_container);
@@ -424,28 +441,36 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     attn_tool = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_tool, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(attn_tool, "Tool:");
-    lv_obj_set_style_text_font(attn_tool, &lv_font_montserrat_14, 0);
+    lv_label_set_text(attn_tool, i18n(STR_TOOL));
+    lv_obj_set_style_text_font(attn_tool, &lv_font_notosanssc_14, 0);
     lv_obj_align(attn_tool, LV_ALIGN_TOP_LEFT, 10, 148);
 
     attn_hint = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_hint, lv_color_hex(0xCCCCCC), 0);
     lv_label_set_text(attn_hint, "");
-    lv_obj_set_style_text_font(attn_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(attn_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(attn_hint, LV_ALIGN_TOP_LEFT, 10, 166);
     lv_obj_set_width(attn_hint, 216);
     lv_label_set_long_mode(attn_hint, LV_LABEL_LONG_MODE_WRAP);
 
     attn_approve = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_approve, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(attn_approve, "> Approve");
-    lv_obj_set_style_text_font(attn_approve, &lv_font_montserrat_16, 0);
+    {
+        char _buf[32];
+        snprintf(_buf, sizeof(_buf), "> %s", i18n(STR_APPROVE));
+        lv_label_set_text(attn_approve, _buf);
+    }
+    lv_obj_set_style_text_font(attn_approve, &lv_font_notosanssc_16, 0);
     lv_obj_align(attn_approve, LV_ALIGN_BOTTOM_LEFT, 20, -30);
 
     attn_deny = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_deny, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(attn_deny, "  Deny");
-    lv_obj_set_style_text_font(attn_deny, &lv_font_montserrat_16, 0);
+    {
+        char _buf[32];
+        snprintf(_buf, sizeof(_buf), "  %s", i18n(STR_DENY));
+        lv_label_set_text(attn_deny, _buf);
+    }
+    lv_obj_set_style_text_font(attn_deny, &lv_font_notosanssc_16, 0);
     lv_obj_align(attn_deny, LV_ALIGN_BOTTOM_LEFT, 20, -12);
 
     /* ============================================================
@@ -461,36 +486,46 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     info_title = lv_label_create(info_container);
     lv_obj_set_style_text_color(info_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(info_title, "Buddy Info");
-    lv_obj_set_style_text_font(info_title, &lv_font_montserrat_16, 0);
+    lv_label_set_text(info_title, i18n(STR_T_BUDDY));
+    lv_obj_set_style_text_font(info_title, &lv_font_notosanssc_16, 0);
     lv_obj_align(info_title, LV_ALIGN_TOP_MID, 0, 8);
 
     /* Info fields */
+    char _info_bufs[5][48];
+    snprintf(_info_bufs[0], sizeof(_info_bufs[0]), "%s--", i18n(STR_PET_LABEL));
+    snprintf(_info_bufs[1], sizeof(_info_bufs[1]), "%s--", i18n(STR_OWNER_LABEL));
+    snprintf(_info_bufs[2], sizeof(_info_bufs[2]), "%s0", i18n(STR_APPROVED_LABEL));
+    snprintf(_info_bufs[3], sizeof(_info_bufs[3]), "%s0", i18n(STR_DENIED_LABEL));
+    snprintf(_info_bufs[4], sizeof(_info_bufs[4]), "BLE: --");
     const char *info_defaults[] = {
-        "Pet: --",
-        "Owner: --",
-        "Approved: 0",
-        "Denied: 0",
-        "BLE: --",
+        _info_bufs[0],
+        _info_bufs[1],
+        _info_bufs[2],
+        _info_bufs[3],
+        _info_bufs[4],
     };
     for (int i = 0; i < 5; i++) {
         info_labels[i] = lv_label_create(info_container);
         lv_obj_set_style_text_color(info_labels[i], lv_color_hex(0xCCCCCC), 0);
         lv_label_set_text(info_labels[i], info_defaults[i]);
-        lv_obj_set_style_text_font(info_labels[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(info_labels[i], &lv_font_notosanssc_14, 0);
         lv_obj_align(info_labels[i], LV_ALIGN_TOP_LEFT, 16, 34 + i * 20);
     }
 
     info_action = lv_label_create(info_container);
     lv_obj_set_style_text_color(info_action, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(info_action, "> Next Pet");
-    lv_obj_set_style_text_font(info_action, &lv_font_montserrat_14, 0);
+    {
+        char _buf[32];
+        snprintf(_buf, sizeof(_buf), "> %s", i18n(STR_NEXT_PET));
+        lv_label_set_text(info_action, _buf);
+    }
+    lv_obj_set_style_text_font(info_action, &lv_font_notosanssc_14, 0);
     lv_obj_align(info_action, LV_ALIGN_BOTTOM_LEFT, 16, -22);
 
     info_hint = lv_label_create(info_container);
     lv_obj_set_style_text_color(info_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(info_hint, "Press:back | SET:select");
-    lv_obj_set_style_text_font(info_hint, &lv_font_montserrat_14, 0);
+    lv_label_set_text(info_hint, i18n(STR_H_PRESS_BACK_SET_SELECT));
+    lv_obj_set_style_text_font(info_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(info_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     /* ---- Register input callbacks ---- */
@@ -528,7 +563,7 @@ void ui_screen_buddy_update_state(void)
     /* State label */
     if (state_label) {
         char buf[40];
-        snprintf(buf, sizeof(buf), "State: %s", state_text);
+        snprintf(buf, sizeof(buf), i18n(STR_FMT_STATE), state_text);
         lv_label_set_text(state_label, buf);
         lv_obj_set_style_text_color(state_label, lv_color_hex(color), 0);
     }
@@ -556,7 +591,7 @@ void ui_screen_buddy_show_prompt(const char *tool, const char *hint)
 
     if (attn_tool) {
         char buf[48];
-        snprintf(buf, sizeof(buf), "Tool: %s", tool ? tool : "?");
+        snprintf(buf, sizeof(buf), i18n(STR_FMT_TOOL), tool ? tool : "?");
         lv_label_set_text(attn_tool, buf);
     }
     if (attn_hint) {

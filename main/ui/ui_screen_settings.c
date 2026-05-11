@@ -1,4 +1,6 @@
 #include "ui_screen_settings.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "esp_log.h"
@@ -19,14 +21,14 @@ static char item_keys[SETTINGS_ITEM_COUNT][20];
 static char item_values[SETTINGS_ITEM_COUNT][4];
 static ui_list_item_t items[SETTINGS_ITEM_COUNT];
 
-static const char *settings_names[SETTINGS_ITEM_COUNT] = {
-    "Pomodoro", "Buddy", "Light", "WiFi", "Time", "System", "Debug"
+static const str_id_t settings_name_ids[SETTINGS_ITEM_COUNT] = {
+    STR_M_POMODORO, STR_M_BUDDY, STR_M_LIGHT, STR_M_WIFI, STR_M_TIME, STR_M_SYSTEM, STR_M_DEBUG
 };
 
 static void update_display(void)
 {
     for (int i = 0; i < SETTINGS_ITEM_COUNT; i++) {
-        strncpy(item_keys[i], settings_names[i], sizeof(item_keys[i]) - 1);
+        strncpy(item_keys[i], i18n(settings_name_ids[i]), sizeof(item_keys[i]) - 1);
         snprintf(item_values[i], sizeof(item_values[i]), ">");
         items[i].key = item_keys[i];
         items[i].value = item_values[i];
@@ -46,9 +48,9 @@ static void update_display(void)
 
     if (settings_hint) {
         if (settings_mode == SETTINGS_MODE_SELECT) {
-            lv_label_set_text(settings_hint, "SET:enter|Press:back");
+            lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER_PRESS_BACK));
         } else {
-            lv_label_set_text(settings_hint, "SET:enter");
+            lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER));
         }
     }
 }
@@ -128,16 +130,16 @@ lv_obj_t* ui_screen_settings_create(void)
 
     settings_title = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(settings_title, "SETTINGS");
-    lv_obj_set_style_text_font(settings_title, &lv_font_montserrat_16, 0);
+    lv_label_set_text(settings_title, i18n(STR_T_SETTINGS));
+    lv_obj_set_style_text_font(settings_title, &lv_font_notosanssc_16, 0);
     lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 6);
 
     settings_list = ui_list_create(screen, 220, 180, 10, 28);
 
     settings_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(settings_hint, "SET:enter");
-    lv_obj_set_style_text_font(settings_hint, &lv_font_montserrat_14, 0);
+    lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER));
+    lv_obj_set_style_text_font(settings_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

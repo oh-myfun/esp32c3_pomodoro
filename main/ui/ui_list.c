@@ -1,4 +1,5 @@
 #include "ui_list.h"
+#include "font_notosanssc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +62,7 @@ static void create_labels(lv_obj_t *list, int visible_count)
     for (int i = 0; i < visible_count; i++) {
         data->key_labels[i] = lv_label_create(list);
         if(data->key_labels[i]) {
-            lv_obj_set_style_text_font(data->key_labels[i], &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_font(data->key_labels[i], &lv_font_notosanssc_16, 0);
             lv_label_set_text(data->key_labels[i], "");
             lv_obj_set_pos(data->key_labels[i], 4, i * ITEM_HEIGHT);
             lv_obj_set_size(data->key_labels[i], key_w, ITEM_HEIGHT);
@@ -70,7 +71,7 @@ static void create_labels(lv_obj_t *list, int visible_count)
 
         data->value_labels[i] = lv_label_create(list);
         if(data->value_labels[i]) {
-            lv_obj_set_style_text_font(data->value_labels[i], &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_font(data->value_labels[i], &lv_font_notosanssc_16, 0);
             lv_label_set_text(data->value_labels[i], "");
             lv_obj_set_pos(data->value_labels[i], value_x, i * ITEM_HEIGHT);
             lv_obj_set_size(data->value_labels[i], value_w, ITEM_HEIGHT);

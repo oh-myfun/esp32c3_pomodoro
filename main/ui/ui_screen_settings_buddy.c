@@ -1,4 +1,6 @@
 #include "ui_screen_settings_buddy.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "buddy/buddy.h"
@@ -28,7 +30,7 @@ static ui_list_item_t items[BUDDY_ITEM_COUNT];
 
 static void update_display(void)
 {
-    snprintf(item_keys[0], sizeof(item_keys[0]), "Species");
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SPECIES));
     snprintf(item_values[0], sizeof(item_values[0]), "%s",
              buddy_get_species_name(buddy_species_index));
 
@@ -51,9 +53,9 @@ static void update_display(void)
 
     if (hint_label) {
         if (buddy_mode == BUDDY_MODE_ADJUST) {
-            lv_label_set_text(hint_label, "SET:save|Press:cancel");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
         } else {
-            lv_label_set_text(hint_label, "SET:edit|Press:back");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
         }
     }
 }
@@ -125,9 +127,9 @@ lv_obj_t* ui_screen_settings_buddy_create(void)
     hint_label = NULL;
 
     lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "Buddy");
+    lv_label_set_text(title, i18n(STR_T_BUDDY));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     buddy_list = ui_list_create(screen, 220, 180, 10, 30);
@@ -140,8 +142,8 @@ lv_obj_t* ui_screen_settings_buddy_create(void)
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:edit|Press:back");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

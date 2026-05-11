@@ -1,4 +1,6 @@
 #include "ui_screen_wifi.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "service/wifi_service.h"
 #include "ui_manager.h"
 #include "ui_list.h"
@@ -123,8 +125,8 @@ lv_obj_t* ui_screen_wifi_list_create(void)
 
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(wifi_list_title, "WiFi Networks");
-    lv_obj_set_style_text_font(wifi_list_title, &lv_font_montserrat_16, 0);
+    lv_label_set_text(wifi_list_title, i18n(STR_WIFI_NETWORKS));
+    lv_obj_set_style_text_font(wifi_list_title, &lv_font_notosanssc_16, 0);
     lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
 
     // 创建列表，高度设为刚好显示8个项目 (8 * 22 = 176)
@@ -133,8 +135,8 @@ lv_obj_t* ui_screen_wifi_list_create(void)
 
     wifi_list_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(wifi_list_hint, "SET:select|Press:back");
-    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_montserrat_14, 0);
+    lv_label_set_text(wifi_list_hint, i18n(STR_H_SET_SELECT_PRESS_BACK));
+    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
@@ -169,8 +171,8 @@ void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected
             // SSID作为key，如果是开放网络则加上[open]
             bool is_saved = wifi_service_is_saved((const char*)ap->ssid);
             if (ap->open) {
-                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s[open]",
-                         is_saved ? "*" : "", 32 - 8, ap->ssid);
+                snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s%s",
+                         is_saved ? "*" : "", 32 - 8, ap->ssid, i18n(STR_OPEN_NET));
             } else {
                 snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s",
                          is_saved ? "*" : "", 32 - 1, ap->ssid);
@@ -225,26 +227,26 @@ lv_obj_t* ui_screen_password_create(void)
 
     pwd_title = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(pwd_title, "Password");
-    lv_obj_set_style_text_font(pwd_title, &lv_font_montserrat_16, 0);
+    lv_label_set_text(pwd_title, i18n(STR_T_PASSWORD));
+    lv_obj_set_style_text_font(pwd_title, &lv_font_notosanssc_16, 0);
     lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 5);
 
     pwd_ssid_label = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(pwd_ssid_label, "SSID: ");
-    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_montserrat_16, 0);
+    lv_label_set_text(pwd_ssid_label, "SSID:");
+    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_notosanssc_16, 0);
     lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 28);
 
     pwd_display = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
-    lv_obj_set_style_text_font(pwd_display, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(pwd_display, &lv_font_notosanssc_16, 0);
     lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 50);
 
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 10; col++) {
             pwd_keyboard[row][col] = lv_label_create(screen);
-            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_notosanssc_16, 0);
             
             if (row == 2 && col == 9) {
                 lv_label_set_text(pwd_keyboard[row][col], "^");
@@ -266,8 +268,8 @@ lv_obj_t* ui_screen_password_create(void)
 
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(pwd_hint, "SET:input|Press:back");
-    lv_obj_set_style_text_font(pwd_hint, &lv_font_montserrat_14, 0);
+    lv_label_set_text(pwd_hint, i18n(STR_H_SET_INPUT_PRESS_BACK));
+    lv_obj_set_style_text_font(pwd_hint, &lv_font_notosanssc_14, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t pwd_cbs = {
@@ -287,7 +289,7 @@ void ui_screen_password_set_ssid(const char *ssid)
 {
     if (pwd_ssid_label == NULL) return;
     char buf[48];
-    snprintf(buf, sizeof(buf), "SSID: %s", ssid ? ssid : "");
+    snprintf(buf, sizeof(buf), i18n(STR_FMT_SSID), ssid ? ssid : "");
     lv_label_set_text(pwd_ssid_label, buf);
 }
 
@@ -339,7 +341,7 @@ void ui_screen_wifi_list_refresh(void)
         results = wifi_service_get_ap(0);
     }
 
-    const char *hint = count > 0 ? "SET:select" : "Scanning...";
+    const char *hint = count > 0 ? "SET:select" : i18n(STR_SCANNING);
     ui_screen_wifi_list_update(count, (wifi_ap_info_t*)results, 0, hint);
 }
 
@@ -366,7 +368,7 @@ void ui_screen_password_start(const char *ssid)
     strncpy(selected_ssid, ssid ? ssid : "", sizeof(selected_ssid) - 1);
     ui_screen_password_set_ssid(ssid);
     ui_screen_password_update_display(password_buffer, pwd_selected_col);
-    ui_screen_password_set_hint("SET:input|Press:back");
+    ui_screen_password_set_hint(i18n(STR_H_SET_INPUT_PRESS_BACK));
 }
 
 void ui_screen_password_char_next(void)
@@ -401,7 +403,7 @@ void ui_screen_password_add_char(void)
 {
     if (pwd_selected_row == 2 && pwd_selected_col == 9) {
         pwd_uppercase = !pwd_uppercase;
-        ui_screen_password_set_hint(pwd_uppercase ? "Uppercase" : "Lowercase");
+        ui_screen_password_set_hint(pwd_uppercase ? i18n(STR_UPPERCASE) : i18n(STR_LOWERCASE));
         ui_screen_password_update_display(password_buffer, pwd_selected_col);
         return;
     }

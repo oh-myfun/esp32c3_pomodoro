@@ -1,4 +1,6 @@
 #include "ui_screen_settings_system.h"
+#include "font_notosanssc.h"
+#include "i18n.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "service/storage_service.h"
@@ -24,17 +26,17 @@ static ui_list_item_t items[SYSTEM_ITEM_COUNT];
 
 static void update_display(void)
 {
-    static const char *on_off[] = {"Off", "On"};
-    static const char *dir_opts[] = {"Normal", "Rev"};
-    static const char *lang_opts[] = {"English", "Chinese"};
+    const char *on_off[] = {i18n(STR_OFF), i18n(STR_ON)};
+    const char *dir_opts[] = {i18n(STR_NORMAL), i18n(STR_REV)};
+    const char *lang_opts[] = {i18n(STR_LANG_EN), i18n(STR_LANG_ZH)};
 
-    snprintf(item_keys[0], sizeof(item_keys[0]), "Sound");
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SOUND));
     snprintf(item_values[0], sizeof(item_values[0]), "%s", on_off[system_values[0] % 2]);
 
-    snprintf(item_keys[1], sizeof(item_keys[1]), "Direction");
+    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_DIRECTION));
     snprintf(item_values[1], sizeof(item_values[1]), "%s", dir_opts[system_values[1] % 2]);
 
-    snprintf(item_keys[2], sizeof(item_keys[2]), "Language");
+    snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_LANGUAGE));
     snprintf(item_values[2], sizeof(item_values[2]), "%s", lang_opts[system_values[2] % 2]);
 
     for (int i = 0; i < SYSTEM_ITEM_COUNT; i++) {
@@ -49,7 +51,7 @@ static void update_display(void)
     }
 
     if (hint_label) {
-        lv_label_set_text(hint_label, "SET:toggle|Press:back");
+        lv_label_set_text(hint_label, i18n(STR_H_SET_TOGGLE_PRESS_BACK));
     }
 }
 
@@ -85,7 +87,7 @@ static void system_on_settings_press(void)
             break;
         case 2:
             system_values[2] = !system_values[2];
-            storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_LANG, system_values[2]);
+            i18n_set_lang(system_values[2] ? LANG_ZH : LANG_EN);
             break;
     }
     update_display();
@@ -107,9 +109,9 @@ lv_obj_t* ui_screen_settings_system_create(void)
     hint_label = NULL;
 
     lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "System");
+    lv_label_set_text(title, i18n(STR_T_SYSTEM));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     system_list = ui_list_create(screen, 220, 180, 10, 30);
@@ -130,8 +132,8 @@ lv_obj_t* ui_screen_settings_system_create(void)
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:toggle|Press:back");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_TOGGLE_PRESS_BACK));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

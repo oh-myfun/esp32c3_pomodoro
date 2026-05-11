@@ -1,4 +1,6 @@
 #include "ui_screen_settings_light.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "service/led_service.h"
@@ -159,26 +161,26 @@ static void light_on_encoder_long_press(void)
 
 static void update_display(void)
 {
-    static const char *speed_opts[] = {"Slow", "Med", "Fast"};
-    static const char *style_opts[] = {"Pure", "Color"};
-    static const char *anim_opts[] = {"Breath", "Scan", "Gradient"};
+    const char *speed_opts[] = {i18n(STR_SLOW), i18n(STR_MED), i18n(STR_FAST)};
+    const char *style_opts[] = {i18n(STR_PURE), i18n(STR_COLOR)};
+    const char *anim_opts[] = {i18n(STR_BREATH), i18n(STR_SCAN), i18n(STR_GRADIENT)};
 
-    snprintf(item_keys[0], sizeof(item_keys[0]), "Light");
-    snprintf(item_values[0], sizeof(item_values[0]), "%s", light_values[0] ? "On" : "Off");
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_LIGHT));
+    snprintf(item_values[0], sizeof(item_values[0]), "%s", light_values[0] ? i18n(STR_ON) : i18n(STR_OFF));
 
-    snprintf(item_keys[1], sizeof(item_keys[1]), "Bright");
+    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_BRIGHT));
     snprintf(item_values[1], sizeof(item_values[1]), "%d", light_values[1]);
 
-    snprintf(item_keys[2], sizeof(item_keys[2]), "Speed");
+    snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_SPEED));
     snprintf(item_values[2], sizeof(item_values[2]), "%s", speed_opts[light_values[2] % 3]);
 
-    snprintf(item_keys[3], sizeof(item_keys[3]), "Style");
+    snprintf(item_keys[3], sizeof(item_keys[3]), "%s", i18n(STR_STYLE));
     snprintf(item_values[3], sizeof(item_values[3]), "%s", style_opts[light_values[3] % 2]);
 
-    snprintf(item_keys[4], sizeof(item_keys[4]), "Anim");
+    snprintf(item_keys[4], sizeof(item_keys[4]), "%s", i18n(STR_ANIM));
     snprintf(item_values[4], sizeof(item_values[4]), "%s", anim_opts[light_values[4] % 3]);
 
-    snprintf(item_keys[5], sizeof(item_keys[5]), "Demo");
+    snprintf(item_keys[5], sizeof(item_keys[5]), "%s", i18n(STR_DEMO));
     snprintf(item_values[5], sizeof(item_values[5]), "%s", led_demo_color_names[light_values[5] % LED_DEMO_COLOR_COUNT]);
 
     for (int i = 0; i < LIGHT_ITEM_COUNT; i++) {
@@ -201,12 +203,12 @@ static void update_display(void)
     if (hint_label) {
         if (light_mode == LIGHT_MODE_ADJUST) {
             if (light_selected_item == 5 && led_service_is_demo_active()) {
-                lv_label_set_text(hint_label, "SET/Press:stop demo");
+                lv_label_set_text(hint_label, i18n(STR_H_SET_PRESS_STOP_DEMO));
             } else {
-                lv_label_set_text(hint_label, "SET:save|Press:cancel");
+                lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
             }
         } else {
-            lv_label_set_text(hint_label, "SET:edit|Press:back");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
         }
     }
 }
@@ -222,9 +224,9 @@ lv_obj_t* ui_screen_settings_light_create(void)
     hint_label = NULL;
 
     lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "Light");
+    lv_label_set_text(title, i18n(STR_T_LIGHT));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     light_list = ui_list_create(screen, 220, 180, 10, 30);
@@ -243,8 +245,8 @@ lv_obj_t* ui_screen_settings_light_create(void)
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:edit|Press:back");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
