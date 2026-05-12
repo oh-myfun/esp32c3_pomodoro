@@ -1,10 +1,10 @@
 #include "ui_list.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define ITEM_HEIGHT 22
+#define ITEM_HEIGHT 26
 
 typedef struct {
     const ui_list_item_t *items;
@@ -19,8 +19,11 @@ typedef struct {
     lv_obj_t **key_labels;
     lv_obj_t **value_labels;
     lv_obj_t *scrollbar;
+    lv_obj_t *scroll_up;
+    lv_obj_t *scroll_down;
     ui_list_item_cb_t click_callback;
     lv_color_t selected_color;
+    int value_pct;  /* percentage of list_width for value column */
 } ui_list_data_t;
 
 static void update_display(lv_obj_t *list);
@@ -55,14 +58,14 @@ static void create_labels(lv_obj_t *list, int visible_count)
     ui_list_data_t *data = get_list_data(list);
     if (!data) return;
 
-    int key_w = (data->list_width * 55) / 100;
-    int value_x = (data->list_width * 52) / 100;
-    int value_w = data->list_width - value_x - 8;
+    int key_w = (data->list_width * (100 - data->value_pct)) / 100;
+    int value_x = data->list_width - (data->list_width * data->value_pct / 100) - 4;
+    int value_w = (data->list_width * data->value_pct) / 100;
 
     for (int i = 0; i < visible_count; i++) {
         data->key_labels[i] = lv_label_create(list);
         if(data->key_labels[i]) {
-            lv_obj_set_style_text_font(data->key_labels[i], &lv_font_notosanssc_16, 0);
+            lv_obj_set_style_text_font(data->key_labels[i], &custom_font_16, 0);
             lv_label_set_text(data->key_labels[i], "");
             lv_obj_set_pos(data->key_labels[i], 4, i * ITEM_HEIGHT);
             lv_obj_set_size(data->key_labels[i], key_w, ITEM_HEIGHT);
@@ -71,7 +74,7 @@ static void create_labels(lv_obj_t *list, int visible_count)
 
         data->value_labels[i] = lv_label_create(list);
         if(data->value_labels[i]) {
-            lv_obj_set_style_text_font(data->value_labels[i], &lv_font_notosanssc_16, 0);
+            lv_obj_set_style_text_font(data->value_labels[i], &custom_font_16, 0);
             lv_label_set_text(data->value_labels[i], "");
             lv_obj_set_pos(data->value_labels[i], value_x, i * ITEM_HEIGHT);
             lv_obj_set_size(data->value_labels[i], value_w, ITEM_HEIGHT);
@@ -132,15 +135,30 @@ static void update_display(lv_obj_t *list)
         int track_height = data->visible_count * ITEM_HEIGHT;
         int scrollbar_height = (data->visible_count * track_height) / data->count;
         if (scrollbar_height < 15) scrollbar_height = 15;
-        
+
         int max_scroll = data->count - data->visible_count;
         int scrollbar_y = (data->scroll * (track_height - scrollbar_height)) / max_scroll;
-        
-        lv_obj_set_size(data->scrollbar, 4, scrollbar_height);
-        lv_obj_set_pos(data->scrollbar, data->list_width - 6, scrollbar_y);
+
+        lv_obj_set_size(data->scrollbar, 3, scrollbar_height);
+        lv_obj_set_pos(data->scrollbar, data->list_width - 7, scrollbar_y);
         lv_obj_clear_flag(data->scrollbar, LV_OBJ_FLAG_HIDDEN);
+
+        /* Show ▲ when can scroll up */
+        if (data->scroll > 0) {
+            lv_obj_clear_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
+        }
+        /* Show ▼ when can scroll down */
+        if (data->scroll < max_scroll) {
+            lv_obj_clear_flag(data->scroll_down, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(data->scroll_down, LV_OBJ_FLAG_HIDDEN);
+        }
     } else if (data->scrollbar) {
         lv_obj_add_flag(data->scrollbar, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(data->scroll_down, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -168,6 +186,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     lv_obj_set_style_bg_color(list, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_style_border_width(list, 0, 0);
     lv_obj_set_style_pad_all(list, 0, 0);
+    lv_obj_clear_flag(list, LV_OBJ_FLAG_SCROLLABLE);
     
     ui_list_data_t *data = (ui_list_data_t *)malloc(sizeof(ui_list_data_t));
     memset(data, 0, sizeof(ui_list_data_t));
@@ -181,6 +200,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     data->visible_count = height / ITEM_HEIGHT;
     data->click_callback = NULL;
     data->selected_color = lv_color_hex(0x00FF00);
+    data->value_pct = 45;
     lv_obj_set_user_data(list, data);
     
     data->key_labels = (lv_obj_t **)malloc(sizeof(lv_obj_t *) * data->visible_count);
@@ -191,13 +211,27 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     create_labels(list, data->visible_count);
     
     data->scrollbar = lv_obj_create(list);
-    lv_obj_set_size(data->scrollbar, 4, 15);
-    lv_obj_set_pos(data->scrollbar, width - 6, 0);
-    lv_obj_set_style_bg_color(data->scrollbar, lv_color_hex(0x666666), 0);
+    lv_obj_set_size(data->scrollbar, 3, 15);
+    lv_obj_set_pos(data->scrollbar, width - 7, 0);
+    lv_obj_set_style_bg_color(data->scrollbar, lv_color_hex(0x555555), 0);
     lv_obj_set_style_bg_opa(data->scrollbar, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(data->scrollbar, 2, 0);
+    lv_obj_set_style_radius(data->scrollbar, 1, 0);
     lv_obj_set_style_border_width(data->scrollbar, 0, 0);
     lv_obj_add_flag(data->scrollbar, LV_OBJ_FLAG_HIDDEN);
+
+    data->scroll_up = lv_label_create(list);
+    lv_obj_set_style_text_font(data->scroll_up, &custom_font_14, 0);
+    lv_obj_set_style_text_color(data->scroll_up, lv_color_hex(0x888888), 0);
+    lv_label_set_text(data->scroll_up, "▲");
+    lv_obj_set_pos(data->scroll_up, width - 12, -4);
+    lv_obj_add_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
+
+    data->scroll_down = lv_label_create(list);
+    lv_obj_set_style_text_font(data->scroll_down, &custom_font_14, 0);
+    lv_obj_set_style_text_color(data->scroll_down, lv_color_hex(0x888888), 0);
+    lv_label_set_text(data->scroll_down, "▼");
+    lv_obj_set_pos(data->scroll_down, width - 12, height - 12);
+    lv_obj_add_flag(data->scroll_down, LV_OBJ_FLAG_HIDDEN);
     
     lv_obj_add_event_cb(list, (lv_event_cb_t)ui_list_cleanup, LV_EVENT_DELETE, data);
     
@@ -267,5 +301,13 @@ void ui_list_set_selected_color(lv_obj_t *list, lv_color_t color)
     ui_list_data_t *data = get_list_data(list);
     if (!data) return;
     data->selected_color = color;
+    update_display(list);
+}
+
+void ui_list_set_value_width_pct(lv_obj_t *list, int pct)
+{
+    ui_list_data_t *data = get_list_data(list);
+    if (!data || pct < 5 || pct > 80) return;
+    data->value_pct = pct;
     update_display(list);
 }

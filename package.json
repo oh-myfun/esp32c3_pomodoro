@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@fontsource/maple-mono": "^5.2.6",
+    "@mogeko/maple-mono-cn": "^7.9.0",
+    "lv_font_conv": "^1.5.3"
+  }
+}

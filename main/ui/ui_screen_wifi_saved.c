@@ -1,6 +1,6 @@
 #include "ui_screen_wifi_saved.h"
 #include "i18n.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "ui_screen_wifi.h"
 #include "ui_manager.h"
 #include "ui_list.h"
@@ -20,6 +20,7 @@ typedef enum {
 static lv_obj_t *screen = NULL;
 static lv_obj_t *wifi_list = NULL;
 static lv_obj_t *hint_label = NULL;
+static lv_obj_t *title_label = NULL;
 
 static saved_mode_t mode = SAVED_MODE_LIST;
 static int selected_item = 0;
@@ -51,7 +52,7 @@ static void update_display(void)
 
     /* Item 0: always "Scan for new..." */
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SCAN_FOR_NEW));
-    snprintf(item_values[0], sizeof(item_values[0]), ">");
+    snprintf(item_values[0], sizeof(item_values[0]), "▸");
     items[0].key = item_keys[0];
     items[0].value = item_values[0];
     item_count = 1;
@@ -63,9 +64,9 @@ static void update_display(void)
         const char *ssid = wifi_service_get_saved_ssid(i);
         if (ssid) {
             snprintf(item_keys[item_count], sizeof(item_keys[item_count]), "%s", ssid);
-            // Show "*" for currently connected network
+            // Show "●" for currently connected network
             if (conn_ssid && strcmp(ssid, conn_ssid) == 0) {
-                snprintf(item_values[item_count], sizeof(item_values[item_count]), "*");
+                snprintf(item_values[item_count], sizeof(item_values[item_count]), "●");
             } else {
                 item_values[item_count][0] = '\0';
             }
@@ -208,18 +209,19 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
     lv_obj_set_size(screen, 240, 240);
 
-    lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, i18n(STR_T_WIFI));
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
+    title_label = lv_label_create(screen);
+    lv_label_set_text(title_label, i18n(STR_T_WIFI));
+    lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(title_label, &custom_font_16, 0);
+    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 6);
 
-    wifi_list = ui_list_create(screen, 220, 180, 10, 30);
+    wifi_list = ui_list_create(screen, 220, 196, 10, 30);
+    ui_list_set_value_width_pct(wifi_list, 15);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
-    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     mode = SAVED_MODE_LIST;
@@ -240,6 +242,9 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
 
 void ui_screen_wifi_saved_refresh(void)
 {
+    if (title_label) {
+        lv_label_set_text(title_label, i18n(STR_T_WIFI));
+    }
     if (mode == SAVED_MODE_LIST) {
         update_display();
     }

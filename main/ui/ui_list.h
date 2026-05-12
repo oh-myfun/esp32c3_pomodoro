@@ -10,6 +10,7 @@ typedef struct {
 typedef void (*ui_list_item_cb_t)(int index);
 
 lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y);
+void ui_list_set_value_width_pct(lv_obj_t *list, int pct);
 void ui_list_set_items(lv_obj_t *list, const ui_list_item_t *items, int count);
 void ui_list_set_selected(lv_obj_t *list, int index);
 int ui_list_get_selected(lv_obj_t *list);

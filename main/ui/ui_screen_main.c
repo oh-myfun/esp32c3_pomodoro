@@ -1,6 +1,6 @@
 #include "ui_screen_main.h"
 #include "i18n.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "ui_manager.h"
 #include "service/time_service.h"
 #include "service/wifi_service.h"
@@ -30,6 +30,7 @@ static lv_obj_t *date_label = NULL;
 static lv_obj_t *temp_label = NULL;
 static lv_obj_t *humidity_label = NULL;
 static lv_obj_t *wifi_status_label = NULL;
+static lv_obj_t *hint_label = NULL;
 
 lv_obj_t* ui_screen_main_create(void)
 {
@@ -40,13 +41,13 @@ lv_obj_t* ui_screen_main_create(void)
     temp_label = lv_label_create(screen);
     lv_obj_set_style_text_color(temp_label, lv_color_hex(0xFF6B6B), 0);
     lv_label_set_text(temp_label, "--C");
-    lv_obj_set_style_text_font(temp_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(temp_label, &custom_font_16, 0);
     lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 10, 10);
 
     humidity_label = lv_label_create(screen);
     lv_obj_set_style_text_color(humidity_label, lv_color_hex(0x4D96FF), 0);
     lv_label_set_text(humidity_label, "--%");
-    lv_obj_set_style_text_font(humidity_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(humidity_label, &custom_font_16, 0);
     lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
 
     time_label = lv_label_create(screen);
@@ -59,20 +60,20 @@ lv_obj_t* ui_screen_main_create(void)
     date_label = lv_label_create(screen);
     lv_obj_set_style_text_color(date_label, lv_color_hex(0xAAAAAA), 0);
     lv_label_set_text(date_label, "2025-01-01 Mon");
-    lv_obj_set_style_text_font(date_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(date_label, &custom_font_16, 0);
     lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 60);
 
     wifi_status_label = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(wifi_status_label, "");
-    lv_obj_set_style_text_font(wifi_status_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(wifi_status_label, &custom_font_16, 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 28);
 
-    lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint, i18n(STR_SET_SYNC));
-    lv_obj_set_style_text_font(hint, &lv_font_notosanssc_14, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+    hint_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
+    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = main_on_encoder_cw,
@@ -98,19 +99,23 @@ void ui_screen_main_update_time(void)
     lv_label_set_text(time_label, time_buf);
 
     char date_buf[32];
-    strftime(date_buf, sizeof(date_buf), "%Y-%m-%d %a", &timeinfo);
+    snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d %s",
+             timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+             i18n_weekday(timeinfo.tm_wday));
     lv_label_set_text(date_label, date_buf);
+
+    if (hint_label) {
+        lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
+    }
 }
 
 void ui_screen_main_update_temp(float temp)
 {
-    /* No temperature sensor hardware -- display placeholder */
     ESP_LOGD(TAG, "update_temp called (%.1f) but no sensor available, keeping placeholder", temp);
 }
 
 void ui_screen_main_update_humidity(float humidity)
 {
-    /* No humidity sensor hardware -- display placeholder */
     ESP_LOGD(TAG, "update_humidity called (%.0f) but no sensor available, keeping placeholder", humidity);
 }
 

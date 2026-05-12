@@ -1,6 +1,6 @@
 #include "ui_screen_pomodoro.h"
 #include "i18n.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "ui_manager.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "service/sound_service.h"
@@ -112,19 +112,19 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     cycle_label = lv_label_create(screen);
     lv_obj_set_style_text_color(cycle_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(cycle_label, "1/4");
-    lv_obj_set_style_text_font(cycle_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(cycle_label, &custom_font_16, 0);
     lv_obj_align(cycle_label, LV_ALIGN_TOP_LEFT, 10, 8);
 
     phase_label = lv_label_create(screen);
     lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
     lv_label_set_text(phase_label, i18n(STR_PHASE_WORK));
-    lv_obj_set_style_text_font(phase_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(phase_label, &custom_font_16, 0);
     lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
 
     completed_label = lv_label_create(screen);
     lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(completed_label, "0");
-    lv_obj_set_style_text_font(completed_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(completed_label, &custom_font_16, 0);
     lv_obj_align(completed_label, LV_ALIGN_TOP_RIGHT, -10, 8);
 
     progress_arc = lv_arc_create(screen);
@@ -144,19 +144,19 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     timer_label = lv_label_create(screen);
     lv_obj_set_style_text_color(timer_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(timer_label, "25:00");
-    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_40, 0);
     lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 0);
 
     total_time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(total_time_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(total_time_label, "/ 25:00");
-    lv_obj_set_style_text_font(total_time_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(total_time_label, &custom_font_16, 0);
     lv_obj_align(total_time_label, LV_ALIGN_CENTER, 0, 24);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
-    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     update_settings_display();
@@ -266,4 +266,19 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
 void ui_screen_pomodoro_refresh(void)
 {
     update_settings_display();
+    if (hint_label) {
+        lv_label_set_text(hint_label, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
+    }
+    if (phase_label) {
+        pomodoro_state_t state = pomodoro_engine_get_state();
+        const char *phase_text;
+        switch (state.phase) {
+            case POMODORO_PHASE_WORK:        phase_text = i18n(STR_PHASE_WORK); break;
+            case POMODORO_PHASE_BREAK:       phase_text = i18n(STR_PHASE_BREAK); break;
+            case POMODORO_PHASE_LONG_BREAK:  phase_text = i18n(STR_PHASE_LONG_BREAK); break;
+            case POMODORO_PHASE_PAUSED:      phase_text = i18n(STR_PHASE_PAUSED); break;
+            default:                         phase_text = i18n(STR_PHASE_IDLE); break;
+        }
+        lv_label_set_text(phase_label, phase_text);
+    }
 }

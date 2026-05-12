@@ -30,5 +30,11 @@ Thumbs.db
 # Font generation tools
 node_modules/
 
-# Font source TTF (regenerate with lv_font_conv)
+# Font source files (regenerate with lv_font_conv)
 fonts/*.ttf
+fonts/*.otf
+fonts/*.7z
+fonts/*.zip
+fonts/gb2312_symbols.txt
+fonts/emoji_symbols.txt
+package-lock.json

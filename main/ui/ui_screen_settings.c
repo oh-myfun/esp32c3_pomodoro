@@ -1,6 +1,6 @@
 #include "ui_screen_settings.h"
 #include "i18n.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "esp_log.h"
@@ -29,7 +29,7 @@ static void update_display(void)
 {
     for (int i = 0; i < SETTINGS_ITEM_COUNT; i++) {
         strncpy(item_keys[i], i18n(settings_name_ids[i]), sizeof(item_keys[i]) - 1);
-        snprintf(item_values[i], sizeof(item_values[i]), ">");
+        snprintf(item_values[i], sizeof(item_values[i]), "▸");
         items[i].key = item_keys[i];
         items[i].value = item_values[i];
     }
@@ -44,6 +44,10 @@ static void update_display(void)
         ui_list_set_selected_color(settings_list, color);
         ui_list_set_items(settings_list, items, SETTINGS_ITEM_COUNT);
         ui_list_set_selected(settings_list, current_settings_item);
+    }
+
+    if (settings_title) {
+        lv_label_set_text(settings_title, i18n(STR_T_SETTINGS));
     }
 
     if (settings_hint) {
@@ -131,15 +135,16 @@ lv_obj_t* ui_screen_settings_create(void)
     settings_title = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(settings_title, i18n(STR_T_SETTINGS));
-    lv_obj_set_style_text_font(settings_title, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(settings_title, &custom_font_16, 0);
     lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 6);
 
-    settings_list = ui_list_create(screen, 220, 180, 10, 28);
+    settings_list = ui_list_create(screen, 220, 196, 10, 28);
+    ui_list_set_value_width_pct(settings_list, 15);
 
     settings_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER));
-    lv_obj_set_style_text_font(settings_hint, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(settings_hint, &custom_font_14, 0);
     lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

@@ -146,6 +146,9 @@ typedef enum {
     STR_H_ANY_KEY_BACK_ENCODER_SCROLL,
     STR_H_SET_PRESS_STOP_DEMO,
 
+    /* Weekday abbreviations */
+    STR_SUN, STR_MON, STR_TUE, STR_WED, STR_THU, STR_FRI, STR_SAT,
+
     /* Misc */
     STR_BACK,
 
@@ -153,3 +156,4 @@ typedef enum {
 } str_id_t;
 
 const char *i18n(str_id_t id);
+const char *i18n_weekday(int wday);

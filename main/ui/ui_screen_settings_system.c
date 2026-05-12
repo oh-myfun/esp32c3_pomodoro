@@ -1,5 +1,5 @@
 #include "ui_screen_settings_system.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "i18n.h"
 #include "ui_manager.h"
 #include "ui_list.h"
@@ -111,10 +111,10 @@ lv_obj_t* ui_screen_settings_system_create(void)
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_T_SYSTEM));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(title, &custom_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
-    system_list = ui_list_create(screen, 220, 180, 10, 30);
+    system_list = ui_list_create(screen, 220, 196, 10, 30);
 
     int32_t val;
     if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SOUND, &val)) {
@@ -133,7 +133,7 @@ lv_obj_t* ui_screen_settings_system_create(void)
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_TOGGLE_PRESS_BACK));
-    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

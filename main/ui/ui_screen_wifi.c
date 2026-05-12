@@ -1,6 +1,6 @@
 #include "ui_screen_wifi.h"
 #include "i18n.h"
-#include "font_notosanssc.h"
+#include "custom_font.h"
 #include "service/wifi_service.h"
 #include "ui_manager.h"
 #include "ui_list.h"
@@ -60,7 +60,7 @@ static int pwd_selected_col = 0;
 
 // 静态数组用于存储WiFi列表项的键值，避免在ui_screen_wifi_list_update中频繁分配/释放内存
 static char wifi_item_keys[20][33];
-static char wifi_item_values[20][32];
+static char wifi_item_values[20][48];
 
 /* Password input screen callbacks */
 static void pwd_on_encoder_cw(void)
@@ -126,17 +126,17 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(wifi_list_title, i18n(STR_WIFI_NETWORKS));
-    lv_obj_set_style_text_font(wifi_list_title, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(wifi_list_title, &custom_font_16, 0);
     lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
 
     // 创建列表，高度设为刚好显示8个项目 (8 * 22 = 176)
-    wifi_list = ui_list_create(screen, 220, 176, 10, 32);
+    wifi_list = ui_list_create(screen, 220, 196, 10, 30);
     ui_list_set_click_callback(wifi_list, wifi_list_item_click);
 
     wifi_list_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(wifi_list_hint, i18n(STR_H_SET_SELECT_PRESS_BACK));
-    lv_obj_set_style_text_font(wifi_list_hint, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(wifi_list_hint, &custom_font_14, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {
@@ -172,26 +172,39 @@ void ui_screen_wifi_list_update(int count, wifi_ap_info_t *results, int selected
             bool is_saved = wifi_service_is_saved((const char*)ap->ssid);
             if (ap->open) {
                 snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s%s",
-                         is_saved ? "*" : "", 32 - 8, ap->ssid, i18n(STR_OPEN_NET));
+                         is_saved ? "●" : "", is_saved ? 28 : 32, ap->ssid, i18n(STR_OPEN_NET));
             } else {
                 snprintf(wifi_item_keys[i], sizeof(wifi_item_keys[i]), "%s%.*s",
-                         is_saved ? "*" : "", 32 - 1, ap->ssid);
+                         is_saved ? "●" : "", is_saved ? 29 : 32, ap->ssid);
             }
             
-            // 信号强度作为value，10档竖线表示
-            const char *rssi_bars = "";
-            if (ap->rssi > -40) rssi_bars = "||||||||||";
-            else if (ap->rssi > -50) rssi_bars = "|||||||||";
-            else if (ap->rssi > -60) rssi_bars = "||||||||";
-            else if (ap->rssi > -70) rssi_bars = "|||||||";
-            else if (ap->rssi > -80) rssi_bars = "||||||";
-            else if (ap->rssi > -85) rssi_bars = "|||||";
-            else if (ap->rssi > -90) rssi_bars = "||||";
-            else if (ap->rssi > -95) rssi_bars = "|||";
-            else if (ap->rssi > -100) rssi_bars = "||";
-            else rssi_bars = "|";
+            // WiFi signal strength: 10-level star bars (★=+2, ☆=+1)
+            static const char * const signal_bars[] = {
+                "☆",         //  1
+                "★",         //  2
+                "★☆",        //  3
+                "★★",        //  4
+                "★★☆",       //  5
+                "★★★",       //  6
+                "★★★☆",      //  7
+                "★★★★",      //  8
+                "★★★★☆",     //  9
+                "★★★★★",     // 10
+            };
+            int signal_level;
+            if      (ap->rssi > -35) signal_level = 9;
+            else if (ap->rssi > -41) signal_level = 8;
+            else if (ap->rssi > -47) signal_level = 7;
+            else if (ap->rssi > -53) signal_level = 6;
+            else if (ap->rssi > -59) signal_level = 5;
+            else if (ap->rssi > -65) signal_level = 4;
+            else if (ap->rssi > -71) signal_level = 3;
+            else if (ap->rssi > -77) signal_level = 2;
+            else if (ap->rssi > -83) signal_level = 1;
+            else                     signal_level = 0;
 
-            snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s", rssi_bars);
+            snprintf(wifi_item_values[i], sizeof(wifi_item_values[i]), "%s",
+                     signal_level > 0 ? signal_bars[signal_level - 1] : "");
             
             items[i].key = wifi_item_keys[i];
             items[i].value = wifi_item_values[i];
@@ -228,32 +241,32 @@ lv_obj_t* ui_screen_password_create(void)
     pwd_title = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_title, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_title, i18n(STR_T_PASSWORD));
-    lv_obj_set_style_text_font(pwd_title, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(pwd_title, &custom_font_16, 0);
     lv_obj_align(pwd_title, LV_ALIGN_TOP_MID, 0, 5);
 
     pwd_ssid_label = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_ssid_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(pwd_ssid_label, "SSID:");
-    lv_obj_set_style_text_font(pwd_ssid_label, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(pwd_ssid_label, &custom_font_16, 0);
     lv_obj_align(pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 28);
 
     pwd_display = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_display, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(pwd_display, "");
-    lv_obj_set_style_text_font(pwd_display, &lv_font_notosanssc_16, 0);
+    lv_obj_set_style_text_font(pwd_display, &custom_font_16, 0);
     lv_obj_align(pwd_display, LV_ALIGN_TOP_MID, 0, 50);
 
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 10; col++) {
             pwd_keyboard[row][col] = lv_label_create(screen);
-            lv_obj_set_style_text_font(pwd_keyboard[row][col], &lv_font_notosanssc_16, 0);
+            lv_obj_set_style_text_font(pwd_keyboard[row][col], &custom_font_16, 0);
             
             if (row == 2 && col == 9) {
-                lv_label_set_text(pwd_keyboard[row][col], "^");
+                lv_label_set_text(pwd_keyboard[row][col], "⇧");
             } else if (row == 3 && col == 8) {
-                lv_label_set_text(pwd_keyboard[row][col], "<");
+                lv_label_set_text(pwd_keyboard[row][col], "⌫");
             } else if (row == 3 && col == 9) {
-                lv_label_set_text(pwd_keyboard[row][col], ">");
+                lv_label_set_text(pwd_keyboard[row][col], "↵");
             } else {
                 char ch[2] = {pwd_keys[row][col], '\0'};
                 lv_label_set_text(pwd_keyboard[row][col], ch);
@@ -269,7 +282,7 @@ lv_obj_t* ui_screen_password_create(void)
     pwd_hint = lv_label_create(screen);
     lv_obj_set_style_text_color(pwd_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(pwd_hint, i18n(STR_H_SET_INPUT_PRESS_BACK));
-    lv_obj_set_style_text_font(pwd_hint, &lv_font_notosanssc_14, 0);
+    lv_obj_set_style_text_font(pwd_hint, &custom_font_14, 0);
     lv_obj_align(pwd_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t pwd_cbs = {
@@ -308,6 +321,8 @@ void ui_screen_password_update_display(const char *password, int cursor_pos)
             if (is_letter) {
                 char ch[2] = { pwd_uppercase ? (c - 'a' + 'A') : c, '\0' };
                 lv_label_set_text(pwd_keyboard[row][col], ch);
+            } else if (row == 2 && col == 9) {
+                lv_label_set_text(pwd_keyboard[row][col], "⇧");
             }
 
             /* Color: selected = green, else default gray */
@@ -330,6 +345,13 @@ static int last_scan_count = -1;
 
 void ui_screen_wifi_list_refresh(void)
 {
+    if (wifi_list_title) {
+        lv_label_set_text(wifi_list_title, i18n(STR_WIFI_NETWORKS));
+    }
+    if (wifi_list_hint) {
+        lv_label_set_text(wifi_list_hint, i18n(STR_H_SET_SELECT_PRESS_BACK));
+    }
+
     int count = wifi_service_get_scan_count();
 
     // Only update when scan count changes
@@ -341,7 +363,7 @@ void ui_screen_wifi_list_refresh(void)
         results = wifi_service_get_ap(0);
     }
 
-    const char *hint = count > 0 ? "SET:select" : i18n(STR_SCANNING);
+    const char *hint = count > 0 ? i18n(STR_H_SET_SELECT_PRESS_BACK) : i18n(STR_SCANNING);
     ui_screen_wifi_list_update(count, (wifi_ap_info_t*)results, 0, hint);
 }
 
