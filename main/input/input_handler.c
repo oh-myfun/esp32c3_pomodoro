@@ -9,6 +9,7 @@
 #include "button_gpio.h"
 #include "ui/ui_manager.h"
 #include "service/sound_service.h"
+#include "service/storage_service.h"
 
 #define ENCODER_A_GPIO   GPIO_NUM_4
 #define ENCODER_B_GPIO  GPIO_NUM_5
@@ -56,14 +57,11 @@ static void encoder_btn_cb(void *arg, void *data)
     button_event_t event = iot_button_get_event(btn);
     input_event_t e = INPUT_EVENT_NONE;
     switch (event) {
-    case BUTTON_PRESS_DOWN:
+    case BUTTON_SINGLE_CLICK:
         e = INPUT_EVENT_ENCODER_PRESS;
         break;
-    case BUTTON_LONG_PRESS_START:
+    case BUTTON_LONG_PRESS_UP:
         e = INPUT_EVENT_ENCODER_LONG_PRESS;
-        break;
-    case BUTTON_PRESS_UP:
-        e = INPUT_EVENT_ENCODER_RELEASE;
         break;
     default:
         break;
@@ -116,9 +114,8 @@ void input_handler_init(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create encoder button: %s", esp_err_to_name(ret));
     } else {
-        iot_button_register_cb(g_encoder_btn, BUTTON_PRESS_DOWN, NULL, encoder_btn_cb, NULL);
-        iot_button_register_cb(g_encoder_btn, BUTTON_LONG_PRESS_START, NULL, encoder_btn_cb, NULL);
-        iot_button_register_cb(g_encoder_btn, BUTTON_PRESS_UP, NULL, encoder_btn_cb, NULL);
+        iot_button_register_cb(g_encoder_btn, BUTTON_SINGLE_CLICK, NULL, encoder_btn_cb, NULL);
+        iot_button_register_cb(g_encoder_btn, BUTTON_LONG_PRESS_UP, NULL, encoder_btn_cb, NULL);
     }
 
     button_gpio_config_t settings_gpio_cfg = {
@@ -131,8 +128,14 @@ void input_handler_init(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create settings button: %s", esp_err_to_name(ret));
     } else {
-        iot_button_register_cb(g_settings_btn, BUTTON_PRESS_DOWN, NULL, settings_btn_cb, NULL);
+        iot_button_register_cb(g_settings_btn, BUTTON_SINGLE_CLICK, NULL, settings_btn_cb, NULL);
     }
+
+    // Load encoder direction from NVS
+    int32_t enc_dir = 0;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_ENC_DIR, &enc_dir);
+    g_reverse_encoder = (enc_dir != 0);
+    ESP_LOGI(TAG, "Encoder direction: %s", g_reverse_encoder ? "reversed" : "normal");
 }
 
 void input_handler_task(void *arg)

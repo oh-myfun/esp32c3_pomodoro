@@ -383,3 +383,33 @@ void storage_migrate_wifi_config(void)
         ESP_LOGI(TAG, "WiFi config migrated: %s -> profile 0", ssid);
     }
 }
+
+void storage_migrate_settings_keys(void)
+{
+    nvs_handle_t handle;
+    if (nvs_open(STORAGE_NAMESPACE_SETTINGS, NVS_READWRITE, &handle) != ESP_OK) return;
+
+    int32_t val;
+    bool changed = false;
+
+    // Migrate "sound_on" -> "sound"
+    if (nvs_get_i32(handle, "sound_on", &val) == ESP_OK) {
+        nvs_set_i32(handle, KEY_SOUND, val);
+        nvs_erase_key(handle, "sound_on");
+        changed = true;
+        ESP_LOGI(TAG, "Migrated settings/sound_on -> sound = %ld", (long)val);
+    }
+
+    // Migrate "enc_rev" -> "enc_dir"
+    if (nvs_get_i32(handle, "enc_rev", &val) == ESP_OK) {
+        nvs_set_i32(handle, KEY_ENC_DIR, val);
+        nvs_erase_key(handle, "enc_rev");
+        changed = true;
+        ESP_LOGI(TAG, "Migrated settings/enc_rev -> enc_dir = %ld", (long)val);
+    }
+
+    if (changed) {
+        nvs_commit(handle);
+    }
+    nvs_close(handle);
+}

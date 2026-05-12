@@ -57,3 +57,11 @@ void time_service_tick(void);
 // Simple timezone offset (hours only)
 void time_service_set_timezone_offset(int hours);
 int  time_service_get_timezone_offset(void);
+
+// NTP server index (preset list)
+#define TIME_SERVICE_NTP_SERVER_COUNT 5
+
+void time_service_set_ntp_server_index(int index);
+int  time_service_get_ntp_server_index(void);
+const char* time_service_get_ntp_server_name(int index);
+const char* time_service_get_ntp_server_address(int index);

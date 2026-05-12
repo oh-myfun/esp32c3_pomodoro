@@ -26,3 +26,9 @@ Thumbs.db
 
 # Clangd cache
 .cache/
+
+# Font generation tools
+node_modules/
+
+# Font source TTF (regenerate with lv_font_conv)
+fonts/*.ttf

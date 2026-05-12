@@ -8,6 +8,25 @@
 #define STORAGE_NAMESPACE_POMODORO "pomodoro"
 #define STORAGE_NAMESPACE_SETTINGS "settings"
 #define STORAGE_NAMESPACE_WIFI     "wifi"
+#define STORAGE_NAMESPACE_BUDDY   "buddy"
+
+// NVS key constants for 'settings' namespace
+#define KEY_TIMEZONE     "timezone"
+#define KEY_NTP_SERVER   "ntp_server"
+#define KEY_NTP_INTERVAL "ntp_interval"
+#define KEY_TIME_HIGH    "time_high"
+#define KEY_TIME_LOW     "time_low"
+#define KEY_SOUND        "sound"
+#define KEY_ENC_DIR      "enc_dir"
+#define KEY_LANG         "lang"
+#define KEY_LED_ON       "led_on"
+#define KEY_LED_BRIGHT   "led_bright"
+#define KEY_LED_SPEED    "led_speed"
+#define KEY_LED_STYLE    "led_style"
+#define KEY_LED_ANIM     "led_anim"
+
+// NVS key migration (call once at startup)
+void storage_migrate_settings_keys(void);
 
 bool storage_save_wifi_config(const char *ssid, const char *password);
 

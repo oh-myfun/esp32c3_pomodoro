@@ -28,10 +28,12 @@
 #include "buddy/buddy.h"
 #include "service/sound_service.h"
 #include "service/led_service.h"
+#include "ui/ui_screen_settings_debug.h"
+#include "ui/i18n.h"
 
 static const char *TAG = "MAIN";
 
-#define LVGL_DRAW_BUF_LINES 30
+#define LVGL_DRAW_BUF_LINES 20
 #define LVGL_TICK_PERIOD_MS 1
 #define LVGL_TASK_MAX_DELAY_MS 10
 #define LVGL_TASK_MIN_DELAY_MS 1
@@ -122,17 +124,29 @@ static void lvgl_port_task(void *arg)
 static int64_t wifi_fail_time = 0;  // Timestamp of last connect failure
 
 // WiFi -> time_service + UI
+static int64_t wifi_connected_since = 0;  // 0 = not confirmed connected
+
 static void on_wifi_connected(const char *ip) {
     ESP_LOGI(TAG, "WiFi connected, IP: %s", ip ? ip : "null");
     wifi_fail_time = 0;
+    wifi_connected_since = esp_timer_get_time() / 1000;
     sound_service_play(SOUND_WIFI_CONNECTED);
     time_service_request_sync();
-    // Status will be updated by ui_update_task polling
+    if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
+        lvgl_lock();
+        ui_screen_wifi_saved_refresh();
+        lvgl_unlock();
+    }
 }
 
 static void on_wifi_disconnected(void) {
     ESP_LOGI(TAG, "WiFi disconnected");
-    // Status will be updated by ui_update_task polling
+    wifi_connected_since = 0;
+    if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
+        lvgl_lock();
+        ui_screen_wifi_saved_refresh();
+        lvgl_unlock();
+    }
 }
 
 static void on_wifi_scan_complete(int count) {
@@ -189,6 +203,9 @@ static void ui_update_task(void *arg) {
     ESP_LOGI(TAG, "UI update task started");
     int64_t last_pomodoro_tick = 0;
     int64_t last_wifi_ui_tick = 0;
+    int64_t last_mem_tick = 0;
+    int64_t last_debug_tick = 0;
+    ui_screen_id_t prev_screen = UI_SCREEN_COUNT;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -235,41 +252,38 @@ static void ui_update_task(void *arg) {
             last_pomodoro_tick = now;
         }
 
-        // Main screen time + WiFi status update
+        // Main screen: time update every tick, WiFi status every 1 second
         if (current_screen == UI_SCREEN_MAIN) {
             lvgl_lock();
             ui_screen_main_update_time();
 
-            // Update WiFi status based on current state
-            wifi_state_t wifi_state = wifi_service_get_state();
-            int64_t now_ms = esp_timer_get_time() / 1000;
+            if (now - last_wifi_ui_tick >= 1000) {
+                wifi_state_t wifi_state = wifi_service_get_state();
+                int64_t now_ms = esp_timer_get_time() / 1000;
 
-            if (wifi_fail_time > 0 && (now_ms - wifi_fail_time) < 3000) {
-                ui_screen_main_update_wifi_status("Connect Failed", 0xFF4444);
-            } else {
-                wifi_fail_time = 0;
-                switch (wifi_state) {
-                    case WIFI_STATE_DISCONNECTED:
-                        ui_screen_main_update_wifi_status("No WiFi", 0x666666);
-                        break;
-                    case WIFI_STATE_SCANNING:
-                        ui_screen_main_update_wifi_status("Scanning...", 0xAAAAAA);
-                        break;
-                    case WIFI_STATE_CONNECTING:
-                        ui_screen_main_update_wifi_status("Connecting...", 0xFFAA00);
-                        break;
-                    case WIFI_STATE_CONNECTED: {
-                        const char *ip = wifi_service_get_ip();
-                        bool synced = time_service_is_synced();
-                        char status[40];
-                        if (synced) {
-                            snprintf(status, sizeof(status), "IP:%s [OK]", ip ? ip : "");
-                        } else {
-                            snprintf(status, sizeof(status), "IP:%s [Sync..]", ip ? ip : "");
-                        }
-                        ui_screen_main_update_wifi_status(status, synced ? 0x00FF00 : 0xFFFF00);
-                        break;
+                if (wifi_fail_time > 0 && (now_ms - wifi_fail_time) < 3000) {
+                    ui_screen_main_update_wifi_status(i18n(STR_CONNECT_FAILED), 0xFF4444);
+                } else if (wifi_state == WIFI_STATE_CONNECTED) {
+                    wifi_fail_time = 0;
+                    wifi_connected_since = now_ms;
+                    const char *ip = wifi_service_get_ip();
+                    bool synced = time_service_is_synced();
+                    char status[40];
+                    if (synced) {
+                        snprintf(status, sizeof(status), i18n(STR_FMT_IP_OK), ip ? ip : "");
+                    } else {
+                        snprintf(status, sizeof(status), i18n(STR_FMT_IP_SYNC), ip ? ip : "");
                     }
+                    ui_screen_main_update_wifi_status(status, synced ? 0x00FF00 : 0xFFFF00);
+                } else if (wifi_state == WIFI_STATE_SCANNING) {
+                    ui_screen_main_update_wifi_status(i18n(STR_SCANNING), 0xAAAAAA);
+                } else if (wifi_state == WIFI_STATE_CONNECTING) {
+                    ui_screen_main_update_wifi_status(i18n(STR_CONNECTING), 0xFFAA00);
+                } else if (wifi_connected_since > 0 && (now_ms - wifi_connected_since) < 5000) {
+                    // Recently connected, brief disconnection — keep showing connected
+                } else {
+                    wifi_connected_since = 0;
+                    ui_screen_main_update_wifi_status(i18n(STR_NO_WIFI), 0x666666);
                 }
             }
             lvgl_unlock();
@@ -280,13 +294,6 @@ static void ui_update_task(void *arg) {
             if (current_screen == UI_SCREEN_WIFI_LIST) {
                 ui_screen_wifi_list_refresh();
             }
-
-            if (current_screen == UI_SCREEN_WIFI_SAVED) {
-                lvgl_lock();
-                ui_screen_wifi_saved_refresh();
-                lvgl_unlock();
-            }
-
             last_wifi_ui_tick = now;
         }
 
@@ -297,6 +304,25 @@ static void ui_update_task(void *arg) {
             lvgl_unlock();
         }
 
+        // Debug screen refresh every 1 second
+        if (current_screen == UI_SCREEN_SETTINGS_DEBUG && now - last_debug_tick >= 1000) {
+            lvgl_lock();
+            ui_screen_settings_debug_refresh();
+            lvgl_unlock();
+            last_debug_tick = now;
+        }
+
+        // Memory monitor every 30 seconds
+        if (now - last_mem_tick >= 30000) {
+            multi_heap_info_t info;
+            heap_caps_get_info(&info, MALLOC_CAP_8BIT);
+            ESP_LOGI(TAG, "[MEM] heap_free=%u  heap_min=%u",
+                     (unsigned)info.total_free_bytes,
+                     (unsigned)info.minimum_free_bytes);
+            last_mem_tick = now;
+        }
+
+        prev_screen = current_screen;
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
@@ -313,10 +339,14 @@ void app_main(void) {
         ESP_ERROR_CHECK(ret);  // halt
     }
 
+    // 1.5. Migrate old NVS keys
+    storage_migrate_settings_keys();
+
     // 2. Non-fatal: drivers
     buzzer_init();
     st7789_lcd_init();
     if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
+    led_service_init();
 
     // 3. LVGL + display (depends on LCD)
     lvgl_init();
@@ -326,6 +356,7 @@ void app_main(void) {
     time_service_init();
 
     // 5. UI (depends on LVGL + time_service for timezone display)
+    i18n_init();
     ui_init();
 
     // 6. Business modules (non-fatal)
@@ -361,9 +392,9 @@ void app_main(void) {
 
     // 9. Create tasks
     xTaskCreate(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL);
-    xTaskCreate(input_handler_task, "Input",   6144, NULL, 3, NULL);
-    xTaskCreate(service_task, "Service", 6144, NULL, 2, NULL);
-    xTaskCreate(ui_update_task, "UI",      4096, NULL, 1, NULL);
+    xTaskCreate(input_handler_task, "Input",   5120, NULL, 3, NULL);
+    xTaskCreate(service_task, "Service", 4096, NULL, 2, NULL);
+    xTaskCreate(ui_update_task, "UI",      4608, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "All tasks created");
 

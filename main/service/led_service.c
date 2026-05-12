@@ -15,12 +15,12 @@ static const char *TAG = "LED";
 #define OUTER_INDEX     1   // outer ring starts at index 1
 
 // Frame timer
-#define FRAME_INTERVAL_US   50000   // 50ms = 20fps
+#define FRAME_INTERVAL_US   20000   // 20ms = 50fps
 
 // Speed periods in microseconds
-#define SPEED_PERIOD_SLOW    3000000U
-#define SPEED_PERIOD_MEDIUM  1500000U
-#define SPEED_PERIOD_FAST     800000U
+#define SPEED_PERIOD_SLOW    2000000U
+#define SPEED_PERIOD_MEDIUM  1000000U
+#define SPEED_PERIOD_FAST     500000U
 
 // State machine
 typedef enum {
@@ -52,10 +52,14 @@ static struct {
     led_color_t wait_color;
     int64_t play_start_us;      // when PLAYING_OUTER started
     int64_t wait_start_us;      // when WAITING_CENTER started
+    uint8_t play_round;         // current round (1 or 2) for outer ring
 
     // Frame timer
     esp_timer_handle_t frame_timer;
     bool timer_running;
+
+    // Wait flag: set by led_service_wait(), checked after outer ring completes
+    bool wait_pending;
 
     // Demo
     demo_state_t demo;
@@ -66,19 +70,19 @@ static struct {
 
 // Demo color presets
 const led_color_t led_demo_colors[LED_DEMO_COLOR_COUNT] = {
-    {255, 107, 107},   // Warm Red
-    {76, 175, 80},     // Green
-    {77, 150, 255},    // Blue
-    {255, 255, 0},     // Yellow
-    {180, 80, 255},    // Purple
+    LED_COLOR_WORK,
+    LED_COLOR_BREAK,
+    LED_COLOR_LONG_BREAK,
+    LED_COLOR_PAUSED,
+    LED_COLOR_SAD,
 };
 
 const char *const led_demo_color_names[LED_DEMO_COLOR_COUNT] = {
-    "Warm Red",
-    "Green",
-    "Blue",
-    "Yellow",
-    "Purple",
+    "Work",
+    "Break",
+    "LongBreak",
+    "Paused",
+    "Sad",
 };
 
 // ---- HSV conversion ----
@@ -163,6 +167,20 @@ static int64_t get_period_us(void)
     return SPEED_PERIOD_MEDIUM;
 }
 
+// Gradient pure: brightness oscillates ±1 level around current setting
+static float gradient_level_factor(float phase)
+{
+    float cos_val = cosf(phase * 2.0f * (float)M_PI);  // +1 at start, -1 at mid
+    float eff_level = (float)led.brightness + cos_val;  // peak first, dip later
+    if (eff_level < 0) eff_level = 0;
+    if (eff_level > 10) eff_level = 10;
+    uint8_t lo = (uint8_t)eff_level;
+    uint8_t hi = lo + 1;
+    float frac = eff_level - lo;
+    float val = brightness_to_value(lo) + (brightness_to_value(hi) - brightness_to_value(lo)) * frac;
+    return val / (float)brightness_to_value(led.brightness);
+}
+
 static void apply_pixel(uint8_t index, led_color_t color, float brightness_factor)
 {
     float factor = brightness_factor * brightness_to_value(led.brightness) / 255.0f;
@@ -205,12 +223,12 @@ static led_color_t render_center(led_color_t base, float phase)
     switch (led.anim) {
     case LED_ANIM_BREATH:
         if (led.style == LED_STYLE_PURE) {
-            // Brightness 0 <-> max sinusoidal
-            float val = 0.5f * (1.0f + sinf(phase * 2.0f * (float)M_PI));
-            hsv.v = val;
+            // cos + sqrt: starts at peak (main color), holds bright longer
+            float raw = 0.5f * (1.0f + cosf(phase * 2.0f * (float)M_PI));
+            hsv.v = sqrtf(raw);
         } else {
-            // Hue oscillates +/-60 degrees around base
-            float hue_offset = 60.0f * sinf(phase * 2.0f * (float)M_PI);
+            // Hue oscillates around base, peak at start
+            float hue_offset = 60.0f * cosf(phase * 2.0f * (float)M_PI);
             hsv.h = fmodf(hsv.h + hue_offset + 360.0f, 360.0f);
         }
         break;
@@ -240,13 +258,11 @@ static led_color_t render_center(led_color_t base, float phase)
 
     case LED_ANIM_GRADIENT:
         if (led.style == LED_STYLE_PURE) {
-            // Brightness wobbles +/-30% around max
-            float val = 1.0f + 0.3f * sinf(phase * 2.0f * (float)M_PI);
-            if (val > 1.0f) val = 1.0f;
-            hsv.v = val;
+            // Brightness oscillates ±1 level around current setting
+            hsv.v = gradient_level_factor(phase);
         } else {
-            // Hue wobbles +/-30 degrees around base
-            float hue_offset = 30.0f * sinf(phase * 2.0f * (float)M_PI);
+            // Hue swings +/-90 degrees, peak at start
+            float hue_offset = 90.0f * cosf(phase * 2.0f * (float)M_PI);
             hsv.h = fmodf(hsv.h + hue_offset + 360.0f, 360.0f);
         }
         break;
@@ -256,7 +272,7 @@ static led_color_t render_center(led_color_t base, float phase)
 }
 
 // Outer ring rendering
-static void render_outer(led_color_t base, float phase)
+static void render_outer(led_color_t base, float phase, float fade)
 {
     hsv_t base_hsv = rgb_to_hsv(base);
 
@@ -270,10 +286,10 @@ static void render_outer(led_color_t base, float phase)
             // All 8 same as center
             led_phase = phase;
             if (led.style == LED_STYLE_PURE) {
-                brightness_factor = 0.5f * (1.0f + sinf(led_phase * 2.0f * (float)M_PI));
-                hsv.v = brightness_factor;
+                float raw = 0.5f * (1.0f + cosf(led_phase * 2.0f * (float)M_PI));
+                brightness_factor = sqrtf(raw);
             } else {
-                float hue_offset = 60.0f * sinf(led_phase * 2.0f * (float)M_PI);
+                float hue_offset = 60.0f * cosf(led_phase * 2.0f * (float)M_PI);
                 hsv.h = fmodf(hsv.h + hue_offset + 360.0f, 360.0f);
                 brightness_factor = 1.0f;
             }
@@ -298,14 +314,13 @@ static void render_outer(led_color_t base, float phase)
                     brightness_factor = 0.0f;
                 }
             } else {
-                // Colorful: each LED has rotating hue
-                float led_idx_phase = (float)i / (float)OUTER_COUNT;
-                float hue_offset = (phase + led_idx_phase) * 360.0f;
-                hsv.h = fmodf(base_hsv.h + hue_offset, 360.0f);
+                // Colorful: peak is base color, trail shifts hue backward
                 if (dist >= 0 && dist < 1.0f) {
                     brightness_factor = 1.0f - dist * 0.5f;
                 } else if (dist >= 1.0f) {
                     brightness_factor = powf(0.5f, dist);
+                    // Trail hue shifts 45° per unit distance from base
+                    hsv.h = fmodf(base_hsv.h - dist * 45.0f + 360.0f, 360.0f);
                 } else {
                     brightness_factor = 0.0f;
                 }
@@ -320,11 +335,11 @@ static void render_outer(led_color_t base, float phase)
             led_phase = led_phase - floorf(led_phase);
 
             if (led.style == LED_STYLE_PURE) {
-                float val = 1.0f + 0.3f * sinf(led_phase * 2.0f * (float)M_PI);
-                if (val > 1.0f) val = 1.0f;
-                brightness_factor = val;
+                // Brightness oscillates ±1 level around current setting
+                brightness_factor = gradient_level_factor(led_phase);
             } else {
-                float hue_offset = 30.0f * sinf(led_phase * 2.0f * (float)M_PI);
+                // Hue wave +/-90 degrees, peak at start
+                float hue_offset = 90.0f * cosf(led_phase * 2.0f * (float)M_PI);
                 hsv.h = fmodf(hsv.h + hue_offset + 360.0f, 360.0f);
                 brightness_factor = 1.0f;
             }
@@ -337,7 +352,7 @@ static void render_outer(led_color_t base, float phase)
         }
 
         led_color_t pixel_color = hsv_to_rgb(hsv);
-        apply_pixel(OUTER_INDEX + i, pixel_color, brightness_factor);
+        apply_pixel(OUTER_INDEX + i, pixel_color, brightness_factor * fade);
     }
 }
 
@@ -355,7 +370,7 @@ static void frame_callback(void *arg)
 
         led_color_t center = render_center(led.demo.color, phase);
         apply_pixel(CENTER_INDEX, center, 1.0f);
-        render_outer(led.demo.color, phase);
+        render_outer(led.demo.color, phase, 1.0f);
 
         ws2812_set_pixels(led.pixels, LED_COUNT);
         return;
@@ -368,15 +383,28 @@ static void frame_callback(void *arg)
         float phase = (float)elapsed / (float)period;
 
         if (phase >= 1.0f) {
-            // One round complete -> move to WAITING_CENTER or IDLE
-            memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
-            ws2812_set_pixels(led.pixels, LED_COUNT);
-            led.state = LED_STATE_WAITING_CENTER;
-            led.wait_start_us = now;
-        } else {
-            render_outer(led.play_color, phase);
-            ws2812_set_pixels(led.pixels, LED_COUNT);
+            if (led.play_round < 2) {
+                led.play_round++;
+                led.play_start_us = now;
+                phase = 0.0f;
+            } else {
+                memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
+                ws2812_set_pixels(led.pixels, LED_COUNT);
+                if (led.wait_pending) {
+                    led.state = LED_STATE_WAITING_CENTER;
+                    led.wait_start_us = now;
+                } else {
+                    led.state = LED_STATE_IDLE;
+                    stop_timer();
+                    all_off();
+                }
+                break;
+            }
         }
+
+        float fade = (led.play_round == 1) ? phase : (1.0f - phase);
+        render_outer(led.play_color, phase, fade);
+        ws2812_set_pixels(led.pixels, LED_COUNT);
         break;
     }
 
@@ -384,9 +412,9 @@ static void frame_callback(void *arg)
         int64_t elapsed = now - led.wait_start_us;
         float phase = fmodf((float)elapsed / (float)get_period_us(), 1.0f);
 
+        memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
         led_color_t center = render_center(led.wait_color, phase);
         apply_pixel(CENTER_INDEX, center, 1.0f);
-        // Outer ring stays off during wait
         ws2812_set_pixels(led.pixels, LED_COUNT);
         break;
     }
@@ -411,7 +439,7 @@ static void load_settings(void)
         led.enabled = true;
     }
 
-    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, "led_bright", &val) && val >= 1 && val <= 10) {
+    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, "led_bright", &val) && val >= 1 && val <= 9) {
         led.brightness = (uint8_t)val;
     } else {
         led.brightness = 5;
@@ -469,16 +497,19 @@ void led_service_play(led_color_t color)
 {
     if (!led.enabled) return;
 
-    // If currently in WAITING_CENTER, save the wait color for potential restore
-    if (led.state == LED_STATE_WAITING_CENTER) {
-        led.wait_color = color;
-    }
+    // Ensure previous animation is fully stopped
+    stop_timer();
 
     led.play_color = color;
     led.state = LED_STATE_PLAYING_OUTER;
     led.play_start_us = esp_timer_get_time();
+    led.play_round = 1;
+    led.wait_pending = false;
 
-    // Ensure timer is running
+    // Start from clean state
+    memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
+    ws2812_set_pixels(led.pixels, LED_COUNT);
+
     start_timer();
 }
 
@@ -487,10 +518,14 @@ void led_service_wait(led_color_t color)
     if (!led.enabled) return;
 
     led.wait_color = color;
-    led.state = LED_STATE_WAITING_CENTER;
-    led.wait_start_us = esp_timer_get_time();
+    led.wait_pending = true;
 
-    start_timer();
+    if (led.state == LED_STATE_IDLE) {
+        led.state = LED_STATE_WAITING_CENTER;
+        led.wait_start_us = esp_timer_get_time();
+        start_timer();
+    }
+    // If PLAYING_OUTER, wait will start after outer ring completes (see frame_callback)
 }
 
 void led_service_stop(void)
@@ -519,7 +554,7 @@ bool led_service_is_enabled(void)
 void led_service_set_brightness(uint8_t level)
 {
     if (level < 1) level = 1;
-    if (level > 10) level = 10;
+    if (level > 9) level = 9;
     led.brightness = level;
     storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_bright", level);
 }
@@ -593,6 +628,10 @@ void led_service_demo_stop(void)
 
     led.demo.active = false;
 
+    // Turn everything off first
+    stop_timer();
+    all_off();
+
     // Restore previous state
     led.state = led.demo.saved_state;
     if (led.state == LED_STATE_WAITING_CENTER) {
@@ -602,9 +641,6 @@ void led_service_demo_stop(void)
     } else if (led.state == LED_STATE_PLAYING_OUTER) {
         led.play_start_us = esp_timer_get_time();
         start_timer();
-    } else {
-        stop_timer();
-        all_off();
     }
 
     ESP_LOGI(TAG, "Demo stopped, restored state %d", led.state);

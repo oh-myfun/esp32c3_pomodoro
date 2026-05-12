@@ -1,4 +1,6 @@
 #include "ui_screen_wifi_saved.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_screen_wifi.h"
 #include "ui_manager.h"
 #include "ui_list.h"
@@ -48,7 +50,7 @@ static void update_display(void)
     item_count = 0;
 
     /* Item 0: always "Scan for new..." */
-    snprintf(item_keys[0], sizeof(item_keys[0]), "Scan for new...");
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SCAN_FOR_NEW));
     snprintf(item_values[0], sizeof(item_values[0]), ">");
     items[0].key = item_keys[0];
     items[0].value = item_values[0];
@@ -81,7 +83,7 @@ static void update_display(void)
     }
 
     if (hint_label) {
-        lv_label_set_text(hint_label, "SET:select|Press:back");
+        lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
     }
 }
 
@@ -90,13 +92,13 @@ static void update_action_display(void)
     const char *ssid = wifi_service_get_saved_ssid(action_profile_index);
     if (!ssid) ssid = "?";
 
-    snprintf(action_keys[0], sizeof(action_keys[0]), "Connect");
+    snprintf(action_keys[0], sizeof(action_keys[0]), "%s", i18n(STR_CONNECT));
     action_values[0][0] = '\0';
 
-    snprintf(action_keys[1], sizeof(action_keys[1]), "Edit Password");
+    snprintf(action_keys[1], sizeof(action_keys[1]), "%s", i18n(STR_EDIT_PASSWORD));
     action_values[1][0] = '\0';
 
-    snprintf(action_keys[2], sizeof(action_keys[2]), "Delete");
+    snprintf(action_keys[2], sizeof(action_keys[2]), "%s", i18n(STR_DELETE));
     action_values[2][0] = '\0';
 
     for (int i = 0; i < ACTION_COUNT; i++) {
@@ -163,7 +165,7 @@ static void saved_on_settings_press(void)
                 if (storage_load_wifi_profile(action_profile_index, ssid, sizeof(ssid), password, sizeof(password))) {
                     wifi_service_connect(ssid, password);
                     mode = SAVED_MODE_LIST;
-                    ui_switch_screen(UI_SCREEN_MAIN);
+                    update_display();
                 }
                 break;
             }
@@ -207,17 +209,17 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
     lv_obj_set_size(screen, 240, 240);
 
     lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "WiFi");
+    lv_label_set_text(title, i18n(STR_T_WIFI));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     wifi_list = ui_list_create(screen, 220, 180, 10, 30);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:select|Press:back");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     mode = SAVED_MODE_LIST;

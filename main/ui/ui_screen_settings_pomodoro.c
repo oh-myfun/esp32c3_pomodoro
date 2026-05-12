@@ -1,4 +1,6 @@
 #include "ui_screen_settings_pomodoro.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "ui_list.h"
 #include "pomodoro/pomodoro_engine.h"
@@ -174,26 +176,26 @@ static void update_display(void)
     pomodoro_settings_t settings = pomodoro_engine_get_settings();
     pomodoro_state_t state = pomodoro_engine_get_state();
 
-    snprintf(item_keys[0], sizeof(item_keys[0]), "Work");
-    snprintf(item_values[0], sizeof(item_values[0]), "%d min", settings.work_minutes);
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_WORK));
+    snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_MIN), settings.work_minutes);
 
-    snprintf(item_keys[1], sizeof(item_keys[1]), "Break");
-    snprintf(item_values[1], sizeof(item_values[1]), "%d min", settings.break_minutes);
+    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_BREAK));
+    snprintf(item_values[1], sizeof(item_values[1]), i18n(STR_FMT_MIN), settings.break_minutes);
 
-    snprintf(item_keys[2], sizeof(item_keys[2]), "Long Break");
-    snprintf(item_values[2], sizeof(item_values[2]), "%d min", settings.long_break_minutes);
+    snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_LONG_BREAK));
+    snprintf(item_values[2], sizeof(item_values[2]), i18n(STR_FMT_MIN), settings.long_break_minutes);
 
-    snprintf(item_keys[3], sizeof(item_keys[3]), "Cycles");
+    snprintf(item_keys[3], sizeof(item_keys[3]), "%s", i18n(STR_CYCLES));
     snprintf(item_values[3], sizeof(item_values[3]), "%d", settings.cycles_until_long_break);
 
-    snprintf(item_keys[4], sizeof(item_keys[4]), "Mode");
-    snprintf(item_values[4], sizeof(item_values[4]), "%s", pomodoro_engine_get_manual_mode() ? "Manual" : "Auto");
+    snprintf(item_keys[4], sizeof(item_keys[4]), "%s", i18n(STR_MODE));
+    snprintf(item_values[4], sizeof(item_values[4]), "%s", pomodoro_engine_get_manual_mode() ? i18n(STR_MANUAL) : i18n(STR_AUTO));
 
-    snprintf(item_keys[5], sizeof(item_keys[5]), "Default");
+    snprintf(item_keys[5], sizeof(item_keys[5]), "%s", i18n(STR_DEFAULT));
     snprintf(item_values[5], sizeof(item_values[5]), ">");
 
-    snprintf(item_keys[6], sizeof(item_keys[6]), "Reset");
-    snprintf(item_values[6], sizeof(item_values[6]), "%lu done", state.completed_count);
+    snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_RESET));
+    snprintf(item_values[6], sizeof(item_values[6]), i18n(STR_FMT_DONE), state.completed_count);
 
     for (int i = 0; i < 7; i++) {
         items[i].key = item_keys[i];
@@ -212,13 +214,13 @@ static void update_display(void)
 
     if (hint_label) {
         if (pomo_selected_item == 5 && default_confirmed) {
-            lv_label_set_text(hint_label, "SET:confirm default");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_CONFIRM_DEFAULT));
         } else if (pomo_selected_item == 6 && reset_confirmed) {
-            lv_label_set_text(hint_label, "SET:confirm reset");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_CONFIRM_RESET));
         } else if (pomo_mode == POMO_MODE_ADJUST) {
-            lv_label_set_text(hint_label, "SET:save|Press:cancel");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
         } else {
-            lv_label_set_text(hint_label, "SET:edit|Press:back");
+            lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
         }
     }
 
@@ -233,14 +235,18 @@ static void update_display(void)
 
 lv_obj_t* ui_screen_settings_pomodoro_create(void)
 {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_size(screen, 240, 240);
+    if (!screen) {
+        screen = lv_obj_create(NULL);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_size(screen, 240, 240);
+    }
+    pomodoro_list = NULL;
+    hint_label = NULL;
 
     lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, "Pomodoro");
+    lv_label_set_text(title, i18n(STR_T_POMODORO));
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &lv_font_notosanssc_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     pomodoro_list = ui_list_create(screen, 220, 180, 10, 30);
@@ -251,8 +257,8 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:edit|Press:back");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     static const ui_input_callbacks_t cbs = {

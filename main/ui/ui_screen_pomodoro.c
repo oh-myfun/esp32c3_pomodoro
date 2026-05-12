@@ -1,4 +1,6 @@
 #include "ui_screen_pomodoro.h"
+#include "i18n.h"
+#include "font_notosanssc.h"
 #include "ui_manager.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "service/sound_service.h"
@@ -42,14 +44,17 @@ static void pomo_on_settings_press(void)
     } else if (state.is_paused) {
         pomodoro_engine_resume();
         pomodoro_state_t resumed = pomodoro_engine_get_state();
+        led_service_stop();
         if (resumed.phase == POMODORO_PHASE_WORK) {
             sound_service_play(SOUND_POMO_WORK_START);
+            led_service_play(LED_COLOR_WORK);
         } else if (resumed.phase == POMODORO_PHASE_BREAK) {
             sound_service_play(SOUND_POMO_BREAK_START);
+            led_service_play(LED_COLOR_BREAK);
         } else if (resumed.phase == POMODORO_PHASE_LONG_BREAK) {
             sound_service_play(SOUND_POMO_LONG_BREAK);
+            led_service_play(LED_COLOR_LONG_BREAK);
         }
-        led_service_stop();
     } else {
         pomodoro_engine_pause();
         sound_service_play(SOUND_CONFIRM);
@@ -107,19 +112,19 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     cycle_label = lv_label_create(screen);
     lv_obj_set_style_text_color(cycle_label, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(cycle_label, "1/4");
-    lv_obj_set_style_text_font(cycle_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(cycle_label, &lv_font_notosanssc_16, 0);
     lv_obj_align(cycle_label, LV_ALIGN_TOP_LEFT, 10, 8);
 
     phase_label = lv_label_create(screen);
     lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
-    lv_label_set_text(phase_label, "WORK");
-    lv_obj_set_style_text_font(phase_label, &lv_font_montserrat_16, 0);
+    lv_label_set_text(phase_label, i18n(STR_PHASE_WORK));
+    lv_obj_set_style_text_font(phase_label, &lv_font_notosanssc_16, 0);
     lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
 
     completed_label = lv_label_create(screen);
     lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(completed_label, "0");
-    lv_obj_set_style_text_font(completed_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(completed_label, &lv_font_notosanssc_16, 0);
     lv_obj_align(completed_label, LV_ALIGN_TOP_RIGHT, -10, 8);
 
     progress_arc = lv_arc_create(screen);
@@ -145,13 +150,13 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     total_time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(total_time_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(total_time_label, "/ 25:00");
-    lv_obj_set_style_text_font(total_time_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(total_time_label, &lv_font_notosanssc_16, 0);
     lv_obj_align(total_time_label, LV_ALIGN_CENTER, 0, 24);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(hint_label, "SET:start/pause|Press:stop");
-    lv_obj_set_style_text_font(hint_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(hint_label, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
+    lv_obj_set_style_text_font(hint_label, &lv_font_notosanssc_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     update_settings_display();
@@ -214,26 +219,26 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
     switch (phase) {
         case 1:
             color = 0xFF6B6B;
-            phase_text = "WORK";
+            phase_text = i18n(STR_PHASE_WORK);
             total_seconds = settings.work_minutes * 60;
             break;
         case 2:
             color = 0x4CAF50;
-            phase_text = "BREAK";
+            phase_text = i18n(STR_PHASE_BREAK);
             total_seconds = settings.break_minutes * 60;
             break;
         case 3:
             color = 0x4D96FF;
-            phase_text = "LONG BREAK";
+            phase_text = i18n(STR_PHASE_LONG_BREAK);
             total_seconds = settings.long_break_minutes * 60;
             break;
         case 4:
             color = 0xFFFF00;
-            phase_text = "PAUSED";
+            phase_text = i18n(STR_PHASE_PAUSED);
             break;
         default:
             color = 0xAAAAAA;
-            phase_text = "IDLE";
+            phase_text = i18n(STR_PHASE_IDLE);
             total_seconds = settings.work_minutes * 60;
             break;
     }

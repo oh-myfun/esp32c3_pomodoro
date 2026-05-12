@@ -6,9 +6,17 @@
 #include "ui_screen_settings_pomodoro.h"
 #include "ui_screen_buddy.h"
 #include "ui_screen_wifi_saved.h"
+#include "ui_screen_settings_light.h"
+#include "ui_screen_settings_buddy.h"
+#include "ui_screen_settings_time.h"
+#include "ui_screen_settings_system.h"
+#include "ui_screen_settings_debug.h"
+#include "ui_screen_wifi_saved.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include <string.h>
 
 static const char *TAG = "UI";
@@ -18,6 +26,31 @@ static ui_screen_id_t current_screen = UI_SCREEN_MAIN;
 static ui_input_callbacks_t input_callbacks[UI_SCREEN_COUNT];
 
 static SemaphoreHandle_t lvgl_mutex = NULL;
+
+typedef lv_obj_t* (*screen_create_fn)(void);
+
+static screen_create_fn lazy_creators[UI_SCREEN_COUNT];
+static bool needs_rebuild[UI_SCREEN_COUNT];
+
+static bool screen_is_disposable(ui_screen_id_t id)
+{
+    return id == UI_SCREEN_SETTINGS_POMODORO ||
+           id == UI_SCREEN_SETTINGS_LIGHT ||
+           id == UI_SCREEN_SETTINGS_BUDDY ||
+           id == UI_SCREEN_SETTINGS_TIME ||
+           id == UI_SCREEN_SETTINGS_SYSTEM ||
+           id == UI_SCREEN_SETTINGS_DEBUG;
+}
+
+static void log_mem(const char *label)
+{
+    multi_heap_info_t info;
+    heap_caps_get_info(&info, MALLOC_CAP_8BIT);
+    ESP_LOGI(TAG, "[MEM] %s free=%u  min_free=%u",
+             label,
+             (unsigned)info.total_free_bytes,
+             (unsigned)info.minimum_free_bytes);
+}
 
 static void lvgl_lock_init(void)
 {
@@ -41,22 +74,33 @@ void lvgl_unlock(void)
 void ui_init(void)
 {
     lvgl_lock_init();
+    memset(screens, 0, sizeof(screens));
+    memset(lazy_creators, 0, sizeof(lazy_creators));
+    memset(needs_rebuild, 0, sizeof(needs_rebuild));
 
+    // Core screens: create immediately
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
     screens[UI_SCREEN_POMODORO] = ui_screen_pomodoro_create();
     screens[UI_SCREEN_BUDDY] = ui_screen_buddy_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
-    screens[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
     screens[UI_SCREEN_PASSWORD_INPUT] = ui_screen_password_create();
     screens[UI_SCREEN_WIFI_SAVED] = ui_screen_wifi_saved_create();
+
+    // Sub-setting screens: lazy load on first navigation
+    lazy_creators[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create;
+    lazy_creators[UI_SCREEN_SETTINGS_LIGHT] = ui_screen_settings_light_create;
+    lazy_creators[UI_SCREEN_SETTINGS_BUDDY] = ui_screen_settings_buddy_create;
+    lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
+    lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
+    lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);
     lvgl_unlock();
     current_screen = UI_SCREEN_MAIN;
 
-    ESP_LOGI(TAG, "UI initialized: %d screens", UI_SCREEN_COUNT);
+    log_mem("after ui_init");
 }
 
 void ui_switch_screen(ui_screen_id_t screen_id)
@@ -64,10 +108,46 @@ void ui_switch_screen(ui_screen_id_t screen_id)
     if (screen_id >= UI_SCREEN_COUNT) return;
     if (screen_id == current_screen) return;
 
+    ui_screen_id_t old_screen = current_screen;
+
     lvgl_lock();
+
+    // Rebuild cleaned disposable screen (children removed, container kept)
+    if (screens[screen_id] && needs_rebuild[screen_id] && lazy_creators[screen_id]) {
+        ESP_LOGI(TAG, "Rebuilding screen %d", screen_id);
+        lazy_creators[screen_id]();
+        needs_rebuild[screen_id] = false;
+    }
+
+    // Lazy create on first access
+    if (!screens[screen_id] && lazy_creators[screen_id]) {
+        ESP_LOGI(TAG, "Lazy creating screen %d", screen_id);
+        screens[screen_id] = lazy_creators[screen_id]();
+        log_mem("after lazy create");
+    }
+
+    if (!screens[screen_id]) {
+        lvgl_unlock();
+        return;
+    }
+
     lv_scr_load(screens[screen_id]);
-    lvgl_unlock();
     current_screen = screen_id;
+
+    // Refresh data-driven screens on entry
+    if (screen_id == UI_SCREEN_WIFI_SAVED) {
+        ui_screen_wifi_saved_refresh();
+    }
+
+    // Clean old disposable screen: remove children to free memory
+    if (screen_is_disposable(old_screen) && screens[old_screen]) {
+        lv_obj_clean(screens[old_screen]);
+        ui_unregister_input_callbacks(old_screen);
+        needs_rebuild[old_screen] = true;
+        log_mem("after clean");
+    }
+
+    lvgl_unlock();
 }
 
 ui_screen_id_t ui_get_current_screen(void)
