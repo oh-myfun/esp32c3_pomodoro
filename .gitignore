@@ -35,6 +35,6 @@ fonts/*.ttf
 fonts/*.otf
 fonts/*.7z
 fonts/*.zip
-fonts/gb2312_symbols.txt
-fonts/emoji_symbols.txt
+fonts/*_symbols.txt
+fonts/*_conflicts.json
 package-lock.json
