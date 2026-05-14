@@ -1,0 +1,170 @@
+# Buddy 系统重构设计：角色移植 + TCP 通信
+
+## 概述
+
+将 claude-desktop-buddy 项目的 18 个 ASCII 宠物角色移植到 ESP32 番茄钟项目，同时将通信协议从 BLE 替换为 TCP，对接 claude-code-buddy-bridge 后端。
+
+方案选择：精简精灵格式（5×12），先移植全部 18 个物种快速上线，后续可按需扩展为精细版本。
+
+## Part 1：角色系统重构
+
+### 数据结构
+
+`BUDDY_FRAME_LINES` 从 12 改为 5，`MAX_ANIM_FRAMES` 从 4 改为 10，新增 `BUDDY_FRAME_COLS = 12`。
+
+```c
+typedef struct {
+    const char *name;
+    uint16_t body_color;   // 每物种独立 body 颜色
+    const char *const (*state_frames[7])[10][5];
+    uint8_t frame_count[7];
+} buddy_species_t;
+```
+
+### 7 状态
+
+SLEEP, IDLE, BUSY, ATTENTION, CELEBRATE, DIZZY, HEART（与源项目一致）。
+
+### 18 个物种及 body_color
+
+| 物种 | body_color | 颜色 |
+|------|-----------|------|
+| capybara | 0xC2A6 | 暖棕 |
+| duck | 0xFFE0 | 黄 |
+| goose | 0xFFE0 | 黄 |
+| blob | 0x07F0 | 翠绿 |
+| cat | 0xC2A6 | 暖棕 |
+| dragon | 0xF800 | 红 |
+| octopus | 0xA01F | 紫 |
+| owl | TBD | - |
+| penguin | 0x041F | 蓝 |
+| turtle | TBD | - |
+| snail | TBD | - |
+| ghost | 0xFFFF | 白 |
+| axolotl | 0xFB1E | 粉 |
+| cactus | TBD | - |
+| robot | 0xC618 | 橙 |
+| rabbit | TBD | - |
+| mushroom | TBD | - |
+| chonk | TBD | - |
+
+TBD 的物种颜色待从源项目源码中提取。
+
+### 动画帧数
+
+idle/busy: 6-10 帧，sleep/attention/celebrate/dizzy/heart: 3-6 帧。帧序列按源项目的 SEQ 数组定义循环顺序。
+
+### 状态颜色映射
+
+保留当前项目的状态颜色（非 body_color）：
+- SLEEP: 0x888888 灰
+- IDLE: 0x00FF00 绿
+- BUSY: 0x4D96FF 蓝
+- ATTENTION: 0xFF4444 红
+- CELEBRATE: 0xFFFF00 黄
+- DIZZY: 0xFF00FF 品红
+- HEART: 0xFF6B8A 粉
+
+## Part 2：TCP 服务
+
+### 新增文件
+
+- `service/tcp_service.c/h` — TCP client，完全替代 `ble_service.c/h`
+
+### 连接流程
+
+```
+WiFi 连接成功 → DNS 解析 bridge → TCP connect → 发送 {"type":"hello","data":{}} →
+收到 waiting_pairing → 用户输入 pairing code → 发送 {"type":"pair","data":{"pairing_code":"..."}} →
+收到 paired → 等待 request
+```
+
+### 配置
+
+- `tcp_host`：bridge 地址（默认 `192.168.1.100`，NVS 存储，可通过设置界面配置）
+- `tcp_port`：端口号（默认 `9876`）
+
+### TCP 消息协议（JSON Lines，与 bridge 一致）
+
+**发送**：
+
+| type | data | 说明 |
+|------|------|------|
+| hello | {} | 连接后立即发送 |
+| pair | {"pairing_code":"..."} | 配对请求 |
+| decision | {"behavior":"allow/deny","ccbb_request_id":"..."} | 权限决策 |
+
+**接收**：
+
+| type | data | 说明 |
+|------|------|------|
+| waiting_pairing | {"message":"..."} | 等待配对 |
+| paired | {"pairing_code":"...","session_id":"..."} | 配对成功 |
+| pairing_pending | {"pairing_code":"..."} | 配对码已提交但 session 未就绪 |
+| pairing_failed | {"reason":"..."} | 配对失败 |
+| request | {完整 CC 事件 + ccbb_request_id} | 权限请求推送 |
+| done | {"id":"...","decision":"..."} | 决策已处理 |
+| session_end | {"session_id":"..."} | 会话结束 |
+
+### 内部实现
+
+- FreeRTOS 任务（优先级 2），循环 recv + JSON 行解析
+- WiFi 断开自动断开 TCP，WiFi 重连后自动重连
+- TCP keepalive（idle=5s, interval=3s）
+
+### 回调接口
+
+```c
+typedef struct {
+    void (*on_connected)(void);
+    void (*on_disconnected)(void);
+    void (*on_request)(const tcp_request_t *req);
+    void (*on_session_end)(void);
+} tcp_callbacks_t;
+```
+
+### 配对界面
+
+在设置中新增 "Buddy Bridge" 子页面（或复用 buddy info 模式），可输入 bridge 地址和配对码。
+
+## Part 3：Buddy 状态机适配
+
+### 状态驱动（TCP 事件驱动）
+
+| 事件 | 状态转换 |
+|------|---------|
+| tcp_connected | SLEEP → IDLE |
+| tcp_request_received | IDLE → ATTENTION |
+| user_approve | ATTENTION → CELEBRATE（发 allow，3s → IDLE） |
+| user_deny | ATTENTION → DIZZY（发 deny，3s → IDLE） |
+| tcp_disconnected | 任意 → SLEEP |
+| tcp_session_end | → IDLE |
+| SET 键（仅 IDLE/SLEEP 时） | → 随机 CELEBRATE/DIZZY/HEART（3s → 原状态） |
+
+### API 变更
+
+**移除**：
+- `buddy_on_heartbeat()`, `buddy_on_ble_connected()`, `buddy_on_ble_disconnected()`
+- `buddy_trigger_dizzy()`
+
+**新增**：
+- `buddy_on_tcp_connected()`, `buddy_on_tcp_disconnected()`
+- `buddy_on_tcp_request(req_id, tool, hint)`
+- `buddy_on_tcp_session_end()`
+- `buddy_trigger_random()` — 仅 IDLE/SLEEP 状态可用，随机触发 CELEBRATE/DIZZY/HEART
+
+### UI 输入适配
+
+- 编码器长按回调设为 NULL
+- SET 键在 IDLE/SLEEP 时调用 `buddy_trigger_random()`
+- SET 键在 ATTENTION 时执行 approve/deny
+
+### 连接状态图标
+
+BLE 图标改为 TCP/WiFi 图标：已连接=绿色 ✓，断开=灰色 ✗。
+
+### 文件清理
+
+- 删除 `service/ble_service.c/h`
+- CMakeLists.txt 移除 ble_service.c
+- main.c 中用 tcp_service_init() 替换 ble_service 初始化
