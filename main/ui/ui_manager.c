@@ -27,6 +27,10 @@ static ui_input_callbacks_t input_callbacks[UI_SCREEN_COUNT];
 
 static SemaphoreHandle_t lvgl_mutex = NULL;
 
+#define UI_NAV_STACK_SIZE 8
+static ui_screen_id_t nav_stack[UI_NAV_STACK_SIZE];
+static int nav_depth = 0;
+
 typedef lv_obj_t* (*screen_create_fn)(void);
 
 static screen_create_fn lazy_creators[UI_SCREEN_COUNT];
@@ -39,7 +43,8 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_BUDDY ||
            id == UI_SCREEN_SETTINGS_TIME ||
            id == UI_SCREEN_SETTINGS_SYSTEM ||
-           id == UI_SCREEN_SETTINGS_DEBUG;
+           id == UI_SCREEN_SETTINGS_DEBUG ||
+           id == UI_SCREEN_SETTINGS_BRIDGE;
 }
 
 static void log_mem(const char *label)
@@ -77,6 +82,8 @@ void ui_init(void)
     memset(screens, 0, sizeof(screens));
     memset(lazy_creators, 0, sizeof(lazy_creators));
     memset(needs_rebuild, 0, sizeof(needs_rebuild));
+    memset(nav_stack, 0, sizeof(nav_stack));
+    nav_depth = 0;
 
     // Core screens: create immediately
     screens[UI_SCREEN_MAIN] = ui_screen_main_create();
@@ -109,6 +116,11 @@ void ui_switch_screen(ui_screen_id_t screen_id)
     if (screen_id == current_screen) return;
 
     ui_screen_id_t old_screen = current_screen;
+
+    /* Push current onto nav stack */
+    if (nav_depth < UI_NAV_STACK_SIZE) {
+        nav_stack[nav_depth++] = old_screen;
+    }
 
     lvgl_lock();
 
@@ -200,4 +212,48 @@ void ui_dispatch_settings_press(void)
     if (input_callbacks[current_screen].on_settings_press) {
         input_callbacks[current_screen].on_settings_press();
     }
+}
+
+void ui_go_back(void)
+{
+    if (nav_depth <= 0) return;
+    ui_screen_id_t prev = nav_stack[--nav_depth];
+
+    lvgl_lock();
+
+    /* Lazy create if needed */
+    if (!screens[prev] && lazy_creators[prev]) {
+        ESP_LOGI(TAG, "Lazy creating screen %d for go_back", prev);
+        screens[prev] = lazy_creators[prev]();
+    }
+
+    if (!screens[prev]) {
+        lvgl_unlock();
+        return;
+    }
+
+    /* Rebuild if needed */
+    if (needs_rebuild[prev] && lazy_creators[prev]) {
+        ESP_LOGI(TAG, "Rebuilding screen %d for go_back", prev);
+        lazy_creators[prev]();
+        needs_rebuild[prev] = false;
+    }
+
+    ui_screen_id_t old_screen = current_screen;
+    lv_scr_load(screens[prev]);
+    current_screen = prev;
+
+    /* Refresh data-driven screens on entry */
+    if (prev == UI_SCREEN_WIFI_SAVED) {
+        ui_screen_wifi_saved_refresh();
+    }
+
+    /* Clean old disposable screen */
+    if (screen_is_disposable(old_screen) && screens[old_screen]) {
+        lv_obj_clean(screens[old_screen]);
+        ui_unregister_input_callbacks(old_screen);
+        needs_rebuild[old_screen] = true;
+    }
+
+    lvgl_unlock();
 }

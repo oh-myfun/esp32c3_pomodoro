@@ -16,6 +16,7 @@ typedef enum {
     UI_SCREEN_SETTINGS_TIME,
     UI_SCREEN_SETTINGS_SYSTEM,
     UI_SCREEN_SETTINGS_DEBUG,
+    UI_SCREEN_SETTINGS_BRIDGE,
     UI_SCREEN_COUNT
 } ui_screen_id_t;
 
@@ -37,5 +38,6 @@ void ui_dispatch_encoder_ccw(void);
 void ui_dispatch_encoder_press(void);
 void ui_dispatch_encoder_long_press(void);
 void ui_dispatch_settings_press(void);
+void ui_go_back(void);
 void lvgl_lock(void);
 void lvgl_unlock(void);
