@@ -81,7 +81,7 @@ WiFi 连接成功 → DNS 解析 bridge → TCP connect → 发送 {"type":"hell
 
 ### 配置
 
-- `tcp_host`：bridge 地址（默认 `192.168.1.100`，NVS 存储，可通过设置界面配置）
+- `tcp_host`：bridge 地址（默认 `192.168.1.100`，NVS 存储）
 - `tcp_port`：端口号（默认 `9876`）
 
 ### TCP 消息协议（JSON Lines，与 bridge 一致）
@@ -123,9 +123,42 @@ typedef struct {
 } tcp_callbacks_t;
 ```
 
-### 配对界面
+## Part 2.5：Bridge 配置页面与页面栈
 
-在设置中新增 "Buddy Bridge" 子页面（或复用 buddy info 模式），可输入 bridge 地址和配对码。
+### 页面栈（ui_manager 新增）
+
+当前项目无页面栈，`ui_switch_screen()` 是直接跳转，返回目标硬编码。新增页面栈支持多入口页面的正确返回。
+
+```c
+#define UI_NAV_STACK_SIZE 8
+
+void ui_switch_screen(ui_screen_id_t id);  // 现有接口不变，内部增加压栈逻辑
+void ui_go_back(void);                      // 新增：弹栈返回上一页
+```
+
+- `ui_switch_screen()` 跳转前将当前页面压入 `nav_stack`
+- `ui_go_back()` 弹出栈顶，跳转到上一页面
+- 现有硬编码返回调用逐步替换为 `ui_go_back()`
+
+### Bridge 配置页面（新增 `ui_screen_settings_bridge.c`）
+
+**入口**：
+1. Buddy 界面（SLEEP/IDLE 时）按编码器按键进入
+2. 设置主界面选择 "Buddy Bridge" 项进入
+
+**操作**（与项目其他页面一致）：
+- 编码器旋转：选择配置项 / 修改值
+- **编码器按键：返回上一页**（`ui_go_back()`）
+- **SET 键：确认/执行**（保存配置、触发扫描、提交配对码）
+
+**配置项**：
+- Bridge 地址（手动输入或从扫描结果选择）
+- 端口号（默认 9876）
+- 配对码输入
+- "扫描局域网" 操作项（SET 键触发，搜索局域网中 9876 端口的 bridge 服务）
+- 连接/断开操作
+
+**配置存储**：NVS namespace "tcp"，keys: "host", "port", "pairing_code"
 
 ## Part 3：Buddy 状态机适配
 
@@ -140,6 +173,7 @@ typedef struct {
 | tcp_disconnected | 任意 → SLEEP |
 | tcp_session_end | → IDLE |
 | SET 键（仅 IDLE/SLEEP 时） | → 随机 CELEBRATE/DIZZY/HEART（3s → 原状态） |
+| 编码器按键（SLEEP/IDLE 时） | → 进入 Bridge 配置页面 |
 
 ### API 变更
 
@@ -153,11 +187,15 @@ typedef struct {
 - `buddy_on_tcp_session_end()`
 - `buddy_trigger_random()` — 仅 IDLE/SLEEP 状态可用，随机触发 CELEBRATE/DIZZY/HEART
 
-### UI 输入适配
+### UI 输入适配（ui_screen_buddy.c）
 
-- 编码器长按回调设为 NULL
-- SET 键在 IDLE/SLEEP 时调用 `buddy_trigger_random()`
-- SET 键在 ATTENTION 时执行 approve/deny
+| 输入 | MODE_NORMAL (SLEEP/IDLE) | MODE_NORMAL (其他) | MODE_ATTENTION |
+|------|--------------------------|--------------------|-------|
+| CW | 切到设置页 | 切到设置页 | 选择 Deny |
+| CCW | 切到番茄钟页 | 切到番茄钟页 | 选择 Approve |
+| 编码器按键 | 进入 Bridge 配置页 | 切到番茄钟页 | 执行审批/拒绝 |
+| SET 键 | buddy_trigger_random() | 按状态处理 | 执行选中操作 |
+| 长按 | 无 | 无 | 无 |
 
 ### 连接状态图标
 
