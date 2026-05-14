@@ -3,6 +3,7 @@
 #include "service/storage_service.h"
 #include "service/sound_service.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include <string.h>
 
 static const char *TAG = "buddy";
@@ -10,31 +11,29 @@ static const char *TAG = "buddy";
 #define TICK_INTERVAL_MS      500
 #define CELEBRATE_DURATION_S  3
 #define DIZZY_DURATION_S      3
+#define HEART_DURATION_S      3
 #define ATTENTION_TIMEOUT_S   30
 
 /* Ticks = duration_s * 1000 / TICK_INTERVAL_MS */
 #define CELEBRATE_TICKS  (CELEBRATE_DURATION_S * 1000 / TICK_INTERVAL_MS)
 #define DIZZY_TICKS      (DIZZY_DURATION_S * 1000 / TICK_INTERVAL_MS)
+#define HEART_TICKS      (HEART_DURATION_S * 1000 / TICK_INTERVAL_MS)
 #define ATTENTION_TICKS  (ATTENTION_TIMEOUT_S * 1000 / TICK_INTERVAL_MS)
 
 /* ---- module state ---- */
 
-static buddy_state_t s_state      = BUDDY_SLEEP;
-static buddy_state_t s_pre_dizzy  = BUDDY_SLEEP;
-static int           s_species    = 0;
-static int           s_frame_idx  = 0;
-static int           s_tick_count = 0;
+static buddy_state_t s_state       = BUDDY_SLEEP;
+static buddy_state_t s_pre_random  = BUDDY_SLEEP;
+static int           s_species     = 0;
+static int           s_seq_idx     = 0;
+static int           s_tick_count  = 0;
 
 static uint32_t s_approved = 0;
 static uint32_t s_denied   = 0;
 
-static char s_owner_name[32]  = "";
-static char s_buddy_name[32]  = "";
-static char s_prompt_id[64]   = "";
-static char s_prompt_tool[32] = "";
-static char s_prompt_hint[256] = "";
-static bool s_has_prompt      = false;
-static bool s_ble_connected   = false;
+static bool           s_tcp_connected = false;
+static bool           s_has_request   = false;
+static tcp_request_t  s_current_request = {0};
 
 static buddy_callbacks_t s_cbs = { NULL };
 
@@ -50,7 +49,7 @@ static void set_state(buddy_state_t new_state)
 
     ESP_LOGI(TAG, "state: %d -> %d", s_state, new_state);
     s_state      = new_state;
-    s_frame_idx  = 0;
+    s_seq_idx    = 0;
     s_tick_count = 0;
 
     if (s_cbs.on_state_changed) {
@@ -80,58 +79,41 @@ void buddy_register_callbacks(const buddy_callbacks_t *cbs)
     }
 }
 
-/* ---- BLE-driven updates ---- */
+/* ---- TCP events ---- */
 
-void buddy_on_heartbeat(int running, int waiting, bool has_prompt,
-                        const char *prompt_id, const char *tool, const char *hint)
+void buddy_on_tcp_connected(void)
 {
-    if (!s_ble_connected) return;
-
-    /* Update prompt data */
-    s_has_prompt = has_prompt;
-    if (prompt_id) {
-        strncpy(s_prompt_id, prompt_id, sizeof(s_prompt_id) - 1);
-        s_prompt_id[sizeof(s_prompt_id) - 1] = '\0';
-    }
-    if (tool) {
-        strncpy(s_prompt_tool, tool, sizeof(s_prompt_tool) - 1);
-        s_prompt_tool[sizeof(s_prompt_tool) - 1] = '\0';
-    }
-    if (hint) {
-        strncpy(s_prompt_hint, hint, sizeof(s_prompt_hint) - 1);
-        s_prompt_hint[sizeof(s_prompt_hint) - 1] = '\0';
-    }
-
-    /* State transitions driven by heartbeat */
-    if (has_prompt) {
-        if (s_state != BUDDY_ATTENTION && s_state != BUDDY_CELEBRATE && s_state != BUDDY_DIZZY) {
-            set_state(BUDDY_ATTENTION);
-        }
-    } else if (running > 0) {
-        if (s_state == BUDDY_IDLE || s_state == BUDDY_ATTENTION) {
-            set_state(BUDDY_BUSY);
-        }
-    } else {
-        if (s_state == BUDDY_BUSY) {
-            set_state(BUDDY_IDLE);
-        }
-    }
-}
-
-void buddy_on_ble_connected(void)
-{
-    s_ble_connected = true;
-    ESP_LOGI(TAG, "BLE connected");
+    s_tcp_connected = true;
+    ESP_LOGI(TAG, "TCP connected");
     set_state(BUDDY_IDLE);
 }
 
-void buddy_on_ble_disconnected(void)
+void buddy_on_tcp_disconnected(void)
 {
-    s_ble_connected = false;
-    s_has_prompt    = false;
-    s_prompt_id[0]  = '\0';
-    ESP_LOGI(TAG, "BLE disconnected");
+    s_tcp_connected = false;
+    s_has_request   = false;
+    memset(&s_current_request, 0, sizeof(s_current_request));
+    ESP_LOGI(TAG, "TCP disconnected");
     set_state(BUDDY_SLEEP);
+}
+
+void buddy_on_tcp_request(const tcp_request_t *req)
+{
+    if (!req) return;
+    s_current_request = *req;
+    s_has_request = true;
+    ESP_LOGI(TAG, "TCP request: id=%.16s  type=%d  tool=%s",
+             req->ccbb_request_id, req->type, req->tool);
+    set_state(BUDDY_ATTENTION);
+}
+
+void buddy_on_tcp_session_end(void)
+{
+    s_has_request = false;
+    memset(&s_current_request, 0, sizeof(s_current_request));
+    if (s_state == BUDDY_ATTENTION) {
+        set_state(BUDDY_IDLE);
+    }
 }
 
 /* ---- user actions ---- */
@@ -141,8 +123,7 @@ void buddy_approve(void)
     if (s_state != BUDDY_ATTENTION) return;
 
     s_approved++;
-    s_has_prompt   = false;
-    s_prompt_id[0] = '\0';
+    s_has_request = false;
     buddy_save_stats();
     ESP_LOGI(TAG, "approved  total=%lu", (unsigned long)s_approved);
     set_state(BUDDY_CELEBRATE);
@@ -155,20 +136,27 @@ void buddy_deny(void)
     if (s_state != BUDDY_ATTENTION) return;
 
     s_denied++;
-    s_has_prompt   = false;
-    s_prompt_id[0] = '\0';
+    s_has_request = false;
     buddy_save_stats();
     ESP_LOGI(TAG, "denied  total=%lu", (unsigned long)s_denied);
-    set_state(BUDDY_IDLE);
+    set_state(BUDDY_DIZZY);
     sound_service_play(SOUND_BUDDY_SAD);
     led_service_play(LED_COLOR_SAD);
 }
 
-void buddy_trigger_dizzy(void)
+void buddy_submit_answer(void)
 {
-    s_pre_dizzy = s_state;
-    ESP_LOGI(TAG, "dizzy triggered (from state %d)", s_pre_dizzy);
-    set_state(BUDDY_DIZZY);
+    if (s_state != BUDDY_ATTENTION) return;
+    /* Delegate to approve — the UI already filled s_current_request.selected[] */
+    buddy_approve();
+}
+
+void buddy_trigger_random(void)
+{
+    if (s_state != BUDDY_IDLE && s_state != BUDDY_SLEEP) return;
+    s_pre_random = s_state;
+    buddy_state_t picks[] = { BUDDY_CELEBRATE, BUDDY_DIZZY, BUDDY_HEART };
+    set_state(picks[esp_random() % 3]);
 }
 
 /* ---- info ---- */
@@ -176,25 +164,22 @@ void buddy_trigger_dizzy(void)
 buddy_info_t buddy_get_info(void)
 {
     buddy_info_t info = {
-        .state            = s_state,
-        .species_index    = s_species,
-        .approved_count   = s_approved,
-        .denied_count     = s_denied,
-        .has_pending_prompt = s_has_prompt,
+        .state              = s_state,
+        .species_index      = s_species,
+        .approved_count     = s_approved,
+        .denied_count       = s_denied,
+        .has_pending_request = s_has_request,
+        .tcp_connected      = s_tcp_connected,
+        .request_type       = s_has_request ? s_current_request.type : REQ_PERMISSION,
     };
-    strncpy(info.owner_name,  s_owner_name,  sizeof(info.owner_name)  - 1);
-    strncpy(info.buddy_name,  s_buddy_name,  sizeof(info.buddy_name)  - 1);
-    strncpy(info.prompt_id,   s_prompt_id,   sizeof(info.prompt_id)   - 1);
-    strncpy(info.prompt_tool, s_prompt_tool,  sizeof(info.prompt_tool) - 1);
-    strncpy(info.prompt_hint, s_prompt_hint,  sizeof(info.prompt_hint) - 1);
     return info;
 }
 
 void buddy_set_species(int index)
 {
     if (index < 0 || index >= BUDDY_SPECIES_COUNT) return;
-    s_species = index;
-    s_frame_idx = 0;
+    s_species  = index;
+    s_seq_idx  = 0;
     storage_save_int("buddy", "species", (int32_t)s_species);
     ESP_LOGI(TAG, "species set to %d (%s)", index, BUDDY_SPECIES[index].name);
 }
@@ -217,22 +202,30 @@ void buddy_tick(void)
     s_tick_count++;
 
     const buddy_species_t *sp = &BUDDY_SPECIES[s_species];
-    uint8_t fc = sp->frame_count[s_state];
+    uint8_t sl = sp->seq_len[s_state];
 
-    /* Advance frame */
-    s_frame_idx = (s_frame_idx + 1) % fc;
+    /* Advance SEQ index */
+    if (sl > 0) {
+        s_seq_idx = (s_seq_idx + 1) % sl;
+    }
 
     /* Handle timeouts */
     switch (s_state) {
     case BUDDY_CELEBRATE:
         if (s_tick_count >= CELEBRATE_TICKS) {
-            set_state(BUDDY_IDLE);
+            set_state(s_pre_random);
         }
         break;
 
     case BUDDY_DIZZY:
         if (s_tick_count >= DIZZY_TICKS) {
-            set_state(s_pre_dizzy);
+            set_state(s_pre_random);
+        }
+        break;
+
+    case BUDDY_HEART:
+        if (s_tick_count >= HEART_TICKS) {
+            set_state(s_pre_random);
         }
         break;
 
@@ -243,11 +236,9 @@ void buddy_tick(void)
         } else {
             led_service_stop();
         }
-        /* Timeout after 30s */
+        /* Timeout after 30s — auto-deny */
         if (s_tick_count >= ATTENTION_TICKS) {
-            s_has_prompt   = false;
-            s_prompt_id[0] = '\0';
-            set_state(BUDDY_IDLE);
+            buddy_deny();
         }
         break;
 
@@ -259,7 +250,17 @@ void buddy_tick(void)
 const char *const *buddy_get_current_frame(void)
 {
     const buddy_species_t *sp = &BUDDY_SPECIES[s_species];
-    return (*sp->state_frames[s_state])[s_frame_idx];
+    uint8_t pose_idx = 0;
+    if (sp->seq[s_state] && sp->seq_len[s_state] > 0) {
+        pose_idx = sp->seq[s_state][s_seq_idx % sp->seq_len[s_state]];
+    }
+    if (pose_idx >= sp->pose_count[s_state]) pose_idx = 0;
+    return (*sp->state_frames[s_state])[pose_idx];
+}
+
+uint16_t buddy_get_current_body_color(void)
+{
+    return BUDDY_SPECIES[s_species].body_color;
 }
 
 /* ---- persistence ---- */
