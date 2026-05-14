@@ -6,7 +6,7 @@
 #define BUDDY_FRAME_LINES  5
 #define BUDDY_FRAME_COLS   12
 #define MAX_ANIM_FRAMES   10
-#define MAX_SEQ_LEN       32
+#define MAX_SEQ_LEN       48
 
 typedef enum {
     BUDDY_SLEEP = 0,
