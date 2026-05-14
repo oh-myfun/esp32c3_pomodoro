@@ -3,7 +3,6 @@
 #include "custom_font.h"
 #include "ui_manager.h"
 #include "buddy/buddy.h"
-#include "service/ble_service.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,7 +15,6 @@ static const char *TAG = "UI_BUDDY";
 typedef enum {
     MODE_NORMAL    = 0,
     MODE_ATTENTION,
-    MODE_INFO,
 } buddy_display_mode_t;
 
 /* ----------------------------------------------------------------
@@ -25,7 +23,7 @@ typedef enum {
 static lv_obj_t *screen        = NULL;
 
 /* Top bar */
-static lv_obj_t *ble_icon      = NULL;
+static lv_obj_t *conn_icon     = NULL;
 static lv_obj_t *name_label    = NULL;
 
 /* Center — ASCII pet */
@@ -41,38 +39,36 @@ static lv_obj_t *nav_hint      = NULL;
 /* ----------------------------------------------------------------
  * Static LVGL objects — ATTENTION mode overlay
  * ---------------------------------------------------------------- */
+static lv_obj_t *attn_container = NULL;
 static lv_obj_t *attn_title    = NULL;
 static lv_obj_t *attn_pet      = NULL;
 static lv_obj_t *attn_tool     = NULL;
 static lv_obj_t *attn_hint     = NULL;
-static lv_obj_t *attn_approve  = NULL;
-static lv_obj_t *attn_deny     = NULL;
-static lv_obj_t *attn_container = NULL;
-
-/* ----------------------------------------------------------------
- * Static LVGL objects — INFO mode overlay
- * ---------------------------------------------------------------- */
-static lv_obj_t *info_container = NULL;
-static lv_obj_t *info_title     = NULL;
-static lv_obj_t *info_labels[5] = {NULL};
-static lv_obj_t *info_action    = NULL;
-static lv_obj_t *info_hint      = NULL;
+static lv_obj_t *attn_options[9] = {NULL}; /* up to 8 options + 1 submit */
 
 /* ----------------------------------------------------------------
  * Module state
  * ---------------------------------------------------------------- */
 static buddy_display_mode_t display_mode = MODE_NORMAL;
-static bool ble_connected = false;
-static int  attn_selection = 0;  /* 0 = Approve, 1 = Deny */
-static int  info_scroll   = 0;  /* 0 = Next Pet, 1 = (reserved) */
+static bool tcp_connected = false;
+
+/* ATTENTION mode state */
+static int  s_req_type       = 0;       /* 0=permission, 1=single, 2=multi */
+static int  s_option_count   = 0;       /* number of options */
+static int  s_attn_focus     = 0;       /* currently focused option */
+static bool s_multi_selected[8];        /* checkbox state for multi-select */
+
+/* Option labels storage (max 8 options) */
+static char s_option_labels[8][32];
 
 /* ----------------------------------------------------------------
  * Forward declarations
  * ---------------------------------------------------------------- */
 static void set_display_mode(buddy_display_mode_t mode);
 static void update_pet_animation(void);
-static void update_attention_selection(void);
-static void update_info_content(void);
+static void update_attn_pet(void);
+static void update_attention_display(void);
+static void submit_current_selection(void);
 
 /* ----------------------------------------------------------------
  * Input callbacks
@@ -82,12 +78,11 @@ static void buddy_on_encoder_cw(void)
 {
     if (display_mode == MODE_NORMAL) {
         ui_switch_screen(UI_SCREEN_SETTINGS);
-    } else if (display_mode == MODE_ATTENTION) {
-        attn_selection = 1;
-        update_attention_selection();
-    } else if (display_mode == MODE_INFO) {
-        info_scroll = (info_scroll + 1) % 2;
-        update_info_content();
+    } else { /* MODE_ATTENTION */
+        int visible = (s_req_type == REQ_PERMISSION) ? 2 :
+                      (s_req_type == REQ_MULTI_SELECT) ? (s_option_count + 1) : s_option_count;
+        s_attn_focus = (s_attn_focus + 1) % visible;
+        update_attention_display();
     }
 }
 
@@ -95,54 +90,36 @@ static void buddy_on_encoder_ccw(void)
 {
     if (display_mode == MODE_NORMAL) {
         ui_switch_screen(UI_SCREEN_POMODORO);
-    } else if (display_mode == MODE_ATTENTION) {
-        attn_selection = 0;
-        update_attention_selection();
-    } else if (display_mode == MODE_INFO) {
-        info_scroll = (info_scroll - 1 + 2) % 2;
-        update_info_content();
+    } else { /* MODE_ATTENTION */
+        int visible = (s_req_type == REQ_PERMISSION) ? 2 :
+                      (s_req_type == REQ_MULTI_SELECT) ? (s_option_count + 1) : s_option_count;
+        s_attn_focus = (s_attn_focus - 1 + visible) % visible;
+        update_attention_display();
     }
 }
 
 static void buddy_on_encoder_press(void)
 {
     if (display_mode == MODE_NORMAL) {
-        ui_switch_screen(UI_SCREEN_POMODORO);
-    } else if (display_mode == MODE_ATTENTION) {
-        set_display_mode(MODE_NORMAL);
-    } else if (display_mode == MODE_INFO) {
-        set_display_mode(MODE_NORMAL);
+        ui_switch_screen(UI_SCREEN_SETTINGS_BRIDGE);
     }
+    /* MODE_ATTENTION: no action on encoder press */
 }
 
 static void buddy_on_encoder_long_press(void)
 {
-    buddy_trigger_dizzy();
+    /* unused — long press no longer triggers dizzy */
 }
 
 static void buddy_on_settings_press(void)
 {
     if (display_mode == MODE_NORMAL) {
-        set_display_mode(MODE_INFO);
-    } else if (display_mode == MODE_ATTENTION) {
-        if (attn_selection == 0) {
-            buddy_approve();
-        } else {
-            buddy_deny();
+        buddy_state_t state = buddy_get_info().state;
+        if (state == BUDDY_IDLE || state == BUDDY_SLEEP) {
+            buddy_trigger_random();
         }
-        set_display_mode(MODE_NORMAL);
-    } else if (display_mode == MODE_INFO) {
-        if (info_scroll == 0) {
-            /* Next Pet */
-            int count = buddy_get_species_count();
-            buddy_info_t info = buddy_get_info();
-            int next = (info.species_index + 1) % count;
-            buddy_set_species(next);
-            update_info_content();
-        } else {
-            /* Back */
-            set_display_mode(MODE_NORMAL);
-        }
+    } else { /* MODE_ATTENTION */
+        submit_current_selection();
     }
 }
 
@@ -160,13 +137,10 @@ static void set_display_mode(buddy_display_mode_t mode)
     if (attn_container) {
         lv_obj_add_flag(attn_container, LV_OBJ_FLAG_HIDDEN);
     }
-    if (info_container) {
-        lv_obj_add_flag(info_container, LV_OBJ_FLAG_HIDDEN);
-    }
 
-    /* Show normal-mode elements */
+    /* Show / hide normal-mode elements */
     bool show_normal = (mode == MODE_NORMAL);
-    lv_obj_t *normal_objs[] = {ble_icon, name_label, state_label, msg_label, nav_hint};
+    lv_obj_t *normal_objs[] = {conn_icon, name_label, state_label, msg_label, nav_hint};
     for (int i = 0; i < 5; i++) {
         if (normal_objs[i]) {
             if (show_normal) {
@@ -177,156 +151,179 @@ static void set_display_mode(buddy_display_mode_t mode)
         }
     }
 
-    switch (mode) {
-    case MODE_ATTENTION:
+    if (mode == MODE_ATTENTION) {
         if (attn_container) {
             lv_obj_clear_flag(attn_container, LV_OBJ_FLAG_HIDDEN);
-            attn_selection = 0;
-            update_attention_selection();
+            s_attn_focus = 0;
+            update_attention_display();
         }
-        break;
-    case MODE_INFO:
-        if (info_container) {
-            lv_obj_clear_flag(info_container, LV_OBJ_FLAG_HIDDEN);
-            info_scroll = 0;
-            update_info_content();
-        }
-        break;
-    default:
-        break;
     }
 
     lvgl_unlock();
 }
 
 /* ----------------------------------------------------------------
- * Pet animation helper
+ * Pet animation helpers
  * ---------------------------------------------------------------- */
 
-static void update_pet_animation(void)
+static void build_frame_text(char *buf, size_t buf_size)
 {
     const char *const *frame = buddy_get_current_frame();
-    if (!frame || !pet_label) return;
-
-    /* Build a single string with \n separators for the 12 lines */
-    char buf[BUDDY_FRAME_LINES * 20];
+    if (!frame) {
+        buf[0] = '\0';
+        return;
+    }
     int offset = 0;
     for (int i = 0; i < BUDDY_FRAME_LINES; i++) {
-        int len = snprintf(buf + offset, sizeof(buf) - offset,
-                          "%s\n", frame[i] ? frame[i] : "");
-        if (len > 0) offset += len;
+        offset += snprintf(buf + offset, buf_size - offset,
+                           "%s\n", frame[i] ? frame[i] : "");
     }
     /* Remove trailing newline */
     if (offset > 0 && buf[offset - 1] == '\n') {
         buf[offset - 1] = '\0';
     }
+}
+
+static void update_pet_animation(void)
+{
+    if (!pet_label) return;
+    char buf[BUDDY_FRAME_LINES * 16];
+    build_frame_text(buf, sizeof(buf));
     lv_label_set_text(pet_label, buf);
 }
 
-/* Also update the attention-mode pet */
 static void update_attn_pet(void)
 {
-    const char *const *frame = buddy_get_current_frame();
-    if (!frame || !attn_pet) return;
-
-    char buf[BUDDY_FRAME_LINES * 20];
-    int offset = 0;
-    for (int i = 0; i < BUDDY_FRAME_LINES; i++) {
-        int len = snprintf(buf + offset, sizeof(buf) - offset,
-                          "%s\n", frame[i] ? frame[i] : "");
-        if (len > 0) offset += len;
-    }
-    if (offset > 0 && buf[offset - 1] == '\n') {
-        buf[offset - 1] = '\0';
-    }
+    if (!attn_pet) return;
+    char buf[BUDDY_FRAME_LINES * 16];
+    build_frame_text(buf, sizeof(buf));
     lv_label_set_text(attn_pet, buf);
 }
 
 /* ----------------------------------------------------------------
- * Attention mode selection highlight
+ * Attention mode display
  * ---------------------------------------------------------------- */
 
-static void update_attention_selection(void)
+static void update_attention_display(void)
 {
-    if (!attn_approve || !attn_deny) return;
+    if (!attn_container) return;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 
     lvgl_lock();
-    if (attn_selection == 0) {
-        char buf_approve[32];
-        snprintf(buf_approve, sizeof(buf_approve), "> %s", i18n(STR_APPROVE));
-        char buf_deny[32];
-        snprintf(buf_deny, sizeof(buf_deny), "  %s", i18n(STR_DENY));
-        lv_label_set_text(attn_approve, buf_approve);
-        lv_label_set_text(attn_deny,    buf_deny);
-        lv_obj_set_style_text_color(attn_approve, lv_color_hex(0x00FF00), 0);
-        lv_obj_set_style_text_color(attn_deny,    lv_color_hex(0xFFFFFF), 0);
-    } else {
-        char buf_approve[32];
-        snprintf(buf_approve, sizeof(buf_approve), "  %s", i18n(STR_APPROVE));
-        char buf_deny[32];
-        snprintf(buf_deny, sizeof(buf_deny), "> %s", i18n(STR_DENY));
-        lv_label_set_text(attn_approve, buf_approve);
-        lv_label_set_text(attn_deny,    buf_deny);
-        lv_obj_set_style_text_color(attn_approve, lv_color_hex(0xFFFFFF), 0);
-        lv_obj_set_style_text_color(attn_deny,    lv_color_hex(0xFF4444), 0);
+
+    /* Hide all option labels first */
+    int max_labels = (s_req_type == REQ_PERMISSION) ? 2 :
+                     (s_req_type == REQ_MULTI_SELECT) ? (s_option_count + 1) : s_option_count;
+    for (int i = 0; i < 9; i++) {
+        if (attn_options[i]) {
+            if (i < max_labels) {
+                lv_obj_clear_flag(attn_options[i], LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(attn_options[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
     }
+
+    if (s_req_type == REQ_PERMISSION) {
+        /* Permission: [0] = Allow, [1] = Deny */
+        for (int i = 0; i < 2; i++) {
+            if (!attn_options[i]) continue;
+            char buf[48];
+            const char *text = (i == 0) ? i18n(STR_APPROVE) : i18n(STR_DENY);
+            bool focused = (s_attn_focus == i);
+            snprintf(buf, sizeof(buf), "%s %s", focused ? ">" : " ", text);
+            lv_label_set_text(attn_options[i], buf);
+            if (focused) {
+                lv_obj_set_style_text_color(attn_options[i],
+                    lv_color_hex(i == 0 ? 0x00FF00 : 0xFF4444), 0);
+            } else {
+                lv_obj_set_style_text_color(attn_options[i],
+                    lv_color_hex(0xAAAAAA), 0);
+            }
+        }
+    } else if (s_req_type == REQ_SINGLE_SELECT) {
+        /* Single select: each option, focused one has > prefix */
+        for (int i = 0; i < s_option_count; i++) {
+            if (!attn_options[i]) continue;
+            char buf[64];
+            bool focused = (s_attn_focus == i);
+            snprintf(buf, sizeof(buf), "%s %s", focused ? ">" : " ", s_option_labels[i]);
+            lv_label_set_text(attn_options[i], buf);
+            lv_obj_set_style_text_color(attn_options[i],
+                lv_color_hex(focused ? 0x00FF00 : 0xCCCCCC), 0);
+        }
+    } else { /* REQ_MULTI_SELECT */
+        /* Multi select: checkboxes + submit button at end */
+        for (int i = 0; i < s_option_count; i++) {
+            if (!attn_options[i]) continue;
+            char buf[64];
+            bool checked = s_multi_selected[i];
+            bool focused = (s_attn_focus == i);
+            snprintf(buf, sizeof(buf), "%s[%s] %s",
+                     focused ? ">" : " ",
+                     checked ? "\xef\x9c\x93" : " ",
+                     s_option_labels[i]);
+            lv_label_set_text(attn_options[i], buf);
+            lv_obj_set_style_text_color(attn_options[i],
+                lv_color_hex(focused ? 0x00FF00 : (checked ? 0x4D96FF : 0xCCCCCC)), 0);
+        }
+        /* Submit button */
+        int submit_idx = s_option_count;
+        if (attn_options[submit_idx]) {
+            char buf[64];
+            bool focused = (s_attn_focus == submit_idx);
+            snprintf(buf, sizeof(buf), "%s \xef\x9c\x93 Submit", focused ? ">" : " ");
+            lv_label_set_text(attn_options[submit_idx], buf);
+            lv_obj_set_style_text_color(attn_options[submit_idx],
+                lv_color_hex(focused ? 0x00FF00 : 0xAAAAAA), 0);
+        }
+    }
+
+    /* Update pet in attention mode */
+    update_attn_pet();
+
+#pragma GCC diagnostic pop
     lvgl_unlock();
 }
 
 /* ----------------------------------------------------------------
- * Info page content
+ * Submit current selection
  * ---------------------------------------------------------------- */
 
-static void update_info_content(void)
+static void submit_current_selection(void)
 {
-    if (!info_container) return;
-
-    buddy_info_t info = buddy_get_info();
-
-    lvgl_lock();
-
-    if (info_labels[0]) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "%s%s",
-                 i18n(STR_PET_LABEL),
-                 buddy_get_species_name(info.species_index) ?
-                 buddy_get_species_name(info.species_index) : "--");
-        lv_label_set_text(info_labels[0], buf);
-    }
-    if (info_labels[1]) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "%s%s",
-                 i18n(STR_OWNER_LABEL),
-                 info.owner_name[0] ? info.owner_name : "--");
-        lv_label_set_text(info_labels[1], buf);
-    }
-    if (info_labels[2]) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%s%lu", i18n(STR_APPROVED_LABEL), (unsigned long)info.approved_count);
-        lv_label_set_text(info_labels[2], buf);
-    }
-    if (info_labels[3]) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%s%lu", i18n(STR_DENIED_LABEL), (unsigned long)info.denied_count);
-        lv_label_set_text(info_labels[3], buf);
-    }
-    if (info_labels[4]) {
-        lv_label_set_text(info_labels[4],
-                          ble_connected ? i18n(STR_BLE_CONN) : i18n(STR_BLE_DISCONN));
-    }
-
-    if (info_action) {
-        char buf[32];
-        if (info_scroll == 0) {
-            snprintf(buf, sizeof(buf), "> %s", i18n(STR_NEXT_PET));
-            lv_label_set_text(info_action, buf);
+    if (s_req_type == REQ_PERMISSION) {
+        if (s_attn_focus == 0) {
+            buddy_approve();
         } else {
-            snprintf(buf, sizeof(buf), "  %s", i18n(STR_BACK));
-            lv_label_set_text(info_action, buf);
+            buddy_deny();
+        }
+    } else if (s_req_type == REQ_SINGLE_SELECT) {
+        /* Delegate to buddy_submit_answer */
+        buddy_submit_answer();
+    } else { /* REQ_MULTI_SELECT */
+        int submit_idx = s_option_count;
+        if (s_attn_focus == submit_idx) {
+            /* Submit only if at least 1 selected */
+            int count = 0;
+            for (int i = 0; i < s_option_count; i++) {
+                if (s_multi_selected[i]) count++;
+            }
+            if (count > 0) {
+                buddy_submit_answer();
+            }
+        } else {
+            /* Toggle checkbox for the focused regular option */
+            s_multi_selected[s_attn_focus] = !s_multi_selected[s_attn_focus];
+            update_attention_display();
+            return; /* don't switch back to normal */
         }
     }
 
-    lvgl_unlock();
+    /* Return to normal mode after submit */
+    set_display_mode(MODE_NORMAL);
 }
 
 /* ----------------------------------------------------------------
@@ -336,13 +333,13 @@ static void update_info_content(void)
 static uint32_t state_to_color(buddy_state_t state)
 {
     switch (state) {
-    case BUDDY_SLEEP:     return 0x888888;  /* gray */
-    case BUDDY_IDLE:      return 0x00FF00;  /* green */
-    case BUDDY_BUSY:      return 0x4D96FF;  /* blue */
-    case BUDDY_ATTENTION: return 0xFF4444;  /* red */
-    case BUDDY_CELEBRATE: return 0xFFFF00;  /* yellow */
-    case BUDDY_DIZZY:     return 0xFF00FF;  /* magenta */
-    case BUDDY_HEART:     return 0xFF6B8A;  /* pink */
+    case BUDDY_SLEEP:     return 0x888888;
+    case BUDDY_IDLE:      return 0x00FF00;
+    case BUDDY_BUSY:      return 0x4D96FF;
+    case BUDDY_ATTENTION: return 0xFF4444;
+    case BUDDY_CELEBRATE: return 0xFFFF00;
+    case BUDDY_DIZZY:     return 0xFF00FF;
+    case BUDDY_HEART:     return 0xFF6B8A;
     default:              return 0xCCCCCC;
     }
 }
@@ -372,11 +369,11 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_size(screen, 240, 240);
 
     /* ---- Top bar ---- */
-    ble_icon = lv_label_create(screen);
-    lv_obj_set_style_text_color(ble_icon, lv_color_hex(0x666666), 0);
-    lv_label_set_text(ble_icon, "✗");
-    lv_obj_set_style_text_font(ble_icon, &custom_font_14, 0);
-    lv_obj_align(ble_icon, LV_ALIGN_TOP_LEFT, 8, 6);
+    conn_icon = lv_label_create(screen);
+    lv_obj_set_style_text_color(conn_icon, lv_color_hex(0x666666), 0);
+    lv_label_set_text(conn_icon, "\xe2\x9c\x97");
+    lv_obj_set_style_text_font(conn_icon, &custom_font_14, 0);
+    lv_obj_align(conn_icon, LV_ALIGN_TOP_LEFT, 8, 6);
 
     name_label = lv_label_create(screen);
     lv_obj_set_style_text_color(name_label, lv_color_hex(0xFFFFFF), 0);
@@ -433,100 +430,39 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_font(attn_title, &custom_font_16, 0);
     lv_obj_align(attn_title, LV_ALIGN_TOP_MID, 0, 8);
 
+    /* Pet animation in attention mode (small, top-left) */
     attn_pet = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_pet, lv_color_hex(0xFF4444), 0);
     lv_obj_set_style_text_font(attn_pet, &lv_font_unscii_8, 0);
     lv_obj_set_style_text_line_space(attn_pet, 0, 0);
     lv_obj_align(attn_pet, LV_ALIGN_TOP_LEFT, 10, 28);
 
+    /* Tool name label */
     attn_tool = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_tool, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(attn_tool, i18n(STR_TOOL));
     lv_obj_set_style_text_font(attn_tool, &custom_font_14, 0);
-    lv_obj_align(attn_tool, LV_ALIGN_TOP_LEFT, 10, 148);
+    lv_obj_align(attn_tool, LV_ALIGN_TOP_LEFT, 10, 78);
 
+    /* Hint / description label */
     attn_hint = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_hint, lv_color_hex(0xCCCCCC), 0);
     lv_label_set_text(attn_hint, "");
     lv_obj_set_style_text_font(attn_hint, &custom_font_14, 0);
-    lv_obj_align(attn_hint, LV_ALIGN_TOP_LEFT, 10, 166);
+    lv_obj_align(attn_hint, LV_ALIGN_TOP_LEFT, 10, 96);
     lv_obj_set_width(attn_hint, 216);
     lv_label_set_long_mode(attn_hint, LV_LABEL_LONG_MODE_WRAP);
 
-    attn_approve = lv_label_create(attn_container);
-    lv_obj_set_style_text_color(attn_approve, lv_color_hex(0x00FF00), 0);
-    {
-        char _buf[32];
-        snprintf(_buf, sizeof(_buf), "> %s", i18n(STR_APPROVE));
-        lv_label_set_text(attn_approve, _buf);
+    /* Option labels — up to 9 (8 options + 1 submit for multi-select) */
+    for (int i = 0; i < 9; i++) {
+        attn_options[i] = lv_label_create(attn_container);
+        lv_obj_set_style_text_font(attn_options[i], &custom_font_14, 0);
+        lv_obj_set_style_text_color(attn_options[i], lv_color_hex(0xCCCCCC), 0);
+        lv_label_set_text(attn_options[i], "");
+        /* Position below hint area: base_y=120, each line 16px apart */
+        lv_obj_align(attn_options[i], LV_ALIGN_TOP_LEFT, 16, 120 + i * 16);
+        lv_obj_add_flag(attn_options[i], LV_OBJ_FLAG_HIDDEN);
     }
-    lv_obj_set_style_text_font(attn_approve, &custom_font_16, 0);
-    lv_obj_align(attn_approve, LV_ALIGN_BOTTOM_LEFT, 20, -30);
-
-    attn_deny = lv_label_create(attn_container);
-    lv_obj_set_style_text_color(attn_deny, lv_color_hex(0xFFFFFF), 0);
-    {
-        char _buf[32];
-        snprintf(_buf, sizeof(_buf), "  %s", i18n(STR_DENY));
-        lv_label_set_text(attn_deny, _buf);
-    }
-    lv_obj_set_style_text_font(attn_deny, &custom_font_16, 0);
-    lv_obj_align(attn_deny, LV_ALIGN_BOTTOM_LEFT, 20, -12);
-
-    /* ============================================================
-     * INFO mode overlay (initially hidden)
-     * ============================================================ */
-    info_container = lv_obj_create(screen);
-    lv_obj_set_size(info_container, 236, 236);
-    lv_obj_align(info_container, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_bg_color(info_container, lv_color_hex(0x1a1a1a), 0);
-    lv_obj_set_style_border_width(info_container, 1, 0);
-    lv_obj_set_style_border_color(info_container, lv_color_hex(0x444444), 0);
-    lv_obj_add_flag(info_container, LV_OBJ_FLAG_HIDDEN);
-
-    info_title = lv_label_create(info_container);
-    lv_obj_set_style_text_color(info_title, lv_color_hex(0xFFFFFF), 0);
-    lv_label_set_text(info_title, i18n(STR_T_BUDDY));
-    lv_obj_set_style_text_font(info_title, &custom_font_16, 0);
-    lv_obj_align(info_title, LV_ALIGN_TOP_MID, 0, 8);
-
-    /* Info fields */
-    char _info_bufs[5][48];
-    snprintf(_info_bufs[0], sizeof(_info_bufs[0]), "%s--", i18n(STR_PET_LABEL));
-    snprintf(_info_bufs[1], sizeof(_info_bufs[1]), "%s--", i18n(STR_OWNER_LABEL));
-    snprintf(_info_bufs[2], sizeof(_info_bufs[2]), "%s0", i18n(STR_APPROVED_LABEL));
-    snprintf(_info_bufs[3], sizeof(_info_bufs[3]), "%s0", i18n(STR_DENIED_LABEL));
-    snprintf(_info_bufs[4], sizeof(_info_bufs[4]), "BLE: --");
-    const char *info_defaults[] = {
-        _info_bufs[0],
-        _info_bufs[1],
-        _info_bufs[2],
-        _info_bufs[3],
-        _info_bufs[4],
-    };
-    for (int i = 0; i < 5; i++) {
-        info_labels[i] = lv_label_create(info_container);
-        lv_obj_set_style_text_color(info_labels[i], lv_color_hex(0xCCCCCC), 0);
-        lv_label_set_text(info_labels[i], info_defaults[i]);
-        lv_obj_set_style_text_font(info_labels[i], &custom_font_14, 0);
-        lv_obj_align(info_labels[i], LV_ALIGN_TOP_LEFT, 16, 34 + i * 20);
-    }
-
-    info_action = lv_label_create(info_container);
-    lv_obj_set_style_text_color(info_action, lv_color_hex(0x00FF00), 0);
-    {
-        char _buf[32];
-        snprintf(_buf, sizeof(_buf), "> %s", i18n(STR_NEXT_PET));
-        lv_label_set_text(info_action, _buf);
-    }
-    lv_obj_set_style_text_font(info_action, &custom_font_14, 0);
-    lv_obj_align(info_action, LV_ALIGN_BOTTOM_LEFT, 16, -22);
-
-    info_hint = lv_label_create(info_container);
-    lv_obj_set_style_text_color(info_hint, lv_color_hex(0x888888), 0);
-    lv_label_set_text(info_hint, i18n(STR_H_PRESS_BACK_SET_SELECT));
-    lv_obj_set_style_text_font(info_hint, &custom_font_14, 0);
-    lv_obj_align(info_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     /* ---- Register input callbacks ---- */
     static const ui_input_callbacks_t cbs = {
@@ -570,45 +506,65 @@ void ui_screen_buddy_update_state(void)
 
     /* Refresh static i18n labels */
     if (name_label) lv_label_set_text(name_label, i18n(STR_BUDDY_NAME));
-    if (nav_hint) lv_label_set_text(nav_hint, i18n(STR_H_PRESS_BACK_SET_INFO));
+    if (nav_hint)   lv_label_set_text(nav_hint, i18n(STR_H_PRESS_BACK_SET_INFO));
     if (attn_title) lv_label_set_text(attn_title, i18n(STR_PERMISSION));
-    if (attn_approve) lv_label_set_text(attn_approve, i18n(STR_APPROVE));
-    if (attn_deny) lv_label_set_text(attn_deny, i18n(STR_DENY));
-    if (info_title) lv_label_set_text(info_title, i18n(STR_T_BUDDY));
-    if (info_hint) lv_label_set_text(info_hint, i18n(STR_H_PRESS_BACK_SET_SELECT));
 
     /* Pet label color */
     if (pet_label) {
         lv_obj_set_style_text_color(pet_label, lv_color_hex(color), 0);
     }
 
-    /* Auto-switch to ATTENTION mode if buddy state demands it */
-    if (info.state == BUDDY_ATTENTION && display_mode == MODE_NORMAL && info.has_pending_prompt) {
-        /* Will be shown via ui_screen_buddy_show_prompt() from the app layer */
-    }
-
     lvgl_unlock();
 }
 
 /* ================================================================
- * Public API: show permission prompt
+ * Public API: show request (ATTENTION mode)
  * ================================================================ */
 
-void ui_screen_buddy_show_prompt(const char *tool, const char *hint)
+void ui_screen_buddy_show_request(const char *tool, const char *hint,
+                                   int option_count, int req_type)
 {
+    s_req_type = req_type;
+    s_option_count = (option_count > 8) ? 8 : option_count;
+    s_attn_focus = 0;
+    memset(s_multi_selected, 0, sizeof(s_multi_selected));
+    memset(s_option_labels, 0, sizeof(s_option_labels));
+
     lvgl_lock();
 
-    if (attn_tool) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), i18n(STR_FMT_TOOL), tool ? tool : "?");
-        lv_label_set_text(attn_tool, buf);
+    /* Update title based on request type */
+    if (attn_title) {
+        if (req_type == REQ_PERMISSION) {
+            lv_label_set_text(attn_title, i18n(STR_PERMISSION));
+        } else {
+            /* Single/Multi select — show question or "Question" */
+            lv_label_set_text(attn_title, hint ? hint : "Question");
+        }
     }
+
+    /* Tool label */
+    if (attn_tool) {
+        if (req_type == REQ_PERMISSION && tool) {
+            char buf[48];
+            snprintf(buf, sizeof(buf), i18n(STR_FMT_TOOL), tool);
+            lv_label_set_text(attn_tool, buf);
+        } else {
+            lv_label_set_text(attn_tool, "");
+        }
+    }
+
+    /* Hint label */
     if (attn_hint) {
         lv_label_set_text(attn_hint, hint ? hint : "");
     }
-    if (attn_pet) {
-        update_attn_pet();
+
+    /* For permission: set default option labels */
+    if (req_type == REQ_PERMISSION) {
+        /* Option labels will be set in update_attention_display */
     }
+
+    /* Update attention display to show options */
+    update_attention_display();
 
     lvgl_unlock();
 
@@ -616,27 +572,31 @@ void ui_screen_buddy_show_prompt(const char *tool, const char *hint)
 }
 
 /* ================================================================
- * Public API: clear permission prompt
+ * Public API: clear request
  * ================================================================ */
 
-void ui_screen_buddy_clear_prompt(void)
+void ui_screen_buddy_clear_request(void)
 {
     set_display_mode(MODE_NORMAL);
 }
 
 /* ================================================================
- * Public API: update BLE connection status
+ * Public API: update TCP connection status
  * ================================================================ */
 
 void ui_screen_buddy_set_connected(bool connected)
 {
-    ble_connected = connected;
+    tcp_connected = connected;
 
     lvgl_lock();
-    if (ble_icon) {
-        lv_obj_set_style_text_color(ble_icon,
-            lv_color_hex(connected ? 0x4D96FF : 0x666666), 0);
-        lv_label_set_text(ble_icon, connected ? "✓" : "✗");
+    if (conn_icon) {
+        if (connected) {
+            lv_obj_set_style_text_color(conn_icon, lv_color_hex(0x00FF00), 0);
+            lv_label_set_text(conn_icon, "\xe2\x9c\x93");
+        } else {
+            lv_obj_set_style_text_color(conn_icon, lv_color_hex(0x666666), 0);
+            lv_label_set_text(conn_icon, "\xe2\x9c\x97");
+        }
     }
     lvgl_unlock();
 }
