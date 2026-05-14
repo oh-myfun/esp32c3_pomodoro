@@ -92,7 +92,8 @@ WiFi 连接成功 → DNS 解析 bridge → TCP connect → 发送 {"type":"hell
 |------|------|------|
 | hello | {} | 连接后立即发送 |
 | pair | {"pairing_code":"..."} | 配对请求 |
-| decision | {"behavior":"allow/deny","ccbb_request_id":"..."} | 权限决策 |
+| decision | {"behavior":"allow/deny","ccbb_request_id":"..."} | 权限决策（Allow/Deny） |
+| decision | {"behavior":"allow","ccbb_request_id":"...","updatedInput":{"questions":[...],"answers":{...}}} | AskUserQuestion 单选/多选响应 |
 
 **接收**：
 
@@ -143,7 +144,7 @@ void ui_go_back(void);                      // 新增：弹栈返回上一页
 ### Bridge 配置页面（新增 `ui_screen_settings_bridge.c`）
 
 **入口**：
-1. Buddy 界面（SLEEP/IDLE 时）按编码器按键进入
+1. Buddy 界面按编码器按键进入（任意状态均可）
 2. 设置主界面选择 "Buddy Bridge" 项进入
 
 **操作**（与项目其他页面一致）：
@@ -170,10 +171,94 @@ void ui_go_back(void);                      // 新增：弹栈返回上一页
 | tcp_request_received | IDLE → ATTENTION |
 | user_approve | ATTENTION → CELEBRATE（发 allow，3s → IDLE） |
 | user_deny | ATTENTION → DIZZY（发 deny，3s → IDLE） |
+| user_submit_answer | ATTENTION → CELEBRATE（发 allow + updatedInput，3s → IDLE） |
 | tcp_disconnected | 任意 → SLEEP |
 | tcp_session_end | → IDLE |
 | SET 键（仅 IDLE/SLEEP 时） | → 随机 CELEBRATE/DIZZY/HEART（3s → 原状态） |
-| 编码器按键（SLEEP/IDLE 时） | → 进入 Bridge 配置页面 |
+| 编码器按键（任意状态） | → 进入 Bridge 配置页面 |
+
+### 请求类型与响应格式
+
+设备通过 TCP 接收的请求分为两类：**权限请求**（Bash/Write/Edit/MCP 等工具调用）和 **AskUserQuestion**（单选/多选）。
+
+#### 权限请求
+
+请求中 `tool_name` 为 `Bash`、`Write`、`Edit`、MCP 工具等。设备显示工具名 + hint，用户选择 Allow 或 Deny。
+
+响应格式：
+```json
+{"behavior": "allow"}
+```
+或
+```json
+{"behavior": "deny"}
+```
+
+#### AskUserQuestion — 单选（multiSelect=false）
+
+`tool_name` 为 `AskUserQuestion`，`tool_input.questions` 中只有一个 question 且 `multiSelect=false`。
+设备显示问题文本，列出选项，用户选择一个。
+
+响应格式：
+```json
+{
+  "behavior": "allow",
+  "updatedInput": {
+    "questions": [...],
+    "answers": {"问题文本": "选中的label"}
+  }
+}
+```
+
+#### AskUserQuestion — 多选（multiSelect=true）
+
+`multiSelect=true`。设备显示问题文本，列出选项，用户可勾选多个。末尾追加 "✓ 提交" 选项作为确认提交动作。
+
+响应格式：
+```json
+{
+  "behavior": "allow",
+  "updatedInput": {
+    "questions": [...],
+    "answers": {"问题文本": ["label1", "label2"]}
+  }
+}
+```
+
+#### 数据结构
+
+```c
+typedef enum {
+    REQ_PERMISSION,     // 权限审批 (Allow/Deny)
+    REQ_SINGLE_SELECT,  // 单选
+    REQ_MULTI_SELECT,   // 多选
+} request_type_t;
+
+typedef struct {
+    char ccbb_request_id[64];
+    request_type_t type;
+    char tool[32];          // 工具名
+    char hint[128];         // 操作摘要
+    char question[128];     // 问题文本 (AskUserQuestion)
+    struct {
+        char label[32];
+        char description[64];
+    } options[8];
+    int option_count;
+    int selected[8];        // 多选时已勾选的选项索引
+    int selected_count;     // 单选/权限: 默认选中的索引
+    // 原始 questions JSON 用于回填响应
+    char questions_json[512];
+} tcp_request_t;
+```
+
+### 默认选择
+
+| 请求类型 | 默认选中 | SET 键行为 |
+|---------|---------|-----------|
+| 权限请求 | Allow（索引 0） | 直接提交 Allow |
+| 单选 | 第一个选项 | 直接提交选中项 |
+| 多选 | 无选中 | 勾选/取消勾选当前聚焦选项 |
 
 ### API 变更
 
@@ -183,19 +268,29 @@ void ui_go_back(void);                      // 新增：弹栈返回上一页
 
 **新增**：
 - `buddy_on_tcp_connected()`, `buddy_on_tcp_disconnected()`
-- `buddy_on_tcp_request(req_id, tool, hint)`
+- `buddy_on_tcp_request(const tcp_request_t *req)`
 - `buddy_on_tcp_session_end()`
 - `buddy_trigger_random()` — 仅 IDLE/SLEEP 状态可用，随机触发 CELEBRATE/DIZZY/HEART
 
 ### UI 输入适配（ui_screen_buddy.c）
 
-| 输入 | MODE_NORMAL (SLEEP/IDLE) | MODE_NORMAL (其他) | MODE_ATTENTION |
-|------|--------------------------|--------------------|-------|
-| CW | 切到设置页 | 切到设置页 | 选择 Deny |
-| CCW | 切到番茄钟页 | 切到番茄钟页 | 选择 Approve |
-| 编码器按键 | 进入 Bridge 配置页 | 切到番茄钟页 | 执行审批/拒绝 |
-| SET 键 | buddy_trigger_random() | 按状态处理 | 执行选中操作 |
-| 长按 | 无 | 无 | 无 |
+| 输入 | MODE_NORMAL (任意状态) | MODE_ATTENTION |
+|------|----------------------|----------------|
+| CW | 切到设置页 | 聚焦下一项 |
+| CCW | 切到番茄钟页 | 聚焦上一项 |
+| 编码器按键 | 进入 Bridge 配置页 | 无操作（按 SET 确认当前聚焦项） |
+| SET 键 | buddy_trigger_random()（仅 IDLE/SLEEP） | 提交默认/当前选择 |
+| 长按 | 无 | 无 |
+
+**MODE_ATTENTION 详细行为**：
+
+权限请求时，选项列表为 `[Allow, Deny]`，默认聚焦 Allow。SET 键直接提交当前聚焦项。
+
+单选时，选项列表为 question 的 options，默认聚焦第一项。SET 键提交选中项。
+
+多选时，选项列表为 question 的 options + 末尾 `✓ 提交`，默认无选中。CW/CCW 移动聚焦。SET 键：
+- 聚焦在普通选项上：勾选/取消勾选当前项
+- 聚焦在 `✓ 提交` 上：提交当前勾选项（至少选 1 项才能提交）
 
 ### 连接状态图标
 
