@@ -412,17 +412,12 @@ static void ui_update_task(void *arg) {
                 } else if (wifi_state == WIFI_STATE_CONNECTED) {
                     wifi_fail_time = 0;
                     wifi_connected_since = now_ms;
-                    const char *ip = wifi_service_get_ip();
                     bool synced = time_service_is_synced();
-                    char status[40];
-                    if (synced) {
-                        snprintf(status, sizeof(status), i18n(STR_FMT_IP_OK), ip ? ip : "");
-                    } else {
-                        snprintf(status, sizeof(status), i18n(STR_FMT_IP_SYNC), ip ? ip : "");
-                    }
-                    ui_screen_main_update_wifi_status(status, synced ? 0x00FF00 : 0xFFFF00);
+                    ui_screen_main_update_wifi_status(
+                        synced ? i18n(STR_WIFI_CONNECTED) : i18n(STR_WIFI_SYNCING),
+                        synced ? 0x00FF00 : 0xFFFF00);
                 } else if (wifi_state == WIFI_STATE_SCANNING) {
-                    ui_screen_main_update_wifi_status(i18n(STR_SCANNING), 0xAAAAAA);
+                    ui_screen_main_update_wifi_status(i18n(STR_SCANNING_MAIN), 0xAAAAAA);
                 } else if (wifi_state == WIFI_STATE_CONNECTING) {
                     ui_screen_main_update_wifi_status(i18n(STR_CONNECTING), 0xFFAA00);
                 } else if (wifi_connected_since > 0 && (now_ms - wifi_connected_since) < 5000) {

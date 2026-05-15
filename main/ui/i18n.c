@@ -124,11 +124,12 @@ static const char *strings[STR_COUNT][2] = {
 
     /* Main screen hints */
     [STR_SET_SYNC]       = {"SET:sync",    "SET:同步"},
-    [STR_FMT_IP_OK]      = {"IP:%s [OK]", "IP:%s [OK]"},
-    [STR_FMT_IP_SYNC]    = {"IP:%s [Sync..]", "IP:%s [同步..]"},
-    [STR_CONNECT_FAILED] = {"Connect Failed", "连接失败"},
-    [STR_CONNECTING]     = {"Connecting...", "连接中..."},
-    [STR_NO_WIFI]        = {"No WiFi",     "无WiFi"},
+    [STR_WIFI_CONNECTED] = {"[● Connected]", "[● 已连接]"},
+    [STR_WIFI_SYNCING]   = {"[◎ Syncing]", "[◎ 同步中]"},
+    [STR_CONNECT_FAILED] = {"[✕ Failed]", "[✕ 连接失败]"},
+    [STR_CONNECTING]     = {"[◎ Connecting]", "[◎ 连接中]"},
+    [STR_SCANNING_MAIN]  = {"[○ Scanning]", "[○ 扫描中]"},
+    [STR_NO_WIFI]        = {"[○ No WiFi]", "[○ 无WiFi]"},
 
     /* Hint bars */
     [STR_H_SET_ENTER_PRESS_BACK]       = {"SET:enter|Press:back",  "SET:进入|Press:返回"},

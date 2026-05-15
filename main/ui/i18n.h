@@ -126,10 +126,11 @@ typedef enum {
 
     /* Main screen hints */
     STR_SET_SYNC,
-    STR_FMT_IP_OK,     /* "IP:%s [OK]" */
-    STR_FMT_IP_SYNC,   /* "IP:%s [Sync..]" */
+    STR_WIFI_CONNECTED,   /* "[● Connected]" / "[● 已连接]" */
+    STR_WIFI_SYNCING,     /* "[◎ Syncing]" / "[◎ 同步中]" */
     STR_CONNECT_FAILED,
     STR_CONNECTING,
+    STR_SCANNING_MAIN,    /* "[○ Scanning...]" / "[○ 扫描中]" */
     STR_NO_WIFI,
 
     /* Hint bars */

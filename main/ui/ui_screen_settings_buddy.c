@@ -227,7 +227,6 @@ static void buddy_on_settings_press(void)
             if (tcp_service_is_connected()) {
                 tcp_service_disconnect();
             } else {
-                tcp_service_save_config(cfg_host, cfg_port);
                 tcp_service_connect(cfg_host, cfg_port);
             }
             update_display();

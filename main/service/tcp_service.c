@@ -22,9 +22,9 @@ static const char *TAG = "TCP";
 
 /* Connection parameters */
 #define RECONNECT_DELAY_MS  15000
-#define RX_BUF_SIZE         2048
+#define RX_BUF_SIZE         4096
 #define TX_BUF_SIZE         1024
-#define TASK_STACK_SIZE     8192
+#define TASK_STACK_SIZE     9216
 #define TASK_PRIORITY       2
 
 /* Internal state */
@@ -325,13 +325,25 @@ static void rx_buf_reset(void)
  */
 static bool recv_and_dispatch(void)
 {
-    /* Guard against buffer overflow */
-    if (rx_len >= (int)sizeof(rx_buf) - 1) {
-        ESP_LOGW(TAG, "RX buffer full, discarding %d bytes", rx_len);
-        rx_len = 0;
+    int space = (int)sizeof(rx_buf) - rx_len - 1;
+    if (space <= 0) {
+        /* Buffer full — scan for last newline to salvage what we can */
+        char *last_nl = strrchr(rx_buf, '\n');
+        if (last_nl) {
+            int keep = (rx_buf + rx_len) - (last_nl + 1);
+            if (keep > 0) {
+                memmove(rx_buf, last_nl + 1, keep);
+            }
+            rx_len = keep;
+        } else {
+            /* No newline at all — single oversized message, discard it */
+            ESP_LOGW(TAG, "Oversized message, discarding %d bytes", rx_len);
+            rx_len = 0;
+        }
+        space = (int)sizeof(rx_buf) - rx_len - 1;
     }
 
-    int n = lwip_read(sock, rx_buf + rx_len, sizeof(rx_buf) - rx_len - 1);
+    int n = lwip_read(sock, rx_buf + rx_len, space);
     if (n <= 0) {
         ESP_LOGW(TAG, "Read returned %d (errno=%d)", n, errno);
         return false;
@@ -355,7 +367,7 @@ static bool recv_and_dispatch(void)
                 }
                 cJSON_Delete(root);
             } else {
-                ESP_LOGW(TAG, "Invalid JSON: %.80s", line_start);
+                ESP_LOGD(TAG, "Invalid JSON: %.80s", line_start);
             }
         }
 
@@ -519,16 +531,20 @@ void tcp_service_register_callbacks(const tcp_callbacks_t *cbs)
 void tcp_service_connect(const char *host, int port)
 {
     strncpy(cfg_host, host, sizeof(cfg_host) - 1);
+    cfg_host[sizeof(cfg_host) - 1] = '\0';
     cfg_port = port;
     user_disconnect = false;
 
     /* Save config to NVS */
     tcp_service_save_config(host, port);
 
-    /* Start task if not running */
     if (!running) {
+        /* Start task if not running */
         running = true;
         xTaskCreate(tcp_task, "tcp_task", TASK_STACK_SIZE, NULL, TASK_PRIORITY, &tcp_task_handle);
+    } else if (sock >= 0) {
+        /* Force-close existing connection so task reconnects with new config */
+        lwip_shutdown(sock, SHUT_RDWR);
     }
 }
 

@@ -46,9 +46,20 @@ static void rebuild_log_text(char *buf, int buf_size)
     int total = log_count;
     int pos = 0;
 
-    for (int i = 0; i < total && pos < buf_size - LOG_LINE_MAX; i++) {
+    for (int i = 0; i < total && pos < buf_size - LOG_LINE_MAX - 12; i++) {
         int line_idx = (log_count < LOG_LINES) ? i : ((log_head - total + i + LOG_LINES) % LOG_LINES);
-        int written = snprintf(buf + pos, buf_size - pos, "%s\n", log_lines[line_idx]);
+        const char *line = log_lines[line_idx];
+
+        /* Color code by log level prefix: E=red, W=orange, I=default */
+        char level = line[0];
+        int written;
+        if (level == 'E') {
+            written = snprintf(buf + pos, buf_size - pos, "#FF4444 %s#\n", line);
+        } else if (level == 'W') {
+            written = snprintf(buf + pos, buf_size - pos, "#FFAA00 %s#\n", line);
+        } else {
+            written = snprintf(buf + pos, buf_size - pos, "%s\n", line);
+        }
         if (written > 0) pos += written;
     }
     buf[pos] = '\0';
@@ -205,7 +216,7 @@ static void show_log_view(void)
 
     /* Fill content with log text */
     if (content_label) {
-        static char log_text[LOG_LINE_MAX * (LOG_LINES + 1)];
+        static char log_text[(LOG_LINE_MAX + 12) * (LOG_LINES + 1)];
         rebuild_log_text(log_text, sizeof(log_text));
         lv_label_set_text(content_label, log_text);
 
@@ -328,6 +339,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
     lv_obj_set_style_text_line_space(content_label, -4, 0);
     lv_obj_set_width(content_label, 228);
     lv_label_set_long_mode(content_label, LV_LABEL_LONG_WRAP);
+    lv_label_set_recolor(content_label, true);
     lv_obj_set_pos(content_label, 0, 0);
 
     hint_label = lv_label_create(screen);

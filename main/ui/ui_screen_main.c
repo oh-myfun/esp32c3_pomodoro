@@ -74,7 +74,7 @@ lv_obj_t* ui_screen_main_create(void)
     lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0x00FF00), 0);
     lv_label_set_text(wifi_status_label, "");
     lv_obj_set_style_text_font(wifi_status_label, &custom_font_16, 0);
-    lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 28);
+    lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 10);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
