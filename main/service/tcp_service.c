@@ -445,8 +445,8 @@ static void do_connect(void)
         xSemaphoreGive(send_mutex);
     }
 
-    invoke_on_connected();
     s_project[0] = '\0';
+    invoke_on_connected();
 
     /* Receive loop */
     while (running && !user_disconnect) {
@@ -459,8 +459,8 @@ static void do_connect(void)
     lwip_shutdown(sock, SHUT_WR);
     lwip_close(sock);
     sock = -1;
-    invoke_on_disconnected();
     s_project[0] = '\0';
+    invoke_on_disconnected();
     ESP_LOGW(TAG, "Disconnected");
 }
 

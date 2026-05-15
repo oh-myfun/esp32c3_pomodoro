@@ -48,7 +48,7 @@ static lv_obj_t *attn_cmd      = NULL;
 static lv_obj_t *attn_canvas   = NULL;
 #define OPT_VISIBLE 6
 #define OPT_ROW_H   22
-#define OPT_Y_START 76   /* bottom-aligned: 208 - 6*22 = 76 */
+#define OPT_Y_START 72   /* bottom-aligned: 204 - 6*22 = 72 */
 static lv_obj_t *attn_opt_labels[OPT_VISIBLE] = {NULL};
 static lv_obj_t *attn_scrollbar = NULL;
 static lv_obj_t *attn_desc     = NULL;
@@ -462,7 +462,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_font(conn_label, &custom_font_14, 0);
     lv_obj_set_pos(conn_label, 8, 6);
     lv_obj_set_size(conn_label, 140, 20);
-    lv_label_set_long_mode(conn_label, LV_LABEL_LONG_SCROLL);
+    lv_label_set_long_mode(conn_label, LV_LABEL_LONG_DOT);
 
     state_label = lv_label_create(screen);
     lv_obj_set_style_text_color(state_label, lv_color_hex(0x888888), 0);
@@ -503,11 +503,11 @@ lv_obj_t* ui_screen_buddy_create(void)
     /* ============================================================
      * ATTENTION mode overlay (initially hidden)
      * ============================================================
-     *  Layout (236×236 container, two equal columns):
-     *   y=4    ToolName(16px, w=110)        Pet(110×48) at x=120,y=4
-     *   y=24   Command(14px, w=110, h=184)  Options(x=120, y=56, w=110)
-     *                                       both bottom-align at y=208
-     *   y=208  Description (14px, 2-line, h=28)
+     *  Layout (236×236 container, border 2px, content to y=232):
+     *   y=4    ToolName(16px, w=110, h=22)  Pet(110×48) at x=120,y=4
+     *   y=28   Command(14px, w=110, h=176,  Options(x=120, y=72, w=110)
+     *          wrap)                          bottom-align at y=204
+     *   y=204  Description (14px, 2-line, h=28, truncate)
      */
     attn_container = lv_obj_create(screen);
     lv_obj_set_size(attn_container, 236, 236);
@@ -517,23 +517,23 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_border_color(attn_container, lv_color_hex(0xFF4444), 0);
     lv_obj_add_flag(attn_container, LV_OBJ_FLAG_HIDDEN);
 
-    /* Tool name — 16px, just the tool name */
+    /* Tool name — 16px, h=22 */
     attn_tool = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_tool, lv_color_hex(0xFFFFFF), 0);
     lv_label_set_text(attn_tool, "");
     lv_obj_set_style_text_font(attn_tool, &custom_font_16, 0);
-    lv_obj_set_pos(attn_tool, 6, 6);
-    lv_obj_set_size(attn_tool, 110, 18);
-    lv_label_set_long_mode(attn_tool, LV_LABEL_LONG_SCROLL);
+    lv_obj_set_pos(attn_tool, 6, 4);
+    lv_obj_set_size(attn_tool, 110, 22);
+    lv_label_set_long_mode(attn_tool, LV_LABEL_LONG_DOT);
 
-    /* Command text — 14px, left column, extends down to description */
+    /* Command text — 14px, auto-wrap, left column */
     attn_cmd = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_cmd, lv_color_hex(0xCCCCCC), 0);
     lv_label_set_text(attn_cmd, "");
     lv_obj_set_style_text_font(attn_cmd, &custom_font_14, 0);
-    lv_obj_set_pos(attn_cmd, 6, 24);
-    lv_obj_set_size(attn_cmd, 110, 184);
-    lv_label_set_long_mode(attn_cmd, LV_LABEL_LONG_SCROLL);
+    lv_obj_set_pos(attn_cmd, 6, 28);
+    lv_obj_set_size(attn_cmd, 110, 176);
+    lv_label_set_long_mode(attn_cmd, LV_LABEL_LONG_WRAP);
 
     /* Right: half-size pet canvas */
     attn_canvas = lv_obj_create(attn_container);
@@ -562,14 +562,14 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_radius(attn_scrollbar, 1, 0);
     lv_obj_add_flag(attn_scrollbar, LV_OBJ_FLAG_HIDDEN);
 
-    /* Bottom: description — 14px, 2-line height, auto-scroll */
+    /* Bottom: description — 14px, 2-line, truncate */
     attn_desc = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_desc, lv_color_hex(0x888888), 0);
     lv_label_set_text(attn_desc, "");
     lv_obj_set_style_text_font(attn_desc, &custom_font_14, 0);
-    lv_obj_set_pos(attn_desc, 6, 208);
+    lv_obj_set_pos(attn_desc, 6, 204);
     lv_obj_set_size(attn_desc, 224, 28);
-    lv_label_set_long_mode(attn_desc, LV_LABEL_LONG_SCROLL);
+    lv_label_set_long_mode(attn_desc, LV_LABEL_LONG_DOT);
 
     /* ---- Register input callbacks ---- */
     static const ui_input_callbacks_t cbs = {
