@@ -107,7 +107,7 @@ static void pomo_set_on_encoder_press(void)
         reset_confirmed = false;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 
@@ -159,7 +159,7 @@ static void pomo_set_on_encoder_long_press(void)
         ESP_LOGI(TAG, "Cancelled pomodoro settings changes");
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 
@@ -192,7 +192,7 @@ static void update_display(void)
     snprintf(item_values[4], sizeof(item_values[4]), "%s", pomodoro_engine_get_manual_mode() ? i18n(STR_MANUAL) : i18n(STR_AUTO));
 
     snprintf(item_keys[5], sizeof(item_keys[5]), "%s", i18n(STR_DEFAULT));
-    snprintf(item_values[5], sizeof(item_values[5]), "▸");
+    snprintf(item_values[5], sizeof(item_values[5]), "⇨");
 
     snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_RESET));
     snprintf(item_values[6], sizeof(item_values[6]), i18n(STR_FMT_DONE), state.completed_count);

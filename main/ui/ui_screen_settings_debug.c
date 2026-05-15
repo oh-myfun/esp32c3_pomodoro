@@ -275,7 +275,7 @@ static void debug_exit(void)
 {
     capture_stop();
     current_view = DEBUG_VIEW_LOG;
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    ui_go_back();
 }
 
 static void debug_on_encoder_press(void) { debug_exit(); }

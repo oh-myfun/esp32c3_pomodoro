@@ -11,6 +11,7 @@ static const char *TAG = "ST7789_LCD";
 #define LCD_RS_GPIO   GPIO_NUM_10
 #define LCD_SCK_GPIO  GPIO_NUM_6
 #define LCD_SDA_GPIO  GPIO_NUM_7
+#define LCD_RST_GPIO  GPIO_NUM_2
 #define LCD_SPI_HOST  SPI2_HOST
 #define LCD_SPI_FREQ  60000000
 
@@ -18,18 +19,39 @@ static const char *TAG = "ST7789_LCD";
 #define LCD_H_RES 240
 
 static spi_device_handle_t lcd_spi = NULL;
+static int flush_count = 0;
 
 static void lcd_gpio_init(void)
 {
+    ESP_LOGI(TAG, "Configuring GPIO: RS=%d, RST=%d", LCD_RS_GPIO, LCD_RST_GPIO);
+
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << LCD_RS_GPIO),
+        .pin_bit_mask = (1ULL << LCD_RS_GPIO) | (1ULL << LCD_RST_GPIO),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-    gpio_config(&io_conf);
+    esp_err_t ret = gpio_config(&io_conf);
+    ESP_LOGI(TAG, "gpio_config: %s", esp_err_to_name(ret));
+
     gpio_set_level(LCD_RS_GPIO, 0);
+    gpio_set_level(LCD_RST_GPIO, 1);
+    ESP_LOGI(TAG, "RS=0, RST=1 (initial state)");
+}
+
+static void lcd_hw_reset(void)
+{
+    ESP_LOGI(TAG, "HW reset: RST HIGH (10ms)");
+    gpio_set_level(LCD_RST_GPIO, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    ESP_LOGI(TAG, "HW reset: RST LOW (10ms)");
+    gpio_set_level(LCD_RST_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    ESP_LOGI(TAG, "HW reset: RST HIGH (wait 120ms)");
+    gpio_set_level(LCD_RST_GPIO, 1);
+    vTaskDelay(pdMS_TO_TICKS(120));
+    ESP_LOGI(TAG, "HW reset done, RST level=%d", gpio_get_level(LCD_RST_GPIO));
 }
 
 static void lcd_spi_init(void)
@@ -85,25 +107,36 @@ static void lcd_write_data_16(uint16_t data)
 
 void st7789_lcd_init(void)
 {
+    ESP_LOGI(TAG, "=== LCD init start ===");
+
     lcd_gpio_init();
     lcd_spi_init();
 
+    ESP_LOGI(TAG, "Waiting 200ms for LCD power-on reset...");
     vTaskDelay(pdMS_TO_TICKS(200));
 
+    lcd_hw_reset();
+
+    ESP_LOGI(TAG, "Sending SLPOUT (0x11)");
     lcd_write_cmd(0x11);
+    ESP_LOGI(TAG, "Waiting 120ms after SLPOUT...");
     vTaskDelay(pdMS_TO_TICKS(120));
 
+    ESP_LOGI(TAG, "Sending MADCTL (0x36) = 0x00");
     lcd_write_cmd(0x36);
     lcd_write_byte(0x00);
 
+    ESP_LOGI(TAG, "Sending COLMOD (0x3A) = 0x05");
     lcd_write_cmd(0x3A);
     lcd_write_byte(0x05);
 
+    ESP_LOGI(TAG, "Sending INVON (0x21)");
     lcd_write_cmd(0x21);
 
+    ESP_LOGI(TAG, "Sending DISPON (0x29)");
     lcd_write_cmd(0x29);
 
-    ESP_LOGI(TAG, "LCD initialized");
+    ESP_LOGI(TAG, "=== LCD init complete ===");
 }
 
 static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
@@ -119,8 +152,33 @@ static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, u
     lcd_write_cmd(0x2C);
 }
 
+void st7789_lcd_reset(void)
+{
+    lcd_hw_reset();
+
+    lcd_write_cmd(0x11);
+    vTaskDelay(pdMS_TO_TICKS(120));
+
+    lcd_write_cmd(0x36);
+    lcd_write_byte(0x00);
+
+    lcd_write_cmd(0x3A);
+    lcd_write_byte(0x05);
+
+    lcd_write_cmd(0x21);
+    lcd_write_cmd(0x29);
+
+    ESP_LOGI(TAG, "LCD reset complete");
+}
+
 void st7789_lcd_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
+    if (flush_count < 5) {
+        ESP_LOGI(TAG, "flush #%d: (%d,%d)-(%d,%d)", flush_count,
+                 area->x1, area->y1, area->x2, area->y2);
+    }
+    flush_count++;
+
     int32_t x1 = area->x1;
     int32_t x2 = area->x2;
     int32_t y1 = area->y1;

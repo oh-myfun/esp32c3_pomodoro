@@ -9,14 +9,14 @@ typedef enum {
     UI_SCREEN_SETTINGS,
     UI_SCREEN_SETTINGS_POMODORO,
     UI_SCREEN_WIFI_LIST,
-    UI_SCREEN_PASSWORD_INPUT,
+    UI_SCREEN_TEXT_INPUT,
     UI_SCREEN_WIFI_SAVED,
     UI_SCREEN_SETTINGS_LIGHT,
     UI_SCREEN_SETTINGS_BUDDY,
     UI_SCREEN_SETTINGS_TIME,
     UI_SCREEN_SETTINGS_SYSTEM,
     UI_SCREEN_SETTINGS_DEBUG,
-    UI_SCREEN_SETTINGS_BRIDGE,
+    UI_SCREEN_BRIDGE_SCAN,
     UI_SCREEN_COUNT
 } ui_screen_id_t;
 
@@ -39,5 +39,6 @@ void ui_dispatch_encoder_press(void);
 void ui_dispatch_encoder_long_press(void);
 void ui_dispatch_settings_press(void);
 void ui_go_back(void);
+void ui_push_screen(ui_screen_id_t screen_id);
 void lvgl_lock(void);
 void lvgl_unlock(void);

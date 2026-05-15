@@ -69,7 +69,7 @@ static void system_on_encoder_ccw(void)
 
 static void system_on_encoder_press(void)
 {
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    ui_go_back();
 }
 
 static void system_on_settings_press(void)
@@ -95,7 +95,7 @@ static void system_on_settings_press(void)
 
 static void system_on_encoder_long_press(void)
 {
-    ui_switch_screen(UI_SCREEN_SETTINGS);
+    ui_go_back();
 }
 
 lv_obj_t* ui_screen_settings_system_create(void)

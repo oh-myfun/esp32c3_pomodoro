@@ -28,6 +28,7 @@ typedef enum {
     STR_M_TIME,
     STR_M_SYSTEM,
     STR_M_DEBUG,
+    STR_M_BRIDGE,
 
     /* System settings */
     STR_SOUND,
@@ -89,6 +90,7 @@ typedef enum {
     STR_BUDDY_NAME,
     STR_PERMISSION,
     STR_APPROVE,
+    STR_APPROVE_REMEMBER,
     STR_DENY,
     STR_NEXT_PET,
     STR_TOOL,
@@ -142,6 +144,7 @@ typedef enum {
     STR_H_SET_INPUT_PRESS_BACK,
     STR_H_SET_START_PAUSE_PRESS_STOP,
     STR_H_PRESS_BACK_SET_INFO,
+    STR_H_BUDDY_HINT,
     STR_H_PRESS_BACK_SET_SELECT,
     STR_H_ANY_KEY_BACK_ENCODER_SCROLL,
     STR_H_SET_PRESS_STOP_DEMO,
@@ -151,6 +154,21 @@ typedef enum {
 
     /* Misc */
     STR_BACK,
+    STR_TCP_CONN,
+    STR_TCP_DISCONN,
+
+    /* Buddy settings */
+    STR_HOST,
+    STR_PORT,
+    STR_SESSION,
+    STR_CONNECT_ACTION,
+    STR_DISCONNECT,
+
+    /* Bridge scan */
+    STR_NO_BRIDGE,       /* "No bridges found" / "未发现Bridge" */
+    STR_FMT_SCAN_RESULT, /* "%d host, %d session" / "%d主机 %d会话" */
+    STR_SUBMIT,          /* "Submit" / "提交" */
+    STR_OK,              /* "OK" / "OK" */
 
     STR_COUNT
 } str_id_t;

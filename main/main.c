@@ -12,6 +12,7 @@
 #include "lvgl.h"
 #include "driver/st7789_lcd.h"
 #include "driver/buzzer.h"
+#include "driver/backlight.h"
 #include "driver/ws2812.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
@@ -23,12 +24,14 @@
 #include "service/wifi_service.h"
 #include "service/time_service.h"
 #include "service/storage_service.h"
-// #include "service/ble_service.h"  // BLE disabled
+#include "service/tcp_service.h"
 #include "pomodoro/pomodoro_engine.h"
 #include "buddy/buddy.h"
 #include "service/sound_service.h"
 #include "service/led_service.h"
 #include "ui/ui_screen_settings_debug.h"
+#include "ui/ui_screen_settings_buddy.h"
+#include "ui/ui_screen_bridge_scan.h"
 #include "ui/i18n.h"
 
 static const char *TAG = "MAIN";
@@ -132,6 +135,16 @@ static void on_wifi_connected(const char *ip) {
     wifi_connected_since = esp_timer_get_time() / 1000;
     sound_service_play(SOUND_WIFI_CONNECTED);
     time_service_request_sync();
+
+    /* Auto-connect TCP bridge if host and session are both configured */
+    char host[48];
+    int port;
+    char session[9] = {0};
+    if (tcp_service_load_config(host, sizeof(host), &port) && host[0] &&
+        tcp_service_load_pairing_code(session, sizeof(session)) && session[0]) {
+        tcp_service_connect(host, port);
+    }
+
     if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
         lvgl_lock();
         ui_screen_wifi_saved_refresh();
@@ -159,19 +172,151 @@ static void on_wifi_connect_failed(void) {
     sound_service_play(SOUND_WIFI_FAILED);
 }
 
-// BLE callbacks disabled
-// static void on_ble_connected(void) { ... }
-// static void on_ble_disconnected(void) { ... }
-// static void on_ble_heartbeat(const ble_heartbeat_t *hb) { ... }
+// TCP callbacks
+static void on_tcp_connected(void) {
+    ESP_LOGI(TAG, "TCP bridge connected");
+    buddy_on_tcp_connected();
+    lvgl_lock();
+    ui_screen_buddy_set_connected(true);
+    lvgl_unlock();
+}
 
-// Buddy -> WS2812 + UI
+static void on_tcp_disconnected(void) {
+    ESP_LOGI(TAG, "TCP bridge disconnected");
+    buddy_on_tcp_disconnected();
+    lvgl_lock();
+    ui_screen_buddy_set_connected(false);
+    lvgl_unlock();
+}
+
+static void on_tcp_request(const tcp_request_t *req) {
+    ESP_LOGI(TAG, "TCP request: tool=%s type=%d", req->tool, req->type);
+    buddy_on_tcp_request(req);
+
+    /* Build option labels + descriptions for the UI */
+    const char *opt_labels[8] = {NULL};
+    const char *opt_descs[8]  = {NULL};
+    for (int i = 0; i < req->option_count && i < 8; i++) {
+        opt_labels[i] = req->options[i].label[0] ? req->options[i].label : NULL;
+        opt_descs[i]  = req->options[i].description[0] ? req->options[i].description : NULL;
+    }
+
+    lvgl_lock();
+    ui_screen_buddy_show_request(req->tool, req->command, req->description, req->hint,
+                                  req->option_count, req->type,
+                                  opt_labels, req->option_count,
+                                  opt_descs,
+                                  req->permission_suggestions_json[0] != '\0');
+    lvgl_unlock();
+}
+
+static void on_tcp_session_end(void) {
+    ESP_LOGI(TAG, "TCP session ended");
+    buddy_on_tcp_session_end();
+}
+
+static void on_tcp_status(const char *state, const char *message) {
+    ESP_LOGI(TAG, "TCP status: %s", state);
+    buddy_on_status(state, message);
+}
+
+static void on_tcp_paired(void) {
+    ESP_LOGI(TAG, "TCP paired, updating UI");
+    lvgl_lock();
+    ui_screen_buddy_set_connected(true);
+    lvgl_unlock();
+}
+
+// Buddy -> WS2812 + UI + TCP decision
+static bool attn_forced_nav = false;
+
 static void on_buddy_state_changed(buddy_state_t new_state) {
     ESP_LOGI(TAG, "Buddy state changed to %d", new_state);
     if (new_state == BUDDY_ATTENTION) {
+        /* Force push: even top-level→top-level gets stacked so ui_go_back works */
+        if (ui_get_current_screen() != UI_SCREEN_BUDDY) {
+            ui_push_screen(UI_SCREEN_BUDDY);
+            attn_forced_nav = true;
+        } else {
+            attn_forced_nav = false;
+        }
+    } else if (attn_forced_nav) {
+        /* ATTENTION forced nav — clear overlay and pop back */
+        attn_forced_nav = false;
         lvgl_lock();
-        ui_switch_screen(UI_SCREEN_BUDDY);
+        ui_screen_buddy_clear_request();
+        ui_go_back();
+        lvgl_unlock();
+    } else {
+        /* Normal state change on buddy screen (random animation, manual approve/deny) */
+        lvgl_lock();
+        ui_screen_buddy_clear_request();
         lvgl_unlock();
     }
+}
+
+static void on_buddy_decision(bool approved, const tcp_request_t *req) {
+    if (!req || !req->ccbb_request_id[0]) return;
+
+    static char json[1536];
+    static char answers[512];
+    if (approved) {
+        if (req->type == REQ_PERMISSION) {
+            if (buddy_should_include_rules() && req->permission_suggestions_json[0]) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+                snprintf(json, sizeof(json),
+                    "{\"ccbb_request_id\":\"%s\",\"behavior\":\"allow\","
+                    "\"updatedPermissions\":%s}",
+                    req->ccbb_request_id,
+                    req->permission_suggestions_json);
+#pragma GCC diagnostic pop
+            } else {
+                snprintf(json, sizeof(json),
+                    "{\"ccbb_request_id\":\"%s\",\"behavior\":\"allow\"}",
+                    req->ccbb_request_id);
+            }
+        } else {
+            /* AskUserQuestion: build answers dict */
+            snprintf(answers, sizeof(answers), "{}");
+            int ac = buddy_get_answer_count();
+            if (ac > 0 && req->question[0]) {
+                int off = 0;
+                off += snprintf(answers + off, sizeof(answers) - off,
+                    "{\"%s\":", req->question);
+                if (buddy_is_answer_multi()) {
+                    off += snprintf(answers + off, sizeof(answers) - off, "[");
+                    for (int i = 0; i < ac && i < 8; i++) {
+                        if (i > 0) off += snprintf(answers + off, sizeof(answers) - off, ",");
+                        const char *lbl = buddy_get_answer_label(i);
+                        off += snprintf(answers + off, sizeof(answers) - off,
+                            "\"%s\"", lbl ? lbl : "");
+                    }
+                    off += snprintf(answers + off, sizeof(answers) - off, "]");
+                } else {
+                    const char *lbl = buddy_get_answer_label(0);
+                    off += snprintf(answers + off, sizeof(answers) - off,
+                        "\"%s\"", lbl ? lbl : "");
+                }
+                off += snprintf(answers + off, sizeof(answers) - off, "}");
+            }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+            snprintf(json, sizeof(json),
+                "{\"ccbb_request_id\":\"%s\",\"behavior\":\"allow\","
+                "\"updatedInput\":{\"questions\":%s,\"answers\":%s}}",
+                req->ccbb_request_id,
+                req->questions_json[0] ? req->questions_json : "[]",
+                answers);
+#pragma GCC diagnostic pop
+        }
+    } else {
+        snprintf(json, sizeof(json),
+            "{\"ccbb_request_id\":\"%s\",\"behavior\":\"deny\",\"message\":\"Denied by device\"}",
+            req->ccbb_request_id);
+    }
+    ESP_LOGI(TAG, "Sending decision: %s", approved ? "allow" : "deny");
+    tcp_service_send_decision(json);
 }
 
 /* ---- Tasks ---- */
@@ -189,8 +334,10 @@ static void service_task(void *arg) {
         // BLE maintenance (disabled)
         // ble_service_tick();
 
-        // Buddy animation tick every 500ms
-        if (now - last_buddy_tick >= 500) {
+        // TCP maintenance is handled by its own task
+
+        // Buddy animation tick every 200ms (matches original TICK_MS)
+        if (now - last_buddy_tick >= 200) {
             buddy_tick();
             last_buddy_tick = now;
         }
@@ -205,7 +352,6 @@ static void ui_update_task(void *arg) {
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
     int64_t last_debug_tick = 0;
-    ui_screen_id_t prev_screen = UI_SCREEN_COUNT;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -312,6 +458,24 @@ static void ui_update_task(void *arg) {
             last_debug_tick = now;
         }
 
+        // Buddy settings: refresh connect state every 1 second
+        static int64_t last_buddy_set_tick = 0;
+        if (current_screen == UI_SCREEN_SETTINGS_BUDDY && now - last_buddy_set_tick >= 1000) {
+            lvgl_lock();
+            ui_screen_settings_buddy_refresh();
+            lvgl_unlock();
+            last_buddy_set_tick = now;
+        }
+
+        // Bridge scan: refresh results every 500ms
+        static int64_t last_bridge_scan_tick = 0;
+        if (current_screen == UI_SCREEN_BRIDGE_SCAN && now - last_bridge_scan_tick >= 500) {
+            lvgl_lock();
+            ui_screen_bridge_scan_refresh();
+            lvgl_unlock();
+            last_bridge_scan_tick = now;
+        }
+
         // Memory monitor every 30 seconds
         if (now - last_mem_tick >= 30000) {
             multi_heap_info_t info;
@@ -322,7 +486,6 @@ static void ui_update_task(void *arg) {
             last_mem_tick = now;
         }
 
-        prev_screen = current_screen;
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
@@ -343,6 +506,7 @@ void app_main(void) {
     storage_migrate_settings_keys();
 
     // 2. Non-fatal: drivers
+    // backlight_init();  // TODO: GPIO20 backlight PWM, waiting for HW rework
     buzzer_init();
     st7789_lcd_init();
     if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
@@ -366,6 +530,9 @@ void app_main(void) {
     // 7. Input (non-fatal)
     input_handler_init();
 
+    // 7.5. TCP service (after buddy init)
+    tcp_service_init();
+
     // 8. Register callbacks (wiring)
     static const wifi_callbacks_t wifi_cbs = {
         .on_connected = on_wifi_connected,
@@ -375,16 +542,19 @@ void app_main(void) {
     };
     wifi_service_register_callbacks(&wifi_cbs);
 
-    // BLE callbacks disabled
-    // static const ble_callbacks_t ble_cbs = {
-    //     .on_connected = on_ble_connected,
-    //     .on_disconnected = on_ble_disconnected,
-    //     .on_heartbeat = on_ble_heartbeat,
-    // };
-    // ble_service_register_callbacks(&ble_cbs);
+    static const tcp_callbacks_t tcp_cbs = {
+        .on_connected = on_tcp_connected,
+        .on_disconnected = on_tcp_disconnected,
+        .on_request = on_tcp_request,
+        .on_session_end = on_tcp_session_end,
+        .on_status = on_tcp_status,
+        .on_paired = on_tcp_paired,
+    };
+    tcp_service_register_callbacks(&tcp_cbs);
 
     static const buddy_callbacks_t buddy_cbs = {
         .on_state_changed = on_buddy_state_changed,
+        .on_decision = on_buddy_decision,
     };
     buddy_register_callbacks(&buddy_cbs);
 

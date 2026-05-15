@@ -1,6 +1,7 @@
 idf_component_register(SRCS main.c
                           driver/st7789_lcd.c
                           driver/buzzer.c
+                          driver/backlight.c
                           driver/ws2812.c
                           input/input_handler.c
                           ui/ui_manager.c
@@ -17,6 +18,8 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_settings_system.c
                           ui/ui_screen_settings_debug.c
                           ui/ui_screen_wifi_saved.c
+                          ui/ui_text_input.c
+                          ui/ui_screen_bridge_scan.c
                           ui/custom_font_14.c
                           ui/custom_font_16.c
                           ui/i18n.c
@@ -26,8 +29,27 @@ idf_component_register(SRCS main.c
                           service/sound_service.c
                           service/led_service.c
                           service/time_service.c
-                          buddy/buddy_chars.c
+                          service/tcp_service.c
                           buddy/buddy.c
+                          buddy/buddy_render.c
+                          buddy/buddies/capybara.c
+                          buddy/buddies/duck.c
+                          buddy/buddies/goose.c
+                          buddy/buddies/blob.c
+                          buddy/buddies/cat.c
+                          buddy/buddies/dragon.c
+                          buddy/buddies/octopus.c
+                          buddy/buddies/owl.c
+                          buddy/buddies/penguin.c
+                          buddy/buddies/turtle.c
+                          buddy/buddies/snail.c
+                          buddy/buddies/ghost.c
+                          buddy/buddies/axolotl.c
+                          buddy/buddies/cactus.c
+                          buddy/buddies/robot.c
+                          buddy/buddies/rabbit.c
+                          buddy/buddies/mushroom.c
+                          buddy/buddies/chonk.c
                           INCLUDE_DIRS "." "ui" "driver" "input" "service" "pomodoro" "buddy"
                           REQUIRES esp_timer driver esp_wifi esp_netif nvs_flash lwip button knob json
                           )

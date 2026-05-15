@@ -29,7 +29,7 @@ static void update_display(void)
 {
     for (int i = 0; i < SETTINGS_ITEM_COUNT; i++) {
         strncpy(item_keys[i], i18n(settings_name_ids[i]), sizeof(item_keys[i]) - 1);
-        snprintf(item_values[i], sizeof(item_values[i]), "▸");
+        snprintf(item_values[i], sizeof(item_values[i]), "⇨");
         items[i].key = item_keys[i];
         items[i].value = item_values[i];
     }

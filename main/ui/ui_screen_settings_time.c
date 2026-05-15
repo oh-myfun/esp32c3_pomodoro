@@ -122,7 +122,7 @@ static void time_on_encoder_press(void)
         time_mode = TIME_MODE_NAV;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 
@@ -149,7 +149,7 @@ static void time_on_encoder_long_press(void)
         time_mode = TIME_MODE_NAV;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 

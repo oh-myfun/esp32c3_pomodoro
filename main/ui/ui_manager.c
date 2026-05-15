@@ -3,6 +3,7 @@
 #include "ui_screen_pomodoro.h"
 #include "ui_screen_settings.h"
 #include "ui_screen_wifi.h"
+#include "ui_text_input.h"
 #include "ui_screen_settings_pomodoro.h"
 #include "ui_screen_buddy.h"
 #include "ui_screen_wifi_saved.h"
@@ -11,7 +12,7 @@
 #include "ui_screen_settings_time.h"
 #include "ui_screen_settings_system.h"
 #include "ui_screen_settings_debug.h"
-#include "ui_screen_wifi_saved.h"
+#include "ui_screen_bridge_scan.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -44,7 +45,7 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_TIME ||
            id == UI_SCREEN_SETTINGS_SYSTEM ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
-           id == UI_SCREEN_SETTINGS_BRIDGE;
+           id == UI_SCREEN_BRIDGE_SCAN;
 }
 
 static void log_mem(const char *label)
@@ -91,7 +92,7 @@ void ui_init(void)
     screens[UI_SCREEN_BUDDY] = ui_screen_buddy_create();
     screens[UI_SCREEN_SETTINGS] = ui_screen_settings_create();
     screens[UI_SCREEN_WIFI_LIST] = ui_screen_wifi_list_create();
-    screens[UI_SCREEN_PASSWORD_INPUT] = ui_screen_password_create();
+    screens[UI_SCREEN_TEXT_INPUT] = ui_text_input_create();
     screens[UI_SCREEN_WIFI_SAVED] = ui_screen_wifi_saved_create();
 
     // Sub-setting screens: lazy load on first navigation
@@ -101,6 +102,7 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
     lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
     lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
+    lazy_creators[UI_SCREEN_BRIDGE_SCAN] = ui_screen_bridge_scan_create;
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);
@@ -110,7 +112,13 @@ void ui_init(void)
     log_mem("after ui_init");
 }
 
-void ui_switch_screen(ui_screen_id_t screen_id)
+static bool is_top_level(ui_screen_id_t id)
+{
+    return id == UI_SCREEN_MAIN || id == UI_SCREEN_POMODORO ||
+           id == UI_SCREEN_BUDDY || id == UI_SCREEN_SETTINGS;
+}
+
+static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
 {
     if (screen_id >= UI_SCREEN_COUNT) return;
     if (screen_id == current_screen) return;
@@ -118,8 +126,10 @@ void ui_switch_screen(ui_screen_id_t screen_id)
     ui_screen_id_t old_screen = current_screen;
 
     /* Push current onto nav stack */
-    if (nav_depth < UI_NAV_STACK_SIZE) {
-        nav_stack[nav_depth++] = old_screen;
+    if (force_push || !(is_top_level(old_screen) && is_top_level(screen_id))) {
+        if (nav_depth < UI_NAV_STACK_SIZE) {
+            nav_stack[nav_depth++] = old_screen;
+        }
     }
 
     lvgl_lock();
@@ -160,6 +170,16 @@ void ui_switch_screen(ui_screen_id_t screen_id)
     }
 
     lvgl_unlock();
+}
+
+void ui_switch_screen(ui_screen_id_t screen_id)
+{
+    do_switch_screen(screen_id, false);
+}
+
+void ui_push_screen(ui_screen_id_t screen_id)
+{
+    do_switch_screen(screen_id, true);
 }
 
 ui_screen_id_t ui_get_current_screen(void)

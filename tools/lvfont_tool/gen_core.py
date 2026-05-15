@@ -162,7 +162,15 @@ def generate_lvgl(font_paths, symbols_strs, sizes, font_name, out_dir,
             f"    lv_font_name:'{_js(name)}',no_compress:true",
             "  });",
             "  for(const[fn,c] of Object.entries(r)){",
-            "    const f=c.replace(/#include \"lvgl\\/lvgl\\.h\"/g,'#include \"lvgl.h\"');",
+            "    let f=c.replace(/#include \"lvgl\\/lvgl\\.h\"/g,'#include \"lvgl.h\"');",
+            f"    const targetLH={size + 6};",
+            "    const m1=c.match(/\\.line_height\\s*=\\s*(\\d+)/);",
+            "    const m2=c.match(/\\.base_line\\s*=\\s*(\\d+)/);",
+            "    if(m1){",
+            "      f=f.replace(/(\\.line_height\\s*=\\s*)\\d+/,'$1'+targetLH);",
+            "      if(m2){const nb=Math.round(parseInt(m2[1])*targetLH/parseInt(m1[1]));",
+            "        f=f.replace(/(\\.base_line\\s*=\\s*)\\d+/,'$1'+nb);}",
+            "    }",
             "    fs.writeFileSync(fn,f);",
             "    console.log(`  -> ${require('path').basename(fn)} (${(Buffer.byteLength(f)/1024).toFixed(0)} KB)`);",
             "  }",
@@ -185,10 +193,9 @@ def generate_lvgl(font_paths, symbols_strs, sizes, font_name, out_dir,
             try:
                 with open(output_c, "r", encoding="utf-8") as cf:
                     content = cf.read()
-                m_a = re.search(r'\.ascent\s*=\s*(\d+)', content)
-                m_d = re.search(r'\.descent\s*=\s*(-?\d+)', content)
-                if m_a and m_d:
-                    height_px = int(m_a.group(1)) - int(m_d.group(1))
+                m_lh = re.search(r'\.line_height\s*=\s*(\d+)', content)
+                if m_lh:
+                    height_px = int(m_lh.group(1))
             except Exception:
                 pass
 

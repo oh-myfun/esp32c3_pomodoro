@@ -121,7 +121,7 @@ static void light_on_encoder_press(void)
         light_mode = LIGHT_MODE_NAV;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 
@@ -155,7 +155,7 @@ static void light_on_encoder_long_press(void)
         light_mode = LIGHT_MODE_NAV;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 

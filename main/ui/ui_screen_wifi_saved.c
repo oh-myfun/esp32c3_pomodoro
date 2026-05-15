@@ -4,6 +4,7 @@
 #include "ui_screen_wifi.h"
 #include "ui_manager.h"
 #include "ui_list.h"
+#include "ui_text_input.h"
 #include "service/wifi_service.h"
 #include "service/storage_service.h"
 #include "esp_log.h"
@@ -39,7 +40,16 @@ static char action_keys[3][16];
 static char action_values[3][4];
 static ui_list_item_t action_items[3];
 
+static char edit_ssid[33] = {0};
+
 static void update_action_display(void);
+
+static void on_edit_password_result(const char *result)
+{
+    if (result) {
+        wifi_service_connect(edit_ssid, result);
+    }
+}
 
 static void update_display(void)
 {
@@ -52,7 +62,7 @@ static void update_display(void)
 
     /* Item 0: always "Scan for new..." */
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SCAN_FOR_NEW));
-    snprintf(item_values[0], sizeof(item_values[0]), "▸");
+    snprintf(item_values[0], sizeof(item_values[0]), "⇨");
     items[0].key = item_keys[0];
     items[0].value = item_values[0];
     item_count = 1;
@@ -151,7 +161,7 @@ static void saved_on_encoder_press(void)
         mode = SAVED_MODE_LIST;
         update_display();
     } else {
-        ui_switch_screen(UI_SCREEN_SETTINGS);
+        ui_go_back();
     }
 }
 
@@ -173,9 +183,10 @@ static void saved_on_settings_press(void)
             case 1: { // Edit Password
                 const char *ssid = wifi_service_get_saved_ssid(action_profile_index);
                 if (ssid) {
+                    strncpy(edit_ssid, ssid, sizeof(edit_ssid) - 1);
                     mode = SAVED_MODE_LIST;
-                    ui_switch_screen(UI_SCREEN_PASSWORD_INPUT);
-                    ui_screen_password_start(ssid);
+                    ui_text_input_configure(i18n(STR_T_PASSWORD), edit_ssid, TEXT_INPUT_TEXT, 63, on_edit_password_result);
+                    ui_switch_screen(UI_SCREEN_TEXT_INPUT);
                 }
                 break;
             }

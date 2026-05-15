@@ -26,6 +26,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_M_TIME]       = {"🕐Time",         "🕐时间"},
     [STR_M_SYSTEM]     = {"⚙System",       "⚙系统"},
     [STR_M_DEBUG]      = {"🔧Debug",       "🔧调试"},
+    [STR_M_BRIDGE]     = {"🌉Bridge",      "🌉Bridge"},
 
     /* System settings */
     [STR_SOUND]        = {"🔊Sound",       "🔊声音"},
@@ -71,7 +72,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_PURE]        = {"Pure",        "纯色"},
     [STR_COLOR]       = {"Color",       "彩色"},
     [STR_BREATH]      = {"Breath",      "呼吸"},
-    [STR_SCAN]        = {"Scan",        "扫描"},
+    [STR_SCAN]        = {"\xf0\x9f\x94\x8dScan",        "\xf0\x9f\x94\x8d\xe6\x89\xab\xe6\x8f\x8f"},
     [STR_GRADIENT]    = {"Gradient",    "渐变"},
 
     /* Time settings */
@@ -84,9 +85,10 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SPECIES]     = {"🐾Species",     "🐾物种"},
 
     /* Buddy page */
-    [STR_BUDDY_NAME]  = {"Buddy",       "伙伴"},
+    [STR_BUDDY_NAME]  = {"\xf0\x9f\xa4\x96Buddy",       "\xf0\x9f\xa4\x96\xe4\xbc\x99\xe4\xbc\xb4"},
     [STR_PERMISSION]  = {"!! PERMISSION !!", "!! 权限请求 !!"},
     [STR_APPROVE]     = {"Approve",     "批准"},
+    [STR_APPROVE_REMEMBER] = {"Allow+Remember", "允许并记住"},
     [STR_DENY]        = {"Deny",        "拒绝"},
     [STR_NEXT_PET]    = {"Next Pet",    "下一只"},
     [STR_TOOL]        = {"Tool:",       "工具:"},
@@ -106,7 +108,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_STATE_ATTENTION] = {"⚠Attention!", "⚠注意!"},
     [STR_STATE_CELEBRATE] = {"🎉Celebrate!", "🎉庆祝!"},
     [STR_STATE_DIZZY]     = {"😵Dizzy...",   "😵晕了..."},
-    [STR_STATE_HEART]     = {"❤<3",         "❤<3"},
+    [STR_STATE_HEART]     = {"❤+1",         "❤+1"},
 
     /* WiFi */
     [STR_WIFI_NETWORKS] = {"📶Networks", "📶WiFi网络"},
@@ -140,6 +142,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_H_SET_INPUT_PRESS_BACK]       = {"SET:input|Press:back",  "SET:输入|Press:返回"},
     [STR_H_SET_START_PAUSE_PRESS_STOP] = {"SET:start/pause|Press:stop", "SET:开始/暂停|Press:停止"},
     [STR_H_PRESS_BACK_SET_INFO]        = {"Press:back|SET:info",   "Press:返回|SET:信息"},
+    [STR_H_BUDDY_HINT]                 = {"SET:interact|Press:set","SET:互动|Press:设置"},
     [STR_H_PRESS_BACK_SET_SELECT]      = {"Press:back|SET:select", "Press:返回|SET:选择"},
     [STR_H_ANY_KEY_BACK_ENCODER_SCROLL]= {"Any key:back|Encoder:scroll", "任意键:返回|编码器:滚动"},
     [STR_H_SET_PRESS_STOP_DEMO]        = {"SET/Press:stop demo",   "SET/Press:停止演示"},
@@ -155,6 +158,21 @@ static const char *strings[STR_COUNT][2] = {
 
     /* Misc */
     [STR_BACK]        = {"Back",        "返回"},
+    [STR_TCP_CONN]    = {"TCP: Connected",    "TCP: 已连接"},
+    [STR_TCP_DISCONN] = {"TCP: Disconnected", "TCP: 未连接"},
+
+    /* Buddy settings */
+    [STR_HOST]            = {"\xf0\x9f\x8c\x90Host",            "\xf0\x9f\x8c\x90\xe4\xb8\xbb\xe6\x9c\xba"},
+    [STR_PORT]            = {"\xf0\x9f\x94\x8cPort",            "\xf0\x9f\x94\x8c\xe7\xab\xaf\xe5\x8f\xa3"},
+    [STR_SESSION]         = {"\xf0\x9f\x94\x91Session",         "\xf0\x9f\x94\x91\xe4\xbc\x9a\xe8\xaf\x9d"},
+    [STR_CONNECT_ACTION]  = {"\xf0\x9f\x93\xa1Connect",         "\xf0\x9f\x93\xa1\xe8\xbf\x9e\xe6\x8e\xa5"},
+    [STR_DISCONNECT]      = {"\xf0\x9f\x93\xb4Disconnect",      "\xf0\x9f\x93\xb4\xe6\x96\xad\xe5\xbc\x80"},
+
+    /* Bridge scan */
+    [STR_NO_BRIDGE]       = {"No bridges found",    "未发现Bridge"},
+    [STR_FMT_SCAN_RESULT] = {"%d host, %d session", "%d主机 %d会话"},
+    [STR_SUBMIT]          = {"Submit",              "提交"},
+    [STR_OK]              = {"OK",                  "OK"},
 };
 
 void i18n_init(void)

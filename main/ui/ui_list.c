@@ -115,15 +115,13 @@ static void update_display(lv_obj_t *list)
             if (is_selected) {
                 lv_obj_set_style_text_color(data->key_labels[i], data->selected_color, 0);
                 lv_obj_set_style_text_color(data->value_labels[i], data->selected_color, 0);
-                if (text_changed) {
-                    lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_SCROLL);
-                    lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_SCROLL);
-                }
+                lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_SCROLL);
+                lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_SCROLL);
             } else {
                 lv_obj_set_style_text_color(data->key_labels[i], lv_color_hex(0xFFFFFF), 0);
                 lv_obj_set_style_text_color(data->value_labels[i], lv_color_hex(0xAAAAAA), 0);
                 lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_DOT);
-                lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_CLIP);
+                lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_DOT);
             }
         } else {
             lv_obj_add_flag(data->key_labels[i], LV_OBJ_FLAG_HIDDEN);
