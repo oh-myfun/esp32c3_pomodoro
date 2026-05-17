@@ -8,6 +8,10 @@ typedef struct {
     float humidity;
     float pressure;
     float altitude;
+    bool temp_valid;
+    bool hum_valid;
+    bool press_valid;
+    bool alt_valid;
 } sensor_sample_t;
 
 typedef struct {

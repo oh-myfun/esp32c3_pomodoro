@@ -90,16 +90,22 @@ static sensor_sample_t avg_samples(const sensor_sample_t *buf, int count)
 {
     sensor_sample_t avg = {0};
     if (count <= 0) return avg;
+
+    float t_sum = 0, h_sum = 0, p_sum = 0, a_sum = 0;
+    int t_cnt = 0, h_cnt = 0, p_cnt = 0, a_cnt = 0;
+
     for (int i = 0; i < count; i++) {
-        avg.temperature += buf[i].temperature;
-        avg.humidity += buf[i].humidity;
-        avg.pressure += buf[i].pressure;
-        avg.altitude += buf[i].altitude;
+        if (buf[i].temp_valid)  { t_sum += buf[i].temperature; t_cnt++; }
+        if (buf[i].hum_valid)   { h_sum += buf[i].humidity;    h_cnt++; }
+        if (buf[i].press_valid) { p_sum += buf[i].pressure;    p_cnt++; }
+        if (buf[i].alt_valid)   { a_sum += buf[i].altitude;    a_cnt++; }
     }
-    avg.temperature /= count;
-    avg.humidity /= count;
-    avg.pressure /= count;
-    avg.altitude /= count;
+
+    if (t_cnt) { avg.temperature = t_sum / t_cnt; avg.temp_valid = true; }
+    if (h_cnt) { avg.humidity = h_sum / h_cnt;    avg.hum_valid = true; }
+    if (p_cnt) { avg.pressure = p_sum / p_cnt;    avg.press_valid = true; }
+    if (a_cnt) { avg.altitude = a_sum / a_cnt;    avg.alt_valid = true; }
+
     return avg;
 }
 
@@ -149,11 +155,18 @@ static void sensor_task(void *arg)
         if (ok_aht) {
             sample.temperature = temp;
             sample.humidity = hum;
+            sample.temp_valid = true;
+            sample.hum_valid = true;
         }
         if (ok_bmp) {
             sample.pressure = pressure;
             sample.altitude = 44330.0f * (1.0f - powf(pressure / 1013.25f, 0.1903f));
+            sample.press_valid = true;
+            sample.alt_valid = true;
         }
+
+        /* Skip buffer write if both sensors failed */
+        bool any_valid = ok_aht || ok_bmp;
 
         /* Get current time */
         time_t now = time(NULL);
@@ -162,26 +175,28 @@ static void sensor_task(void *arg)
 
         xSemaphoreTake(mutex, portMAX_DELAY);
 
-        /* Write current sample */
+        /* Update current sample (always, even if invalid) */
         current_sample = sample;
 
-        /* Write to seconds buffer */
-        seconds_buf[sec_pos % SEC_COUNT] = sample;
-        time_to_sensor_time(&t, &seconds_time[sec_pos % SEC_COUNT]);
-        sec_pos++;
-        if (sec_count < SEC_COUNT) sec_count++;
+        if (any_valid) {
+            /* Write to seconds buffer */
+            seconds_buf[sec_pos % SEC_COUNT] = sample;
+            time_to_sensor_time(&t, &seconds_time[sec_pos % SEC_COUNT]);
+            sec_pos++;
+            if (sec_count < SEC_COUNT) sec_count++;
 
-        /* Aggregation at time boundaries */
-        if (t.tm_sec == 0 && t.tm_sec != last_sec) {
-            aggregate_minute(&t);
-        }
-        if (t.tm_sec == 0 && t.tm_min == 0 && (t.tm_sec != last_sec || t.tm_min != last_min)) {
-            aggregate_hour(&t);
-        }
-        if (t.tm_sec == 0 && t.tm_min == 0 && t.tm_hour == 0 &&
-            (t.tm_sec != last_sec || t.tm_min != last_min || t.tm_hour != last_hour)) {
-            aggregate_day(&t);
-        }
+            /* Aggregation at time boundaries */
+            if (t.tm_sec == 0 && t.tm_sec != last_sec) {
+                aggregate_minute(&t);
+            }
+            if (t.tm_sec == 0 && t.tm_min == 0 && (t.tm_sec != last_sec || t.tm_min != last_min)) {
+                aggregate_hour(&t);
+            }
+            if (t.tm_sec == 0 && t.tm_min == 0 && t.tm_hour == 0 &&
+                (t.tm_sec != last_sec || t.tm_min != last_min || t.tm_hour != last_hour)) {
+                aggregate_day(&t);
+            }
+        } /* end if (any_valid) */
 
         last_sec = t.tm_sec;
         last_min = t.tm_min;
