@@ -42,11 +42,6 @@ static int total_sessions = 0;
 
 /* ---- Helpers ---- */
 
-static bool is_selectable(int idx)
-{
-    return idx >= 0 && idx < item_count && !items[idx].is_header;
-}
-
 static int next_selectable(int from, int dir)
 {
     for (int i = from + dir; i >= 0 && i < item_count; i += dir) {

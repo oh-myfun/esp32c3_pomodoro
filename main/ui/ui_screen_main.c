@@ -25,11 +25,6 @@ static void main_on_settings_press(void)
     ESP_LOGI(TAG, "Manual time sync triggered");
 }
 
-static void main_on_encoder_press(void)
-{
-    ui_switch_screen(UI_SCREEN_SENSOR);
-}
-
 static lv_obj_t *time_label = NULL;
 static lv_obj_t *date_label = NULL;
 static lv_obj_t *wifi_status_label = NULL;
@@ -69,7 +64,6 @@ lv_obj_t* ui_screen_main_create(void)
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = main_on_encoder_cw,
         .on_encoder_ccw = main_on_encoder_ccw,
-        .on_encoder_press = main_on_encoder_press,
         .on_settings_press = main_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_MAIN, &cbs);

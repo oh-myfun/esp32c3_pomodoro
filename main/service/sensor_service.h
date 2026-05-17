@@ -23,10 +23,19 @@ typedef struct {
     int8_t second;
 } sensor_time_t;
 
+/* Temperature source selection */
+typedef enum {
+    TEMP_SRC_AHT20 = 0,  /* AHT20 (default) */
+    TEMP_SRC_BMP280,     /* BMP280 */
+    TEMP_SRC_AVG,        /* Average of both */
+    TEMP_SRC_COUNT
+} temp_source_t;
+
 typedef struct {
     int32_t temp_min, temp_max;  /* 0.1°C 单位 */
     int32_t press_min, press_max; /* hPa */
     int32_t alt_min, alt_max;    /* m */
+    temp_source_t temp_source;   /* which sensor for temperature */
 } sensor_settings_t;
 
 typedef enum {

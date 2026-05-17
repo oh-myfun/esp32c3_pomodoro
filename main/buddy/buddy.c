@@ -89,10 +89,8 @@ static void set_state_locked(buddy_state_t new_state)
 
     ESP_LOGI(TAG, "state: %d -> %d", s_state, new_state);
 
-    /* Turn off attention LED when leaving ATTENTION */
-    if (s_state == BUDDY_ATTENTION && new_state != BUDDY_ATTENTION) {
-        led_service_stop();
-    }
+    /* Stop previous LED effect */
+    led_service_stop();
 
     s_state      = new_state;
     s_tick_count = 0;
@@ -101,9 +99,33 @@ static void set_state_locked(buddy_state_t new_state)
         s_cbs.on_state_changed(new_state);
     }
 
-    if (new_state == BUDDY_ATTENTION) {
-        sound_service_play(SOUND_BUDDY_ATTENTION);
-        led_service_play(LED_COLOR_ATTENTION);
+    /* Trigger sound + LED for new state */
+    switch (new_state) {
+        case BUDDY_ATTENTION:
+            sound_service_play(SOUND_BUDDY_ATTENTION);
+            led_service_play(LED_COLOR_ATTENTION);
+            led_service_wait(LED_COLOR_ATTENTION);
+            break;
+        case BUDDY_CELEBRATE:
+            led_service_play(LED_COLOR_CELEBRATE);
+            break;
+        case BUDDY_DIZZY:
+            led_service_play(LED_COLOR_SAD);
+            break;
+        case BUDDY_HEART:
+            led_service_play(LED_COLOR_HEART);
+            break;
+        case BUDDY_BUSY:
+            led_service_play(LED_COLOR_BUSY);
+            break;
+        case BUDDY_IDLE:
+            led_service_play(LED_COLOR_IDLE);
+            break;
+        case BUDDY_SLEEP:
+            led_service_play(LED_COLOR_SLEEP);
+            break;
+        default:
+            break;
     }
 }
 
@@ -206,7 +228,12 @@ void buddy_on_status(const char *state, const char *message)
         set_state_locked(BUDDY_BUSY);
     } else if (strcmp(state, "idle") == 0) {
         ESP_LOGI(TAG, "Status '%s' buddy_state=%d is_temp=%d", state, s_state, is_temporary_state(s_state));
-        if (!is_temporary_state(s_state)) {
+        if (is_temporary_state(s_state)) {
+            /* Queue for apply after temporary state ends */
+            strncpy(s_pending_status, state, sizeof(s_pending_status) - 1);
+            s_pending_status[sizeof(s_pending_status) - 1] = '\0';
+            ESP_LOGI(TAG, "Status queued during temp state: '%s'", state);
+        } else {
             set_state_locked(BUDDY_IDLE);
         }
     } else if (strcmp(state, "error") == 0) {
@@ -238,7 +265,6 @@ void buddy_approve(void)
     if (s_cbs.on_decision) s_cbs.on_decision(true, &s_current_request);
     set_state_locked(BUDDY_CELEBRATE);
     sound_service_play(SOUND_BUDDY_HAPPY);
-    led_service_play(LED_COLOR_CELEBRATE);
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -258,7 +284,6 @@ void buddy_deny(void)
     if (s_cbs.on_decision) s_cbs.on_decision(false, &s_current_request);
     set_state_locked(BUDDY_DIZZY);
     sound_service_play(SOUND_BUDDY_SAD);
-    led_service_play(LED_COLOR_SAD);
     xSemaphoreGiveRecursive(s_mutex);
 }
 

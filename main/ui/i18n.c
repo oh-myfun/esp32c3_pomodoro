@@ -86,7 +86,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SPECIES]     = {"🐾Species",     "🐾物种"},
 
     /* Buddy page */
-    [STR_BUDDY_NAME]  = {"\xf0\x9f\xa4\x96Buddy",       "\xf0\x9f\xa4\x96\xe4\xbc\x99\xe4\xbc\xb4"},
+    [STR_BUDDY_NAME]  = {"\xf0\x9f\xa4\x96" "Buddy",       "\xf0\x9f\xa4\x96" "\xe4\xbc\x99\xe4\xbc\xb4"},
     [STR_PERMISSION]  = {"!! PERMISSION !!", "!! 权限请求 !!"},
     [STR_APPROVE]     = {"Approve",     "批准"},
     [STR_APPROVE_REMEMBER] = {"Allow+Remember", "允许并记住"},
@@ -167,8 +167,8 @@ static const char *strings[STR_COUNT][2] = {
     [STR_HOST]            = {"\xf0\x9f\x8c\x90Host",            "\xf0\x9f\x8c\x90\xe4\xb8\xbb\xe6\x9c\xba"},
     [STR_PORT]            = {"\xf0\x9f\x94\x8cPort",            "\xf0\x9f\x94\x8c\xe7\xab\xaf\xe5\x8f\xa3"},
     [STR_SESSION]         = {"\xf0\x9f\x94\x91Session",         "\xf0\x9f\x94\x91\xe4\xbc\x9a\xe8\xaf\x9d"},
-    [STR_CONNECT_ACTION]  = {"\xf0\x9f\x93\xa1Connect",         "\xf0\x9f\x93\xa1\xe8\xbf\x9e\xe6\x8e\xa5"},
-    [STR_DISCONNECT]      = {"\xf0\x9f\x93\xb4Disconnect",      "\xf0\x9f\x93\xb4\xe6\x96\xad\xe5\xbc\x80"},
+    [STR_CONNECT_ACTION]  = {"\xf0\x9f\x93\xa1" "Connect",         "\xf0\x9f\x93\xa1" "\xe8\xbf\x9e\xe6\x8e\xa5"},
+    [STR_DISCONNECT]      = {"\xf0\x9f\x93\xb4" "Disconnect",      "\xf0\x9f\x93\xb4" "\xe6\x96\xad\xe5\xbc\x80"},
 
     /* Bridge scan */
     [STR_NO_BRIDGE]       = {"No bridges found",    "未发现Bridge"},
@@ -186,6 +186,10 @@ static const char *strings[STR_COUNT][2] = {
     [STR_PRESS_MAX]        = {"Press Max",           "气压最大"},
     [STR_ALT_MIN]          = {"Alt Min",             "海拔最小"},
     [STR_ALT_MAX]          = {"Alt Max",             "海拔最大"},
+    [STR_TEMP_SOURCE]      = {"Temp Src",            "温度源"},
+    [STR_SRC_AHT20]        = {"AHT20",               "AHT20"},
+    [STR_SRC_BMP280]       = {"BMP280",              "BMP280"},
+    [STR_SRC_AVG]          = {"Average",             "平均值"},
     [STR_SEC_LEVEL]        = {"Sec",                 "秒级"},
     [STR_MIN_LEVEL]        = {"Min",                 "分钟级"},
     [STR_HOUR_LEVEL]       = {"Hour",                "小时级"},

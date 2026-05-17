@@ -21,6 +21,7 @@ static lv_obj_t *title_label = NULL;
 static lv_obj_t *temp_label = NULL;
 static lv_obj_t *hum_label = NULL;
 static lv_obj_t *press_label = NULL;
+static lv_obj_t *alt_label = NULL;
 static lv_obj_t *chart = NULL;
 static lv_obj_t *time_left_label = NULL;
 static lv_obj_t *time_right_label = NULL;
@@ -154,6 +155,16 @@ static void update_values(void)
             lv_label_set_text(press_label, "");
         }
     }
+
+    if (alt_label) {
+        if (s.alt_valid) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0fm", s.altitude);
+            lv_label_set_text(alt_label, buf);
+        } else {
+            lv_label_set_text(alt_label, "");
+        }
+    }
 }
 
 static void update_hint(void)
@@ -231,7 +242,7 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_obj_set_style_text_color(press_label, COLOR_PRESS, 0);
     lv_obj_set_style_text_font(press_label, &custom_font_16, 0);
     lv_label_set_text(press_label, "");
-    lv_obj_set_pos(press_label, 130, 26);
+    lv_obj_align(press_label, LV_ALIGN_TOP_RIGHT, -2, 26);
 
     /* Chart: 3 curves, full Y range 0-100 */
     chart = lv_chart_create(screen);
@@ -253,6 +264,13 @@ lv_obj_t* ui_screen_sensor_create(void)
     ser_hum = lv_chart_add_series(chart, COLOR_HUM, LV_CHART_AXIS_PRIMARY_Y);
     ser_press = lv_chart_add_series(chart, COLOR_PRESS, LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_set_point_count(chart, 60);
+
+    /* Altitude label: top-right corner of chart (created after chart to be on top) */
+    alt_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(alt_label, lv_color_hex(0xFFAA33), 0);
+    lv_obj_set_style_text_font(alt_label, &custom_font_14, 0);
+    lv_label_set_text(alt_label, "");
+    lv_obj_set_pos(alt_label, 170, 48);
 
     /* Time axis + level: same row at y=184 */
     time_left_label = lv_label_create(screen);

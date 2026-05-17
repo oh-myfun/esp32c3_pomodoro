@@ -56,6 +56,7 @@ static bool bmp280_available = false;
 #define KEY_S_PRESS_MAX  "s_press_max"
 #define KEY_S_ALT_MIN    "s_alt_min"
 #define KEY_S_ALT_MAX    "s_alt_max"
+#define KEY_S_TEMP_SRC   "s_temp_src"
 #define KEY_S_HOUR_DATA  "s_hour"
 #define KEY_S_DAY_DATA   "s_day"
 
@@ -81,6 +82,9 @@ static void load_settings(void)
         settings.alt_min = DEF_ALT_MIN;
     if (!storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_S_ALT_MAX, &settings.alt_max))
         settings.alt_max = DEF_ALT_MAX;
+    int32_t src = 0;
+    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_S_TEMP_SRC, &src);
+    settings.temp_source = (src >= 0 && src < TEMP_SRC_COUNT) ? (temp_source_t)src : TEMP_SRC_AHT20;
 }
 
 static void save_day_data(void)
@@ -253,9 +257,7 @@ static void sensor_task(void *arg)
 
         sensor_sample_t sample = {0};
         if (ok_aht) {
-            sample.temperature = temp;
             sample.humidity = hum;
-            sample.temp_valid = true;
             sample.hum_valid = true;
         }
         if (ok_bmp) {
@@ -263,6 +265,28 @@ static void sensor_task(void *arg)
             sample.altitude = 44330.0f * (1.0f - powf(pressure / 1013.25f, 0.1903f));
             sample.press_valid = true;
             sample.alt_valid = true;
+        }
+
+        /* Select temperature source */
+        if (ok_aht && ok_bmp) {
+            switch (settings.temp_source) {
+                case TEMP_SRC_BMP280:
+                    sample.temperature = bmp_temp;
+                    break;
+                case TEMP_SRC_AVG:
+                    sample.temperature = (temp + bmp_temp) / 2.0f;
+                    break;
+                default: /* TEMP_SRC_AHT20 */
+                    sample.temperature = temp;
+                    break;
+            }
+            sample.temp_valid = true;
+        } else if (ok_aht) {
+            sample.temperature = temp;
+            sample.temp_valid = true;
+        } else if (ok_bmp) {
+            sample.temperature = bmp_temp;
+            sample.temp_valid = true;
         }
 
         /* Skip if both sensors failed */
@@ -403,6 +427,7 @@ void sensor_service_set_settings(const sensor_settings_t *in)
     save_setting(KEY_S_PRESS_MAX, in->press_max);
     save_setting(KEY_S_ALT_MIN, in->alt_min);
     save_setting(KEY_S_ALT_MAX, in->alt_max);
+    save_setting(KEY_S_TEMP_SRC, (int32_t)in->temp_source);
 }
 
 void sensor_service_reset_settings(void)
@@ -411,6 +436,7 @@ void sensor_service_reset_settings(void)
         .temp_min = DEF_TEMP_MIN, .temp_max = DEF_TEMP_MAX,
         .press_min = DEF_PRESS_MIN, .press_max = DEF_PRESS_MAX,
         .alt_min = DEF_ALT_MIN, .alt_max = DEF_ALT_MAX,
+        .temp_source = TEMP_SRC_AHT20,
     };
     sensor_service_set_settings(&defaults);
 }

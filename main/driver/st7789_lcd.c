@@ -38,10 +38,10 @@ static void lcd_gpio_init(void)
     };
     gpio_config(&rs_conf);
 
-    /* RST pin: input+output so gpio_get_level() can read back */
+    /* RST pin: output with pull-up */
     gpio_config_t rst_conf = {
         .pin_bit_mask = 1ULL << LCD_RST_GPIO,
-        .mode = GPIO_MODE_INPUT_OUTPUT,
+        .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
@@ -53,11 +53,14 @@ static void lcd_gpio_init(void)
 
 static void lcd_hw_reset(void)
 {
-    /* HW reset via GPIO causes display failure on this module.
-       Keep RST HIGH, rely on LCD power-on reset only. */
-    ESP_LOGI(TAG, "HW reset: SKIPPED (RST stays HIGH)");
+    /* HW reset pulse matching JLX130-026-PN reference code timing.
+       After ESP32 warm reboot the LCD SPI receiver may be desynchronized
+       from garbage clocking during boot; only HW reset can recover it. */
+    ESP_LOGI(TAG, "HW reset pulse");
+    gpio_set_level(LCD_RST_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(200));
     gpio_set_level(LCD_RST_GPIO, 1);
-    vTaskDelay(pdMS_TO_TICKS(150));
+    vTaskDelay(pdMS_TO_TICKS(200));
 }
 
 static void lcd_spi_init(void)
@@ -119,7 +122,7 @@ static void lcd_write_data_16(uint16_t data)
 /* Send vendor init commands (from module reference code) */
 static void lcd_send_init_sequence(void)
 {
-    /* SLPOUT */
+    /* SLPOUT: exit sleep mode (200 ms per reference code) */
     lcd_write_cmd(0x11);
     vTaskDelay(pdMS_TO_TICKS(200));
 
@@ -195,13 +198,41 @@ void st7789_lcd_init(void)
 {
     ESP_LOGI(TAG, "=== LCD init start ===");
 
+    /* 1. GPIO first (RST pin available for reset) */
     lcd_gpio_init();
+
+    /* 2. Reset LCD BEFORE SPI init so it ignores any SPI boot glitches */
+    lcd_hw_reset();
+
+    /* 3. Now safe to start SPI — LCD is in known reset state */
     lcd_spi_init();
 
-    lcd_hw_reset();
+    /* 4. Send init command sequence */
     lcd_send_init_sequence();
 
     ESP_LOGI(TAG, "=== LCD init complete ===");
+}
+
+void st7789_lcd_reinit(void)
+{
+    ESP_LOGI(TAG, "=== LCD reinit (screen reset) ===");
+
+    /* 1. Reset LCD first so it ignores SPI during teardown/reinit */
+    lcd_hw_reset();
+
+    /* 2. Tear down and recreate SPI to ensure clean state */
+    if (lcd_spi) {
+        spi_bus_remove_device(lcd_spi);
+        lcd_spi = NULL;
+    }
+    spi_bus_free(LCD_SPI_HOST);
+
+    lcd_spi_init();
+
+    /* 3. Full init sequence on fresh LCD */
+    lcd_send_init_sequence();
+
+    ESP_LOGI(TAG, "=== LCD reinit complete ===");
 }
 
 static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)

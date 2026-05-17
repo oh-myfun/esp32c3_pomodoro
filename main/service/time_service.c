@@ -120,6 +120,7 @@ uint16_t time_service_get_sync_interval(void)
 void time_service_request_sync(void)
 {
     ESP_LOGI(TAG, "Requesting NTP sync (was%s synced)", synced ? "" : " not");
+    synced = false;
     esp_sntp_restart();
 }
 

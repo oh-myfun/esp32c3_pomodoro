@@ -9,8 +9,8 @@
 
 static const char *TAG = "UI_SETTINGS_SENSOR";
 
-#define SENSOR_ITEM_COUNT 7
-/* 0: temp_min, 1: temp_max, 2: press_min, 3: press_max, 4: alt_min, 5: alt_max, 6: reset */
+#define SENSOR_ITEM_COUNT 8
+/* 0: temp_source, 1: temp_min, 2: temp_max, 3: press_min, 4: press_max, 5: alt_min, 6: alt_max, 7: reset */
 
 typedef enum {
     SENSOR_MODE_NAV = 0,
@@ -29,31 +29,40 @@ static char item_keys[SENSOR_ITEM_COUNT][20];
 static char item_values[SENSOR_ITEM_COUNT][12];
 static ui_list_item_t items[SENSOR_ITEM_COUNT];
 
-/* Step values for each item */
-static const int steps[SENSOR_ITEM_COUNT] = {5, 5, 10, 10, 50, 50, 0};
+/* Step values for each item (0 = non-numeric: temp_source, reset) */
+static const int steps[SENSOR_ITEM_COUNT] = {0, 5, 5, 10, 10, 50, 50, 0};
+
+static const str_id_t temp_src_names[TEMP_SRC_COUNT] = {
+    STR_SRC_AHT20, STR_SRC_BMP280, STR_SRC_AVG
+};
 
 static void update_display(void)
 {
-    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_TEMP_MIN));
-    snprintf(item_values[0], sizeof(item_values[0]), "%.1fC", settings.temp_min / 10.0f);
+    snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_TEMP_SOURCE));
+    snprintf(item_values[0], sizeof(item_values[0]), "%s",
+             (settings.temp_source >= 0 && settings.temp_source < TEMP_SRC_COUNT)
+             ? i18n(temp_src_names[settings.temp_source]) : "?");
 
-    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_TEMP_MAX));
-    snprintf(item_values[1], sizeof(item_values[1]), "%.1fC", settings.temp_max / 10.0f);
+    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_TEMP_MIN));
+    snprintf(item_values[1], sizeof(item_values[1]), "%.1fC", settings.temp_min / 10.0f);
 
-    snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_PRESS_MIN));
-    snprintf(item_values[2], sizeof(item_values[2]), "%ldhPa", (long)settings.press_min);
+    snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_TEMP_MAX));
+    snprintf(item_values[2], sizeof(item_values[2]), "%.1fC", settings.temp_max / 10.0f);
 
-    snprintf(item_keys[3], sizeof(item_keys[3]), "%s", i18n(STR_PRESS_MAX));
-    snprintf(item_values[3], sizeof(item_values[3]), "%ldhPa", (long)settings.press_max);
+    snprintf(item_keys[3], sizeof(item_keys[3]), "%s", i18n(STR_PRESS_MIN));
+    snprintf(item_values[3], sizeof(item_values[3]), "%ldhPa", (long)settings.press_min);
 
-    snprintf(item_keys[4], sizeof(item_keys[4]), "%s", i18n(STR_ALT_MIN));
-    snprintf(item_values[4], sizeof(item_values[4]), "%ldm", (long)settings.alt_min);
+    snprintf(item_keys[4], sizeof(item_keys[4]), "%s", i18n(STR_PRESS_MAX));
+    snprintf(item_values[4], sizeof(item_values[4]), "%ldhPa", (long)settings.press_max);
 
-    snprintf(item_keys[5], sizeof(item_keys[5]), "%s", i18n(STR_ALT_MAX));
-    snprintf(item_values[5], sizeof(item_values[5]), "%ldm", (long)settings.alt_max);
+    snprintf(item_keys[5], sizeof(item_keys[5]), "%s", i18n(STR_ALT_MIN));
+    snprintf(item_values[5], sizeof(item_values[5]), "%ldm", (long)settings.alt_min);
 
-    snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_RESET));
-    snprintf(item_values[6], sizeof(item_values[6]), ">>");
+    snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_ALT_MAX));
+    snprintf(item_values[6], sizeof(item_values[6]), "%ldm", (long)settings.alt_max);
+
+    snprintf(item_keys[7], sizeof(item_keys[7]), "%s", i18n(STR_RESET));
+    snprintf(item_values[7], sizeof(item_values[7]), ">>");
 
     for (int i = 0; i < SENSOR_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -88,8 +97,14 @@ static void save_current_item(void)
 
 static void adjust_value(int direction)
 {
-    if (selected_item == 6) return; /* reset item */
-    int32_t *vals[] = {&settings.temp_min, &settings.temp_max,
+    if (selected_item == 0) {
+        /* Temp source: cycle through options */
+        settings.temp_source = (temp_source_t)((settings.temp_source + direction + TEMP_SRC_COUNT) % TEMP_SRC_COUNT);
+        update_display();
+        return;
+    }
+    if (selected_item == 7) return; /* reset item */
+    int32_t *vals[] = {NULL, &settings.temp_min, &settings.temp_max,
                        &settings.press_min, &settings.press_max,
                        &settings.alt_min, &settings.alt_max};
     *vals[selected_item] += (int32_t)steps[selected_item] * direction;
@@ -130,7 +145,8 @@ static void sensor_set_on_encoder_press(void)
 static void sensor_set_on_settings_press(void)
 {
     if (edit_mode == SENSOR_MODE_NAV) {
-        if (selected_item == 6) {
+        if (selected_item == 7) {
+            /* Reset */
             sensor_service_reset_settings();
             sensor_service_get_settings(&settings);
             update_display();

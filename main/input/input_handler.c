@@ -1,5 +1,6 @@
 #include "input_handler.h"
 #include "driver/gpio.h"
+#include "driver/st7789_lcd.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -160,7 +161,8 @@ void input_handler_task(void *arg)
                     break;
                 case INPUT_EVENT_ENCODER_LONG_PRESS:
                     sound_service_play(SOUND_KEY_CLICK);
-                    ui_dispatch_encoder_long_press();
+                    ESP_LOGI(TAG, "Global: screen reset");
+                    st7789_lcd_reinit();
                     break;
                 case INPUT_EVENT_SETTINGS_PRESS:
                     sound_service_play(SOUND_KEY_CLICK);

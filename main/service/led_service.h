@@ -19,6 +19,10 @@ typedef enum { LED_SPEED_SLOW, LED_SPEED_MEDIUM, LED_SPEED_FAST } led_speed_t;
 #define LED_COLOR_ATTENTION  (led_color_t){255, 0, 0}
 #define LED_COLOR_CELEBRATE  (led_color_t){0, 255, 0}
 #define LED_COLOR_SAD        (led_color_t){255, 0, 100}
+#define LED_COLOR_BUSY       (led_color_t){0, 120, 255}
+#define LED_COLOR_IDLE       (led_color_t){0, 80, 0}
+#define LED_COLOR_SLEEP      (led_color_t){0, 0, 40}
+#define LED_COLOR_HEART      (led_color_t){255, 50, 100}
 
 // Demo color list
 #define LED_DEMO_COLOR_COUNT 5
