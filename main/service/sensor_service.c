@@ -48,6 +48,7 @@ static bool bmp280_available = false;
 #define DEF_PRESS_MAX  ((int32_t)1100)
 #define DEF_ALT_MIN    ((int32_t)-100)
 #define DEF_ALT_MAX    ((int32_t)3000)
+#define DEF_SAMPLE_INTERVAL 10           /* 10 seconds */
 
 /* NVS keys */
 #define KEY_S_TEMP_MIN   "s_temp_min"
@@ -57,6 +58,7 @@ static bool bmp280_available = false;
 #define KEY_S_ALT_MIN    "s_alt_min"
 #define KEY_S_ALT_MAX    "s_alt_max"
 #define KEY_S_TEMP_SRC   "s_temp_src"
+#define KEY_S_INTERVAL   "s_interval"
 #define KEY_S_HOUR_DATA  "s_hour"
 #define KEY_S_DAY_DATA   "s_day"
 
@@ -85,6 +87,10 @@ static void load_settings(void)
     int32_t src = 0;
     storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_S_TEMP_SRC, &src);
     settings.temp_source = (src >= 0 && src < TEMP_SRC_COUNT) ? (temp_source_t)src : TEMP_SRC_AHT20;
+    if (!storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_S_INTERVAL, &settings.sample_interval) ||
+        settings.sample_interval < 1 || settings.sample_interval > 60) {
+        settings.sample_interval = DEF_SAMPLE_INTERVAL;
+    }
 }
 
 static void save_day_data(void)
@@ -329,7 +335,10 @@ static void sensor_task(void *arg)
 
         xSemaphoreGive(mutex);
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        int32_t interval = settings.sample_interval;
+        if (interval < 1) interval = 1;
+        if (interval > 60) interval = 60;
+        vTaskDelay(pdMS_TO_TICKS(interval * 1000));
     }
 
     vTaskDelete(NULL);
@@ -418,6 +427,7 @@ void sensor_service_get_settings(sensor_settings_t *out)
             .press_min = DEF_PRESS_MIN, .press_max = DEF_PRESS_MAX,
             .alt_min = DEF_ALT_MIN, .alt_max = DEF_ALT_MAX,
             .temp_source = TEMP_SRC_AHT20,
+            .sample_interval = DEF_SAMPLE_INTERVAL,
         };
         return;
     }
@@ -440,6 +450,7 @@ void sensor_service_set_settings(const sensor_settings_t *in)
     save_setting(KEY_S_ALT_MIN, in->alt_min);
     save_setting(KEY_S_ALT_MAX, in->alt_max);
     save_setting(KEY_S_TEMP_SRC, (int32_t)in->temp_source);
+    save_setting(KEY_S_INTERVAL, in->sample_interval);
 }
 
 void sensor_service_reset_settings(void)
@@ -449,6 +460,7 @@ void sensor_service_reset_settings(void)
         .press_min = DEF_PRESS_MIN, .press_max = DEF_PRESS_MAX,
         .alt_min = DEF_ALT_MIN, .alt_max = DEF_ALT_MAX,
         .temp_source = TEMP_SRC_AHT20,
+        .sample_interval = DEF_SAMPLE_INTERVAL,
     };
     sensor_service_set_settings(&defaults);
 }

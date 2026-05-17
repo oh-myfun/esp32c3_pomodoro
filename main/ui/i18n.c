@@ -190,6 +190,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SRC_AHT20]        = {"AHT20",               "AHT20"},
     [STR_SRC_BMP280]       = {"BMP280",              "BMP280"},
     [STR_SRC_AVG]          = {"Average",             "平均值"},
+    [STR_SAMPLE_INTERVAL]  = {"Interval",            "采样间隔"},
     [STR_SEC_LEVEL]        = {"Sec",                 "秒级"},
     [STR_MIN_LEVEL]        = {"Min",                 "分钟级"},
     [STR_HOUR_LEVEL]       = {"Hour",                "小时级"},

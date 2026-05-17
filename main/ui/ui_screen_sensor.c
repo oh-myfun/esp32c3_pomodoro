@@ -170,7 +170,26 @@ static void update_values(void)
 static void update_hint(void)
 {
     if (level_label) {
-        lv_label_set_text(level_label, i18n(level_names[current_level]));
+        if (current_level == SENSOR_LEVEL_SECONDS) {
+            /* Show actual interval for raw samples level */
+            sensor_settings_t s;
+            sensor_service_get_settings(&s);
+            int32_t interval = s.sample_interval;
+            if (interval < 1) interval = 1;
+            if (interval > 60) interval = 60;
+            int32_t total_sec = interval * 60;
+            char buf[16];
+            if (total_sec >= 3600) {
+                snprintf(buf, sizeof(buf), "%dh", (int)(total_sec / 3600));
+            } else if (total_sec >= 60) {
+                snprintf(buf, sizeof(buf), "%dmin", (int)(total_sec / 60));
+            } else {
+                snprintf(buf, sizeof(buf), "%ds", (int)total_sec);
+            }
+            lv_label_set_text(level_label, buf);
+        } else {
+            lv_label_set_text(level_label, i18n(level_names[current_level]));
+        }
     }
     if (hint_label) {
         lv_label_set_text(hint_label, i18n(STR_H_SENSOR_HINT));

@@ -82,7 +82,11 @@ static void apply_pending_status(void)
     s_pending_status[0] = '\0';
 }
 
-/* Caller must hold s_mutex */
+/* Caller must hold s_mutex.
+ * Releases s_mutex around the callback to avoid deadlock:
+ *   service_task: s_mutex → (callback needs lvgl_mutex)
+ *   LVGL task:    lvgl_mutex → (draw callback needs s_mutex via buddy_get_info)
+ * By releasing s_mutex before the callback, we break the circular wait. */
 static void set_state_locked(buddy_state_t new_state)
 {
     if (s_state == new_state) return;
@@ -95,11 +99,7 @@ static void set_state_locked(buddy_state_t new_state)
     s_state      = new_state;
     s_tick_count = 0;
 
-    if (s_cbs.on_state_changed) {
-        s_cbs.on_state_changed(new_state);
-    }
-
-    /* Trigger sound + LED for new state */
+    /* Sound + LED don't need lvgl_mutex — do them under s_mutex */
     switch (new_state) {
         case BUDDY_ATTENTION:
             sound_service_play(SOUND_BUDDY_ATTENTION);
@@ -126,6 +126,13 @@ static void set_state_locked(buddy_state_t new_state)
             break;
         default:
             break;
+    }
+
+    /* Release s_mutex before callback — callback may take lvgl_mutex */
+    if (s_cbs.on_state_changed) {
+        xSemaphoreGiveRecursive(s_mutex);
+        s_cbs.on_state_changed(new_state);
+        xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     }
 }
 
@@ -456,11 +463,7 @@ void buddy_tick(void)
         break;
 
     case BUDDY_ATTENTION:
-        if (s_tick_count % 2 == 0) {
-            led_service_wait(LED_COLOR_ATTENTION);
-        } else {
-            led_service_stop();
-        }
+        led_service_wait(LED_COLOR_ATTENTION);
         break;
 
     default:

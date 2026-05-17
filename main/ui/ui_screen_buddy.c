@@ -46,9 +46,9 @@ static lv_obj_t *attn_container = NULL;
 static lv_obj_t *attn_tool     = NULL;
 static lv_obj_t *attn_cmd      = NULL;
 static lv_obj_t *attn_canvas   = NULL;
-#define OPT_VISIBLE 6
+#define OPT_VISIBLE 5
 #define OPT_ROW_H   22
-#define OPT_Y_START 72   /* bottom-aligned: 204 - 6*22 = 72 */
+#define OPT_Y_START 72   /* bottom-aligned: 182 - 5*22 = 72 */
 static lv_obj_t *attn_opt_labels[OPT_VISIBLE] = {NULL};
 static lv_obj_t *attn_scrollbar = NULL;
 static lv_obj_t *attn_desc     = NULL;
@@ -73,6 +73,7 @@ static char s_hint_text[128];
 static char s_option_labels[8][32];
 static char s_option_descs[8][64];
 static int  s_opt_scroll = 0;
+static char s_suggestions_text[256];
 
 /* ----------------------------------------------------------------
  * Forward declarations
@@ -247,7 +248,7 @@ static const char *get_focused_desc(void)
         if (s_attn_focus == 0) {
             return s_desc_text[0] ? s_desc_text : (s_hint_text[0] ? s_hint_text : "");
         } else if (s_has_suggestions && s_attn_focus == 1) {
-            return s_desc_text[0] ? s_desc_text : "";
+            return s_suggestions_text[0] ? s_suggestions_text : (s_desc_text[0] ? s_desc_text : "");
         } else {
             return "";
         }
@@ -505,9 +506,9 @@ lv_obj_t* ui_screen_buddy_create(void)
      * ============================================================
      *  Layout (236×236 container, border 2px, content to y=232):
      *   y=4    ToolName(16px, w=110, h=22)  Pet(110×48) at x=120,y=4
-     *   y=28   Command(14px, w=110, h=176,  Options(x=120, y=72, w=110)
-     *          wrap)                          bottom-align at y=204
-     *   y=204  Description (14px, 2-line, h=28, truncate)
+     *   y=28   Command(14px, w=110, h=156,  Options(x=120, y=72, w=110)
+     *          wrap)                          bottom-align at y=182
+     *   y=184  Description (14px, 2-line, h=36)
      */
     attn_container = lv_obj_create(screen);
     lv_obj_set_size(attn_container, 236, 236);
@@ -534,7 +535,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_label_set_text(attn_cmd, "");
     lv_obj_set_style_text_font(attn_cmd, &custom_font_14, 0);
     lv_obj_set_pos(attn_cmd, 6, 28);
-    lv_obj_set_size(attn_cmd, 110, 176);
+    lv_obj_set_size(attn_cmd, 110, 156);
     lv_label_set_long_mode(attn_cmd, LV_LABEL_LONG_WRAP);
 
     /* Right: half-size pet canvas */
@@ -569,8 +570,8 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_color(attn_desc, lv_color_hex(0x888888), 0);
     lv_label_set_text(attn_desc, "");
     lv_obj_set_style_text_font(attn_desc, &custom_font_14, 0);
-    lv_obj_set_pos(attn_desc, 6, 204);
-    lv_obj_set_size(attn_desc, 224, 30);
+    lv_obj_set_pos(attn_desc, 6, 184);
+    lv_obj_set_size(attn_desc, 224, 36);
     lv_label_set_long_mode(attn_desc, LV_LABEL_LONG_WRAP);
 
     /* ---- Register input callbacks ---- */
@@ -672,7 +673,7 @@ void ui_screen_buddy_show_request(const char *tool, const char *command,
                                    int option_count, int req_type,
                                    const char *option_labels[], int option_count_labels,
                                    const char *option_descs[],
-                                   bool has_suggestions)
+                                   bool has_suggestions, const char *suggestions_text)
 {
     if (option_count < 0) option_count = 0;
     if (option_count_labels < 0) option_count_labels = 0;
@@ -688,6 +689,7 @@ void ui_screen_buddy_show_request(const char *tool, const char *command,
     memset(s_hint_text, 0, sizeof(s_hint_text));
     memset(s_command_text, 0, sizeof(s_command_text));
     memset(s_desc_text, 0, sizeof(s_desc_text));
+    memset(s_suggestions_text, 0, sizeof(s_suggestions_text));
 
     /* Store command (actual operation) */
     if (command && command[0]) {
@@ -700,6 +702,10 @@ void ui_screen_buddy_show_request(const char *tool, const char *command,
     /* Store hint as fallback */
     if (hint && hint[0]) {
         snprintf(s_hint_text, sizeof(s_hint_text), "%s", hint);
+    }
+    /* Store suggestions text for "Approve and Remember" */
+    if (suggestions_text && suggestions_text[0]) {
+        snprintf(s_suggestions_text, sizeof(s_suggestions_text), "%s", suggestions_text);
     }
 
     /* Copy option labels and descriptions */

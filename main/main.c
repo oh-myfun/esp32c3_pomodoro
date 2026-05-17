@@ -210,7 +210,8 @@ static void on_tcp_request(const tcp_request_t *req) {
                                   req->option_count, req->type,
                                   opt_labels, req->option_count,
                                   opt_descs,
-                                  req->permission_suggestions_json[0] != '\0');
+                                  req->permission_suggestions_json[0] != '\0',
+                                  req->permission_suggestions_json);
     lvgl_unlock();
 }
 
@@ -244,15 +245,20 @@ static void on_buddy_state_changed(buddy_state_t new_state) {
         } else {
             attn_forced_nav = false;
         }
+    } else if (new_state == BUDDY_CELEBRATE || new_state == BUDDY_DIZZY || new_state == BUDDY_HEART) {
+        /* Temporary animation states — don't navigate away, just clear ATTENTION overlay */
+        lvgl_lock();
+        ui_screen_buddy_clear_request();
+        lvgl_unlock();
     } else if (attn_forced_nav) {
-        /* ATTENTION forced nav — clear overlay and pop back */
+        /* ATTENTION forced nav ended — clear overlay and pop back */
         attn_forced_nav = false;
         lvgl_lock();
         ui_screen_buddy_clear_request();
         ui_go_back();
         lvgl_unlock();
     } else {
-        /* Normal state change on buddy screen (random animation, manual approve/deny) */
+        /* Normal state change (idle/busy/sleep) — clear any leftover overlay */
         lvgl_lock();
         ui_screen_buddy_clear_request();
         lvgl_unlock();

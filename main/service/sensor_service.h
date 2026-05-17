@@ -36,6 +36,7 @@ typedef struct {
     int32_t press_min, press_max; /* hPa */
     int32_t alt_min, alt_max;    /* m */
     temp_source_t temp_source;   /* which sensor for temperature */
+    int32_t sample_interval;     /* 1-60 seconds */
 } sensor_settings_t;
 
 typedef enum {

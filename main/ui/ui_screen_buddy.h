@@ -10,6 +10,6 @@ void ui_screen_buddy_show_request(const char *tool, const char *command,
                                    int option_count, int req_type,
                                    const char *option_labels[], int option_count_labels,
                                    const char *option_descs[],
-                                   bool has_suggestions);
+                                   bool has_suggestions, const char *suggestions_text);
 void ui_screen_buddy_clear_request(void);
 void ui_screen_buddy_set_connected(bool connected);
