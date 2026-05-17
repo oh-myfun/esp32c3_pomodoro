@@ -35,15 +35,15 @@ static uint16_t dig_P1;
 static int16_t  dig_P2, dig_P3, dig_P4, dig_P5, dig_P6, dig_P7, dig_P8, dig_P9;
 static int32_t  t_fine;
 
-static void read_regs(uint8_t reg, uint8_t *buf, size_t len)
+static esp_err_t read_regs(uint8_t reg, uint8_t *buf, size_t len)
 {
-    i2c_master_transmit_receive(dev_handle, &reg, 1, buf, len, -1);
+    return i2c_master_transmit_receive(dev_handle, &reg, 1, buf, len, 100);
 }
 
-static void write_reg(uint8_t reg, uint8_t val)
+static esp_err_t write_reg(uint8_t reg, uint8_t val)
 {
     uint8_t buf[] = {reg, val};
-    i2c_master_transmit(dev_handle, buf, sizeof(buf), -1);
+    return i2c_master_transmit(dev_handle, buf, sizeof(buf), 100);
 }
 
 void bmp280_init(void)
@@ -62,35 +62,27 @@ void bmp280_init(void)
         .device_address = BMP280_ADDR,
         .scl_speed_hz = I2C_FREQ_HZ,
     };
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle));
+    esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "BMP280 device add failed: %s", esp_err_to_name(ret));
+        return;
+    }
 
-    /* Check chip ID — try both possible addresses */
+    /* Check chip ID */
     uint8_t id = 0;
-    read_regs(BMP280_REG_ID, &id, 1);
-    if (id != 0x58) {
-        ESP_LOGW(TAG, "No BMP280 at 0x76 (got ID=0x%02X), trying 0x77...", id);
-        /* Try alternate address */
-        i2c_device_config_t dev_cfg_alt = {
-            .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-            .device_address = 0x77,
-            .scl_speed_hz = I2C_FREQ_HZ,
-        };
-        i2c_master_bus_add_device(bus_handle, &dev_cfg_alt, &dev_handle);
-        read_regs(BMP280_REG_ID, &id, 1);
-        if (id != 0x58) {
-            ESP_LOGE(TAG, "No BMP280 found (ID=0x%02X at 0x77)", id);
-            return;
-        }
-        ESP_LOGI(TAG, "Found BMP280 at 0x77");
+    ret = read_regs(BMP280_REG_ID, &id, 1);
+    if (ret != ESP_OK || id != 0x58) {
+        ESP_LOGW(TAG, "No BMP280 found (ret=%s, ID=0x%02X)", esp_err_to_name(ret), id);
+        return;
     }
 
     /* Soft reset */
-    write_reg(BMP280_REG_RESET, 0xB6);
+    if (write_reg(BMP280_REG_RESET, 0xB6) != ESP_OK) return;
     vTaskDelay(pdMS_TO_TICKS(10));
 
     /* Read calibration data */
     uint8_t cal[24];
-    read_regs(BMP280_REG_DIG_T1, cal, 24);
+    if (read_regs(BMP280_REG_DIG_T1, cal, 24) != ESP_OK) return;
 
     dig_T1 = (uint16_t)(cal[1] << 8) | cal[0];
     dig_T2 = (int16_t)(cal[3] << 8)  | cal[2];
@@ -152,13 +144,13 @@ bool bmp280_read(float *temperature, float *pressure_hpa)
     if (!initialized) return false;
 
     /* Trigger forced measurement: oversampling x1 for temp, x1 for pressure */
-    write_reg(BMP280_REG_CTRL_MEAS, 0x25);
+    if (write_reg(BMP280_REG_CTRL_MEAS, 0x25) != ESP_OK) return false;
 
     /* Wait for measurement (max ~7ms for x1/x1) */
     vTaskDelay(pdMS_TO_TICKS(10));
 
     uint8_t data[6];
-    read_regs(BMP280_REG_PRESS, data, 6);
+    if (read_regs(BMP280_REG_PRESS, data, 6) != ESP_OK) return false;
 
     int32_t adc_P = ((int32_t)data[0] << 12) | ((int32_t)data[1] << 4) | ((int32_t)data[2] >> 4);
     int32_t adc_T = ((int32_t)data[3] << 12) | ((int32_t)data[4] << 4) | ((int32_t)data[5] >> 4);

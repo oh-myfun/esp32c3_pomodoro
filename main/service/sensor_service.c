@@ -358,7 +358,8 @@ void sensor_service_init(void)
 
 sensor_sample_t sensor_service_get_current(void)
 {
-    sensor_sample_t sample;
+    sensor_sample_t sample = {0};
+    if (!mutex) return sample;
     xSemaphoreTake(mutex, portMAX_DELAY);
     sample = current_sample;
     xSemaphoreGive(mutex);
@@ -367,6 +368,7 @@ sensor_sample_t sensor_service_get_current(void)
 
 int sensor_service_get_chart_data(sensor_level_t level, sensor_sample_t *buf, sensor_time_t *time_buf, int buf_size)
 {
+    if (!mutex) return 0;
     xSemaphoreTake(mutex, portMAX_DELAY);
 
     const sensor_sample_t *src_buf = NULL;
@@ -410,6 +412,15 @@ int sensor_service_get_chart_data(sensor_level_t level, sensor_sample_t *buf, se
 
 void sensor_service_get_settings(sensor_settings_t *out)
 {
+    if (!mutex) {
+        *out = (sensor_settings_t){
+            .temp_min = DEF_TEMP_MIN, .temp_max = DEF_TEMP_MAX,
+            .press_min = DEF_PRESS_MIN, .press_max = DEF_PRESS_MAX,
+            .alt_min = DEF_ALT_MIN, .alt_max = DEF_ALT_MAX,
+            .temp_source = TEMP_SRC_AHT20,
+        };
+        return;
+    }
     xSemaphoreTake(mutex, portMAX_DELAY);
     *out = settings;
     xSemaphoreGive(mutex);
@@ -417,6 +428,7 @@ void sensor_service_get_settings(sensor_settings_t *out)
 
 void sensor_service_set_settings(const sensor_settings_t *in)
 {
+    if (!mutex) return;
     xSemaphoreTake(mutex, portMAX_DELAY);
     settings = *in;
     xSemaphoreGive(mutex);
