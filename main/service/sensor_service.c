@@ -38,6 +38,8 @@ static sensor_sample_t current_sample;
 static sensor_settings_t settings;
 static SemaphoreHandle_t mutex = NULL;
 static bool running = false;
+static bool aht20_available = false;
+static bool bmp280_available = false;
 
 /* Default settings */
 #define DEF_TEMP_MIN   ((int32_t)-100)   /* -10.0°C */
@@ -145,11 +147,11 @@ static void sensor_task(void *arg)
     int last_sec = -1, last_min = -1, last_hour = -1;
 
     while (running) {
-        /* Read sensors */
+        /* Read sensors — only from connected ones */
         float temp = 0, hum = 0, pressure = 0;
         float bmp_temp = 0;
-        bool ok_aht = aht20_read(&temp, &hum);
-        bool ok_bmp = bmp280_read(&bmp_temp, &pressure);
+        bool ok_aht = aht20_available ? aht20_read(&temp, &hum) : false;
+        bool ok_bmp = bmp280_available ? bmp280_read(&bmp_temp, &pressure) : false;
 
         sensor_sample_t sample = {0};
         if (ok_aht) {
@@ -213,6 +215,14 @@ static void sensor_task(void *arg)
 
 void sensor_service_init(void)
 {
+    aht20_available = aht20_is_available();
+    bmp280_available = bmp280_is_available();
+
+    if (!aht20_available && !bmp280_available) {
+        ESP_LOGW(TAG, "No sensors available, service not started");
+        return;
+    }
+
     mutex = xSemaphoreCreateMutex();
     load_settings();
 
@@ -220,7 +230,7 @@ void sensor_service_init(void)
     running = true;
 
     xTaskCreate(sensor_task, "SensorSvc", 4096, NULL, 1, NULL);
-    ESP_LOGI(TAG, "Sensor service initialized");
+    ESP_LOGI(TAG, "Sensor service started (AHT20=%d, BMP280=%d)", aht20_available, bmp280_available);
 }
 
 sensor_sample_t sensor_service_get_current(void)

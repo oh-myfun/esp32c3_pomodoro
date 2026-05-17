@@ -55,6 +55,11 @@ void aht20_init(void)
     ESP_LOGI(TAG, "AHT20 initialized (SCL=%d, SDA=%d)", I2C_SCL_GPIO, I2C_SDA_GPIO);
 }
 
+bool aht20_is_available(void)
+{
+    return initialized;
+}
+
 bool aht20_read(float *temperature, float *humidity)
 {
     if (!initialized) return false;

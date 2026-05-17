@@ -115,6 +115,11 @@ void bmp280_init(void)
     ESP_LOGI(TAG, "BMP280 initialized (ID=0x%02X)", id);
 }
 
+bool bmp280_is_available(void)
+{
+    return initialized;
+}
+
 /* Bosch compensation formulas from datasheet */
 static int32_t compensate_temp(int32_t adc_T)
 {
