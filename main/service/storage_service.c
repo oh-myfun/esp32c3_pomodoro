@@ -83,6 +83,34 @@ bool storage_load_int(const char *ns, const char *key, int32_t *value)
     return err == ESP_OK;
 }
 
+bool storage_save_blob(const char *ns, const char *key, const void *data, size_t len)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(ns, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return false;
+
+    err = nvs_set_blob(handle, key, data, len);
+    if (err != ESP_OK) {
+        nvs_close(handle);
+        return false;
+    }
+
+    err = nvs_commit(handle);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
+bool storage_load_blob(const char *ns, const char *key, void *data, size_t len)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(ns, NVS_READONLY, &handle);
+    if (err != ESP_OK) return false;
+
+    err = nvs_get_blob(handle, key, data, &len);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+
 bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len)
 {
     bool ssid_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid, ssid_len);

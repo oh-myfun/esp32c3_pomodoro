@@ -56,6 +56,16 @@ static bool bmp280_available = false;
 #define KEY_S_PRESS_MAX  "s_press_max"
 #define KEY_S_ALT_MIN    "s_alt_min"
 #define KEY_S_ALT_MAX    "s_alt_max"
+#define KEY_S_HOUR_DATA  "s_hour"
+#define KEY_S_DAY_DATA   "s_day"
+
+/* Persistence structure — day level ring buffer */
+typedef struct {
+    sensor_sample_t samples[DAY_COUNT];
+    sensor_time_t times[DAY_COUNT];
+    int pos;
+    int count;
+} day_persist_t;
 
 static void load_settings(void)
 {
@@ -71,6 +81,49 @@ static void load_settings(void)
         settings.alt_min = DEF_ALT_MIN;
     if (!storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_S_ALT_MAX, &settings.alt_max))
         settings.alt_max = DEF_ALT_MAX;
+}
+
+static void save_day_data(void)
+{
+    day_persist_t persist;
+    memcpy(persist.samples, days_buf, sizeof(days_buf));
+    memcpy(persist.times, days_time, sizeof(days_time));
+    persist.pos = day_pos;
+    persist.count = day_count;
+    storage_save_blob(STORAGE_NAMESPACE_SETTINGS, KEY_S_DAY_DATA, &persist, sizeof(persist));
+}
+
+static void load_day_data(void)
+{
+    day_persist_t persist;
+    if (!storage_load_blob(STORAGE_NAMESPACE_SETTINGS, KEY_S_DAY_DATA, &persist, sizeof(persist)))
+        return;
+
+    /* Get current date for age filtering */
+    time_t now = time(NULL);
+    struct tm t;
+    localtime_r(&now, &t);
+    int cur_year = t.tm_year + 1900;
+    int cur_mon = t.tm_mon + 1;
+    int cur_day = t.tm_mday;
+
+    /* Rebuild ring buffer, keeping only entries within 30 days */
+    int loaded = 0;
+    for (int i = 0; i < persist.count && i < DAY_COUNT; i++) {
+        sensor_time_t *st = &persist.times[i];
+        /* Calculate approximate day difference */
+        int entry_days = st->year * 366 + st->month * 31 + st->day;
+        int cur_days = cur_year * 366 + cur_mon * 31 + cur_day;
+        if (cur_days - entry_days > 30) continue;
+
+        days_buf[loaded] = persist.samples[i];
+        days_time[loaded] = persist.times[i];
+        loaded++;
+    }
+
+    day_pos = loaded;
+    day_count = loaded;
+    ESP_LOGI(TAG, "Loaded day data: %d entries (filtered from %d)", loaded, persist.count);
 }
 
 static void save_setting(const char *key, int32_t val)
@@ -139,6 +192,7 @@ static void aggregate_day(const struct tm *t)
     time_to_sensor_time(t, &days_time[day_pos % DAY_COUNT]);
     day_pos++;
     if (day_count < DAY_COUNT) day_count++;
+    save_day_data();
 }
 
 static void sensor_task(void *arg)
@@ -225,6 +279,7 @@ void sensor_service_init(void)
 
     mutex = xSemaphoreCreateMutex();
     load_settings();
+    load_day_data();
 
     current_sample = (sensor_sample_t){0};
     running = true;
