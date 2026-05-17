@@ -22,13 +22,12 @@
 #define KEY_LED_ON       "led_on"
 #define KEY_LED_BRIGHT   "led_bright"
 #define KEY_LED_SPEED    "led_speed"
+#define KEY_BL_BRIGHT    "bl_bright"
 #define KEY_LED_STYLE    "led_style"
 #define KEY_LED_ANIM     "led_anim"
 
 // NVS key migration (call once at startup)
 void storage_migrate_settings_keys(void);
-
-bool storage_save_wifi_config(const char *ssid, const char *password);
 
 bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len);
 

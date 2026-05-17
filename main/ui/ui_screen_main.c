@@ -4,7 +4,6 @@
 #include "ui_manager.h"
 #include "service/time_service.h"
 #include "service/wifi_service.h"
-#include "driver/st7789_lcd.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -12,7 +11,7 @@ static const char *TAG = "UI_MAIN";
 
 static void main_on_encoder_cw(void)
 {
-    ui_switch_screen(UI_SCREEN_POMODORO);
+    ui_switch_screen(UI_SCREEN_SENSOR);
 }
 
 static void main_on_encoder_ccw(void)
@@ -28,14 +27,11 @@ static void main_on_settings_press(void)
 
 static void main_on_encoder_press(void)
 {
-    ESP_LOGI(TAG, "Triggering LCD reset");
-    st7789_lcd_reset();
+    ui_switch_screen(UI_SCREEN_SENSOR);
 }
 
 static lv_obj_t *time_label = NULL;
 static lv_obj_t *date_label = NULL;
-static lv_obj_t *temp_label = NULL;
-static lv_obj_t *humidity_label = NULL;
 static lv_obj_t *wifi_status_label = NULL;
 static lv_obj_t *hint_label = NULL;
 
@@ -44,18 +40,6 @@ lv_obj_t* ui_screen_main_create(void)
     lv_obj_t *screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
     lv_obj_set_size(screen, 240, 240);
-
-    temp_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(temp_label, lv_color_hex(0xFF6B6B), 0);
-    lv_label_set_text(temp_label, "--C");
-    lv_obj_set_style_text_font(temp_label, &custom_font_16, 0);
-    lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 10, 10);
-
-    humidity_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(humidity_label, lv_color_hex(0x4D96FF), 0);
-    lv_label_set_text(humidity_label, "--%");
-    lv_obj_set_style_text_font(humidity_label, &custom_font_16, 0);
-    lv_obj_align(humidity_label, LV_ALIGN_TOP_RIGHT, -10, 10);
 
     time_label = lv_label_create(screen);
     lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
@@ -115,16 +99,6 @@ void ui_screen_main_update_time(void)
     if (hint_label) {
         lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
     }
-}
-
-void ui_screen_main_update_temp(float temp)
-{
-    ESP_LOGD(TAG, "update_temp called (%.1f) but no sensor available, keeping placeholder", temp);
-}
-
-void ui_screen_main_update_humidity(float humidity)
-{
-    ESP_LOGD(TAG, "update_humidity called (%.0f) but no sensor available, keeping placeholder", humidity);
 }
 
 void ui_screen_main_update_wifi_status(const char *status, uint32_t color)

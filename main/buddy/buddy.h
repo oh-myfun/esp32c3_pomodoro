@@ -41,11 +41,8 @@ void buddy_set_answer_labels(const char *labels[], int count, bool multi_select)
 void buddy_include_rules(bool include);
 bool buddy_should_include_rules(void);
 void buddy_trigger_random(void);
-void buddy_pet(void);
-
 /* Info */
 buddy_info_t buddy_get_info(void);
-const tcp_request_t *buddy_get_current_request(void);
 int  buddy_get_answer_count(void);
 const char *buddy_get_answer_label(int index);
 bool buddy_is_answer_multi(void);
@@ -57,8 +54,6 @@ const char *buddy_get_species_name(int index);
 void buddy_tick(void);
 uint32_t buddy_get_tick_count(void);
 int buddy_get_species_index(void);
-uint16_t buddy_get_current_body_color(void);
-
 /* Persistence */
 void buddy_save_stats(void);
 void buddy_load_stats(void);

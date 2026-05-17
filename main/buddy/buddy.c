@@ -283,22 +283,6 @@ void buddy_trigger_random(void)
     xSemaphoreGiveRecursive(s_mutex);
 }
 
-void buddy_pet(void)
-{
-    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
-    if (s_state != BUDDY_IDLE && s_state != BUDDY_SLEEP) {
-        xSemaphoreGiveRecursive(s_mutex);
-        return;
-    }
-    s_pre_random = s_state;
-    if (s_heart_level < 5) {
-        s_heart_level++;
-        buddy_save_stats();
-    }
-    set_state_locked(BUDDY_HEART);
-    xSemaphoreGiveRecursive(s_mutex);
-}
-
 /* ---- info ---- */
 
 buddy_info_t buddy_get_info(void)
@@ -318,15 +302,6 @@ buddy_info_t buddy_get_info(void)
     };
     xSemaphoreGiveRecursive(s_mutex);
     return info;
-}
-
-const tcp_request_t *buddy_get_current_request(void)
-{
-    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
-    bool has = s_current_request.ccbb_request_id[0] != '\0';
-    const tcp_request_t *r = has ? &s_current_request : NULL;
-    xSemaphoreGiveRecursive(s_mutex);
-    return r;
 }
 
 int buddy_get_answer_count(void)
@@ -438,12 +413,6 @@ uint32_t buddy_get_tick_count(void)
 int buddy_get_species_index(void)
 {
     return s_species;
-}
-
-uint16_t buddy_get_current_body_color(void)
-{
-    if (s_species < 0 || s_species >= buddy_species_count) return BUDDY_CLR_WHITE;
-    return buddy_species_table[s_species]->bodyColor;
 }
 
 /* ---- persistence ---- */

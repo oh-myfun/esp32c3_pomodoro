@@ -34,7 +34,6 @@ static int ntp_server_index = 0;
 
 static bool synced = false;
 static int8_t tz_hours = 8;
-static int8_t tz_minutes = 0;
 static char ntp_server[64] = TIME_SERVICE_DEFAULT_NTP_SERVER;
 static uint16_t sync_interval = TIME_SERVICE_DEFAULT_SYNC_INTERVAL_MIN;
 static bool auto_sync = true;
@@ -48,6 +47,17 @@ static void time_sync_notification(struct timeval *tv)
     storage_save_time((uint64_t)now);
     last_sync_time = now;
     sound_service_play(SOUND_SYNC_DONE);
+}
+
+static void set_timezone(int8_t hours)
+{
+    tz_hours = hours;
+    char tz_buffer[32];
+    snprintf(tz_buffer, sizeof(tz_buffer), "CST%d", -(int)hours);
+    setenv("TZ", tz_buffer, 1);
+    tzset();
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "timezone", hours);
+    ESP_LOGI(TAG, "Timezone set to UTC%+d", hours);
 }
 
 void time_service_init(void)
@@ -83,7 +93,6 @@ void time_service_init(void)
         struct timeval tv = { .tv_sec = (time_t)saved_time, .tv_usec = 0 };
         settimeofday(&tv, NULL);
         ESP_LOGI(TAG, "Loaded saved time: %llu", saved_time);
-        // Don't set synced=true — let SNTP callback confirm real sync
     }
 
     esp_sntp_init();
@@ -91,83 +100,9 @@ void time_service_init(void)
     ESP_LOGI(TAG, "Time service initialized: TZ=CST-%d, NTP=%s", tz_hours, ntp_server);
 }
 
-bool time_service_sync(void)
-{
-    if (!auto_sync) {
-        ESP_LOGW(TAG, "Auto sync disabled");
-        return false;
-    }
-
-    esp_sntp_restart();
-    synced = false;
-
-    int retry = 0;
-    while (retry < 5) {
-        if (synced) {
-            time_t now = time(NULL);
-            storage_save_time((uint64_t)now);
-            last_sync_time = now;
-            ESP_LOGI(TAG, "Time saved: %llu", (uint64_t)now);
-            return true;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        retry++;
-    }
-
-    ESP_LOGW(TAG, "NTP sync failed after retries");
-    return false;
-}
-
 bool time_service_is_synced(void)
 {
     return synced;
-}
-
-current_time_t time_service_get_current_time(void)
-{
-    current_time_t result = {0};
-    result.timestamp = time(NULL);
-    result.millis = esp_timer_get_time() / 1000;
-    result.valid = synced || (result.timestamp > 1609459200);
-    return result;
-}
-
-void time_service_set_timezone(int8_t hours, int8_t minutes)
-{
-    tz_hours = hours;
-    tz_minutes = minutes;
-    
-    char tz_buffer[32];
-    snprintf(tz_buffer, sizeof(tz_buffer), "CST%d", -(int)hours);
-    setenv("TZ", tz_buffer, 1);
-    tzset();
-    
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "timezone", hours);
-    ESP_LOGI(TAG, "Timezone set to UTC%+d", hours);
-}
-
-timezone_info_t time_service_get_timezone(void)
-{
-    timezone_info_t info = {
-        .timezone_hours = tz_hours,
-        .timezone_minutes = tz_minutes,
-    };
-    snprintf(info.timezone_name, sizeof(info.timezone_name), "CST%+d", tz_hours);
-    return info;
-}
-
-void time_service_set_ntp_server(const char *server)
-{
-    if (server && strlen(server) > 0) {
-        strncpy(ntp_server, server, sizeof(ntp_server) - 1);
-        esp_sntp_setservername(0, ntp_server);
-        ESP_LOGI(TAG, "NTP server set to %s", server);
-    }
-}
-
-const char* time_service_get_ntp_server(void)
-{
-    return ntp_server;
 }
 
 void time_service_set_sync_interval(uint16_t minutes)
@@ -180,47 +115,6 @@ void time_service_set_sync_interval(uint16_t minutes)
 uint16_t time_service_get_sync_interval(void)
 {
     return sync_interval;
-}
-
-void time_service_set_auto_sync(bool enable)
-{
-    auto_sync = enable;
-    ESP_LOGI(TAG, "Auto sync %s", enable ? "enabled" : "disabled");
-}
-
-bool time_service_get_auto_sync(void)
-{
-    return auto_sync;
-}
-
-char* time_service_format_time(char *buffer, size_t len, const char *format)
-{
-    if (!buffer || len == 0) return buffer;
-    
-    time_t now = time(NULL);
-    struct tm timeinfo;
-    localtime_r(&now, &timeinfo);
-    
-    if (strftime(buffer, len, format ? format : "%H:%M:%S", &timeinfo) == 0) {
-        buffer[0] = '\0';
-    }
-    
-    return buffer;
-}
-
-char* time_service_format_date(char *buffer, size_t len, const char *format)
-{
-    if (!buffer || len == 0) return buffer;
-
-    time_t now = time(NULL);
-    struct tm timeinfo;
-    localtime_r(&now, &timeinfo);
-
-    if (strftime(buffer, len, format ? format : "%Y-%m-%d", &timeinfo) == 0) {
-        buffer[0] = '\0';
-    }
-
-    return buffer;
 }
 
 void time_service_request_sync(void)
@@ -252,7 +146,7 @@ void time_service_tick(void)
 
 void time_service_set_timezone_offset(int hours)
 {
-    time_service_set_timezone((int8_t)hours, 0);
+    set_timezone((int8_t)hours);
 }
 
 int time_service_get_timezone_offset(void)
@@ -281,10 +175,4 @@ const char* time_service_get_ntp_server_name(int index)
 {
     if (index < 0 || index >= NTP_SERVER_COUNT) return "Unknown";
     return ntp_server_names[index];
-}
-
-const char* time_service_get_ntp_server_address(int index)
-{
-    if (index < 0 || index >= NTP_SERVER_COUNT) return "";
-    return ntp_servers[index];
 }

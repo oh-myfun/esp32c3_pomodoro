@@ -25,7 +25,7 @@ static void pomo_on_encoder_cw(void)
 static void pomo_on_encoder_ccw(void)
 {
     if (pomo_is_running()) return;
-    ui_switch_screen(UI_SCREEN_MAIN);
+    ui_switch_screen(UI_SCREEN_SENSOR);
 }
 
 static void pomo_on_encoder_press(void)
@@ -173,7 +173,7 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     return screen;
 }
 
-void ui_screen_pomodoro_update_time(uint32_t remaining_seconds)
+static void update_time(uint32_t remaining_seconds)
 {
     if (timer_label == NULL) return;
     
@@ -197,13 +197,7 @@ void ui_screen_pomodoro_update_time(uint32_t remaining_seconds)
     }
 }
 
-void ui_screen_pomodoro_update_phase(const char *phase)
-{
-    if (phase_label == NULL) return;
-    lv_label_set_text(phase_label, phase);
-}
-
-void ui_screen_pomodoro_update_completed(uint32_t count)
+static void update_completed(uint32_t count)
 {
     if (completed_label == NULL) return;
     char buf[16];
@@ -244,8 +238,8 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
     }
 
     /* Update time display after total_seconds is set */
-    ui_screen_pomodoro_update_time(remaining_seconds);
-    ui_screen_pomodoro_update_completed(completed);
+    update_time(remaining_seconds);
+    update_completed(completed);
 
     if (phase_label == NULL) return;
 

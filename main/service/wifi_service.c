@@ -402,11 +402,6 @@ bool wifi_service_is_connected(void)
     return current_state == WIFI_STATE_CONNECTED;
 }
 
-const char* wifi_service_get_ip(void)
-{
-    return ip_address[0] ? ip_address : NULL;
-}
-
 const char* wifi_service_get_connected_ssid(void)
 {
     return connected_ssid[0] ? connected_ssid : NULL;

@@ -273,8 +273,3 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
     ESP_LOGI(TAG, "Settings Pomodoro screen created");
     return screen;
 }
-
-void ui_screen_settings_pomodoro_refresh(void)
-{
-    update_display();
-}

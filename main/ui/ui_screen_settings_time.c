@@ -197,11 +197,3 @@ lv_obj_t* ui_screen_settings_time_create(void)
     ESP_LOGI(TAG, "Settings Time screen created");
     return screen;
 }
-
-void ui_screen_settings_time_refresh(void)
-{
-    time_values[0] = time_service_get_timezone_offset();
-    time_values[1] = time_service_get_ntp_server_index();
-    time_values[2] = (int)time_service_get_sync_interval();
-    update_display();
-}

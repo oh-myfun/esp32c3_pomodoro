@@ -32,7 +32,6 @@ void wifi_service_connect(const char *ssid, const char *password);
 void wifi_service_disconnect(void);
 bool wifi_service_is_connected(void);
 const char* wifi_service_get_connected_ssid(void);
-const char* wifi_service_get_ip(void);
 wifi_state_t wifi_service_get_state(void);
 
 // Saved profile management

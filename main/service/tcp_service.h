@@ -43,8 +43,6 @@ void tcp_service_connect(const char *host, int port);
 void tcp_service_disconnect(void);
 bool tcp_service_is_connected(void);
 void tcp_service_send_decision(const char *json);
-void tcp_service_send_pair(const char *pairing_code);
-
 /* NVS config */
 bool tcp_service_load_config(char *host, size_t host_len, int *port);
 void tcp_service_save_config(const char *host, int port);

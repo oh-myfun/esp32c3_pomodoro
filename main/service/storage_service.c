@@ -83,15 +83,6 @@ bool storage_load_int(const char *ns, const char *key, int32_t *value)
     return err == ESP_OK;
 }
 
-bool storage_save_wifi_config(const char *ssid, const char *password)
-{
-    bool result = storage_save_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid);
-    if (password && strlen(password) > 0) {
-        result &= storage_save_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_PASSWORD, password);
-    }
-    return result;
-}
-
 bool storage_load_wifi_config(char *ssid, size_t ssid_len, char *password, size_t password_len)
 {
     bool ssid_ok = storage_load_string(STORAGE_NAMESPACE_WIFI, KEY_WIFI_SSID, ssid, ssid_len);

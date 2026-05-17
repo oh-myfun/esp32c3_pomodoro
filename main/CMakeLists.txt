@@ -3,6 +3,8 @@ idf_component_register(SRCS main.c
                           driver/buzzer.c
                           driver/backlight.c
                           driver/ws2812.c
+                          driver/aht20.c
+                          driver/bmp280.c
                           input/input_handler.c
                           ui/ui_manager.c
                           ui/ui_list.c
@@ -20,6 +22,8 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_wifi_saved.c
                           ui/ui_text_input.c
                           ui/ui_screen_bridge_scan.c
+                          ui/ui_screen_sensor.c
+                          ui/ui_screen_settings_sensor.c
                           ui/custom_font_14.c
                           ui/custom_font_16.c
                           ui/i18n.c
@@ -30,6 +34,7 @@ idf_component_register(SRCS main.c
                           service/led_service.c
                           service/time_service.c
                           service/tcp_service.c
+                          service/sensor_service.c
                           buddy/buddy.c
                           buddy/buddy_render.c
                           buddy/buddies/capybara.c

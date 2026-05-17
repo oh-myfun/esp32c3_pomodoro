@@ -221,8 +221,3 @@ int ui_screen_wifi_list_get_selected(void)
     }
     return 0;
 }
-
-const char* ui_screen_wifi_list_get_selected_ssid(void)
-{
-    return selected_ssid;
-}

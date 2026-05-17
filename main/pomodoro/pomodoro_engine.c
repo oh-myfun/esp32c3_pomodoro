@@ -186,14 +186,6 @@ void pomodoro_engine_set_cycles(uint16_t cycles)
     }
 }
 
-void pomodoro_engine_clear_completed_count(void)
-{
-    current_state.completed_count = 0;
-    current_state.current_cycle = 0;
-    pomodoro_engine_save_state();
-    ESP_LOGI(TAG, "Completed count cleared");
-}
-
 void pomodoro_engine_save_state(void)
 {
     int32_t data[2] = {current_state.completed_count, current_state.current_cycle};

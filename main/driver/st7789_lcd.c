@@ -11,7 +11,7 @@ static const char *TAG = "ST7789_LCD";
 #define LCD_RS_GPIO   GPIO_NUM_10
 #define LCD_SCK_GPIO  GPIO_NUM_6
 #define LCD_SDA_GPIO  GPIO_NUM_7
-#define LCD_RST_GPIO  GPIO_NUM_2
+#define LCD_RST_GPIO  GPIO_NUM_3
 #define LCD_SPI_HOST  SPI2_HOST
 #define LCD_SPI_FREQ  60000000
 
@@ -19,39 +19,45 @@ static const char *TAG = "ST7789_LCD";
 #define LCD_H_RES 240
 
 static spi_device_handle_t lcd_spi = NULL;
-static int flush_count = 0;
 
 static void lcd_gpio_init(void)
 {
     ESP_LOGI(TAG, "Configuring GPIO: RS=%d, RST=%d", LCD_RS_GPIO, LCD_RST_GPIO);
 
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << LCD_RS_GPIO) | (1ULL << LCD_RST_GPIO),
+    /* Pre-set output levels BEFORE enabling output mode to avoid glitches */
+    gpio_set_level(LCD_RST_GPIO, 1);
+    gpio_set_level(LCD_RS_GPIO, 0);
+
+    /* RS (DC) pin: pure output for SPI command/data selection */
+    gpio_config_t rs_conf = {
+        .pin_bit_mask = 1ULL << LCD_RS_GPIO,
         .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&rs_conf);
+
+    /* RST pin: input+output so gpio_get_level() can read back */
+    gpio_config_t rst_conf = {
+        .pin_bit_mask = 1ULL << LCD_RST_GPIO,
+        .mode = GPIO_MODE_INPUT_OUTPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-    esp_err_t ret = gpio_config(&io_conf);
-    ESP_LOGI(TAG, "gpio_config: %s", esp_err_to_name(ret));
+    gpio_config(&rst_conf);
 
-    gpio_set_level(LCD_RS_GPIO, 0);
-    gpio_set_level(LCD_RST_GPIO, 1);
-    ESP_LOGI(TAG, "RS=0, RST=1 (initial state)");
+    ESP_LOGI(TAG, "RS=%d, RST=%d", gpio_get_level(LCD_RS_GPIO), gpio_get_level(LCD_RST_GPIO));
 }
 
 static void lcd_hw_reset(void)
 {
-    ESP_LOGI(TAG, "HW reset: RST HIGH (10ms)");
+    /* HW reset via GPIO causes display failure on this module.
+       Keep RST HIGH, rely on LCD power-on reset only. */
+    ESP_LOGI(TAG, "HW reset: SKIPPED (RST stays HIGH)");
     gpio_set_level(LCD_RST_GPIO, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    ESP_LOGI(TAG, "HW reset: RST LOW (10ms)");
-    gpio_set_level(LCD_RST_GPIO, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    ESP_LOGI(TAG, "HW reset: RST HIGH (wait 120ms)");
-    gpio_set_level(LCD_RST_GPIO, 1);
-    vTaskDelay(pdMS_TO_TICKS(120));
-    ESP_LOGI(TAG, "HW reset done, RST level=%d", gpio_get_level(LCD_RST_GPIO));
+    vTaskDelay(pdMS_TO_TICKS(150));
 }
 
 static void lcd_spi_init(void)
@@ -81,7 +87,7 @@ static void lcd_spi_init(void)
 static void lcd_write_data(const uint8_t *data, size_t len, bool is_cmd)
 {
     gpio_set_level(LCD_RS_GPIO, is_cmd ? 0 : 1);
-    
+
     spi_transaction_t t = {
         .length = len * 8,
         .tx_buffer = data,
@@ -99,10 +105,90 @@ static void lcd_write_byte(uint8_t data)
     lcd_write_data(&data, 1, false);
 }
 
+static void lcd_write_bytes(const uint8_t *data, size_t len)
+{
+    lcd_write_data(data, len, false);
+}
+
 static void lcd_write_data_16(uint16_t data)
 {
     uint8_t buf[2] = {(data >> 8) & 0xFF, data & 0xFF};
     lcd_write_data(buf, 2, false);
+}
+
+/* Send vendor init commands (from module reference code) */
+static void lcd_send_init_sequence(void)
+{
+    /* SLPOUT */
+    lcd_write_cmd(0x11);
+    vTaskDelay(pdMS_TO_TICKS(200));
+
+    /* MADCTL: display direction and RGB order */
+    lcd_write_cmd(0x36);
+    lcd_write_byte(0x00);
+
+    /* DISFUNC: display function setting (column/row scan order) */
+    lcd_write_cmd(0xB6);
+    lcd_write_byte(0x0A);
+    lcd_write_byte(0xA2);
+
+    /* COLMOD: 16bit/pixel RGB565 */
+    lcd_write_cmd(0x3A);
+    lcd_write_byte(0x05);
+
+    /* PORCTRL: porch setting */
+    lcd_write_cmd(0xB2);
+    lcd_write_bytes((const uint8_t[]){0x0C, 0x0C, 0x00, 0x33, 0x33}, 5);
+
+    /* GCTRL: gate control */
+    lcd_write_cmd(0xB7);
+    lcd_write_byte(0x35);
+
+    /* VCOMS: VCOM setting */
+    lcd_write_cmd(0xBB);
+    lcd_write_byte(0x19);
+
+    /* LCMCTRL: LCM control */
+    lcd_write_cmd(0xC0);
+    lcd_write_byte(0x2C);
+
+    /* VDVVRHEN: VDV and VRH command enable */
+    lcd_write_cmd(0xC2);
+    lcd_write_byte(0x01);
+
+    /* VRHS: VRH set */
+    lcd_write_cmd(0xC3);
+    lcd_write_byte(0x12);
+
+    /* VDVS: VDV set */
+    lcd_write_cmd(0xC4);
+    lcd_write_byte(0x20);
+
+    /* FRCTRL2: frame rate control (60Hz) */
+    lcd_write_cmd(0xC6);
+    lcd_write_byte(0x0F);
+
+    /* PWCTRL1: power control */
+    lcd_write_cmd(0xD0);
+    lcd_write_bytes((const uint8_t[]){0xA4, 0xA1}, 2);
+
+    /* PVGAMCTRL: positive voltage gamma correction */
+    lcd_write_cmd(0xE0);
+    lcd_write_bytes((const uint8_t[]){0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B,
+                                       0x3F, 0x54, 0x4C, 0x18, 0x0D, 0x0B,
+                                       0x1F, 0x23}, 14);
+
+    /* NVGAMCTRL: negative voltage gamma correction */
+    lcd_write_cmd(0xE1);
+    lcd_write_bytes((const uint8_t[]){0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C,
+                                       0x3F, 0x44, 0x51, 0x2F, 0x1F, 0x1F,
+                                       0x20, 0x23}, 14);
+
+    /* INVON: inversion on */
+    lcd_write_cmd(0x21);
+
+    /* DISPON: display on */
+    lcd_write_cmd(0x29);
 }
 
 void st7789_lcd_init(void)
@@ -112,29 +198,8 @@ void st7789_lcd_init(void)
     lcd_gpio_init();
     lcd_spi_init();
 
-    ESP_LOGI(TAG, "Waiting 200ms for LCD power-on reset...");
-    vTaskDelay(pdMS_TO_TICKS(200));
-
     lcd_hw_reset();
-
-    ESP_LOGI(TAG, "Sending SLPOUT (0x11)");
-    lcd_write_cmd(0x11);
-    ESP_LOGI(TAG, "Waiting 120ms after SLPOUT...");
-    vTaskDelay(pdMS_TO_TICKS(120));
-
-    ESP_LOGI(TAG, "Sending MADCTL (0x36) = 0x00");
-    lcd_write_cmd(0x36);
-    lcd_write_byte(0x00);
-
-    ESP_LOGI(TAG, "Sending COLMOD (0x3A) = 0x05");
-    lcd_write_cmd(0x3A);
-    lcd_write_byte(0x05);
-
-    ESP_LOGI(TAG, "Sending INVON (0x21)");
-    lcd_write_cmd(0x21);
-
-    ESP_LOGI(TAG, "Sending DISPON (0x29)");
-    lcd_write_cmd(0x29);
+    lcd_send_init_sequence();
 
     ESP_LOGI(TAG, "=== LCD init complete ===");
 }
@@ -152,33 +217,8 @@ static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, u
     lcd_write_cmd(0x2C);
 }
 
-void st7789_lcd_reset(void)
-{
-    lcd_hw_reset();
-
-    lcd_write_cmd(0x11);
-    vTaskDelay(pdMS_TO_TICKS(120));
-
-    lcd_write_cmd(0x36);
-    lcd_write_byte(0x00);
-
-    lcd_write_cmd(0x3A);
-    lcd_write_byte(0x05);
-
-    lcd_write_cmd(0x21);
-    lcd_write_cmd(0x29);
-
-    ESP_LOGI(TAG, "LCD reset complete");
-}
-
 void st7789_lcd_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    if (flush_count < 5) {
-        ESP_LOGI(TAG, "flush #%d: (%d,%d)-(%d,%d)", flush_count,
-                 area->x1, area->y1, area->x2, area->y2);
-    }
-    flush_count++;
-
     int32_t x1 = area->x1;
     int32_t x2 = area->x2;
     int32_t y1 = area->y1;

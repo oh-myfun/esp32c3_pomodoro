@@ -63,6 +63,7 @@ typedef enum {
 
     /* Light settings */
     STR_LIGHT,
+    STR_BACKLIGHT,
     STR_BRIGHT,
     STR_SPEED,
     STR_STYLE,
@@ -170,6 +171,22 @@ typedef enum {
     STR_FMT_SCAN_RESULT, /* "%d host, %d session" / "%d主机 %d会话" */
     STR_SUBMIT,          /* "Submit" / "提交" */
     STR_OK,              /* "OK" / "OK" */
+
+    /* Sensor page */
+    STR_T_SENSOR,          /* "Sensor" / "传感器" */
+    STR_SENSOR_SETTINGS,   /* "Sensor Settings" / "传感器设置" */
+    STR_TEMP_MIN,          /* "Temp Min" / "温度最小" */
+    STR_TEMP_MAX,          /* "Temp Max" / "温度最大" */
+    STR_PRESS_MIN,         /* "Press Min" / "气压最小" */
+    STR_PRESS_MAX,         /* "Press Max" / "气压最大" */
+    STR_ALT_MIN,           /* "Alt Min" / "海拔最小" */
+    STR_ALT_MAX,           /* "Alt Max" / "海拔最大" */
+    STR_SEC_LEVEL,         /* "Sec" / "秒级" */
+    STR_MIN_LEVEL,         /* "Min" / "分级" */
+    STR_HOUR_LEVEL,        /* "Hour" / "时级" */
+    STR_DAY_LEVEL,         /* "Day" / "天级" */
+    STR_H_SENSOR_HINT,     /* "SET:Level Press:Set" / "SET:切换 按:设置" */
+    STR_H_SENSOR_EDIT,     /* "SET:Save Encoder:Adj" / "SET:保存 编码器:调节" */
 
     STR_COUNT
 } str_id_t;

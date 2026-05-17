@@ -61,8 +61,6 @@ void pomodoro_engine_set_cycles(uint16_t cycles);
 void pomodoro_engine_set_manual_mode(bool manual);
 bool pomodoro_engine_get_manual_mode(void);
 
-void pomodoro_engine_clear_completed_count(void);
-
 void pomodoro_engine_save_state(void);
 
 void pomodoro_engine_load_state(void);

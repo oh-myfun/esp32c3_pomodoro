@@ -161,18 +161,3 @@ lv_obj_t* ui_screen_settings_create(void)
     ESP_LOGI(TAG, "Settings screen created (6 categories)");
     return screen;
 }
-
-settings_mode_t ui_screen_settings_get_mode(void)
-{
-    return settings_mode;
-}
-
-void ui_screen_settings_set_mode(settings_mode_t mode)
-{
-    settings_mode = mode;
-}
-
-int ui_screen_settings_get_current_item(void)
-{
-    return current_settings_item;
-}

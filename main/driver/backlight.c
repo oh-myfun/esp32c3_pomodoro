@@ -13,8 +13,11 @@ static const char *TAG = "BACKLIGHT";
 #define BL_PWM_FREQ         5000
 #define BL_FULL_DUTY        ((1 << BL_LEDC_RESOLUTION) - 1)
 
+#define BL_LEVEL_MIN  1
+#define BL_LEVEL_MAX  10
+
 static bool initialized = false;
-static uint8_t brightness = 100;
+static uint8_t brightness_level = BL_LEVEL_MAX;
 
 void backlight_init(void)
 {
@@ -29,7 +32,7 @@ void backlight_init(void)
     };
     ESP_ERROR_CHECK(ledc_timer_config(&timer_cfg));
 
-    // Low-level drives transistor ON → inverted duty
+    /* Low-level drives transistor ON → inverted duty */
     ledc_channel_config_t ch_cfg = {
         .gpio_num   = BL_GPIO,
         .speed_mode = BL_LEDC_MODE,
@@ -42,15 +45,23 @@ void backlight_init(void)
     ESP_ERROR_CHECK(ledc_channel_config(&ch_cfg));
 
     initialized = true;
-    ESP_LOGI(TAG, "Backlight initialized on GPIO%d, brightness=%d%%", BL_GPIO, brightness);
+    ESP_LOGI(TAG, "Backlight initialized on GPIO%d", BL_GPIO);
 }
 
-void backlight_set_brightness(uint8_t percent)
+/* Exponential brightness mapping (perceptually uniform).
+   Level 1=5% .. Level 10=100%, gamma~2.2 curve */
+static const uint8_t bl_level_map[BL_LEVEL_MAX] = {
+    5, 10, 18, 28, 40, 52, 65, 78, 90, 100
+};
+
+void backlight_set_brightness(uint8_t level)
 {
     if (!initialized) return;
-    if (percent > 100) percent = 100;
-    brightness = percent;
-    // Inverted: 0% duty = full HIGH = backlight OFF, full duty = always LOW = backlight ON
+    if (level < BL_LEVEL_MIN) level = BL_LEVEL_MIN;
+    if (level > BL_LEVEL_MAX) level = BL_LEVEL_MAX;
+    brightness_level = level;
+
+    uint8_t percent = bl_level_map[level - 1];
     uint32_t duty = BL_FULL_DUTY - (percent * BL_FULL_DUTY) / 100;
     ESP_ERROR_CHECK(ledc_set_duty(BL_LEDC_MODE, BL_LEDC_CHANNEL, duty));
     ESP_ERROR_CHECK(ledc_update_duty(BL_LEDC_MODE, BL_LEDC_CHANNEL));
@@ -58,5 +69,5 @@ void backlight_set_brightness(uint8_t percent)
 
 uint8_t backlight_get_brightness(void)
 {
-    return brightness;
+    return brightness_level;
 }

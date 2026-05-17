@@ -464,15 +464,6 @@ static void load_settings(void)
     }
 }
 
-static void __attribute__((unused)) save_settings(void)
-{
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_on", led.enabled ? 1 : 0);
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_bright", led.brightness);
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_speed", (int32_t)led.speed);
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_style", (int32_t)led.style);
-    storage_save_int(STORAGE_NAMESPACE_SETTINGS, "led_anim", (int32_t)led.anim);
-}
-
 // ---- Public API ----
 
 void led_service_init(void)

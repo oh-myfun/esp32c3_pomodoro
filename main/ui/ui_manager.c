@@ -13,6 +13,8 @@
 #include "ui_screen_settings_system.h"
 #include "ui_screen_settings_debug.h"
 #include "ui_screen_bridge_scan.h"
+#include "ui_screen_sensor.h"
+#include "ui_screen_settings_sensor.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -45,7 +47,8 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_TIME ||
            id == UI_SCREEN_SETTINGS_SYSTEM ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
-           id == UI_SCREEN_BRIDGE_SCAN;
+           id == UI_SCREEN_BRIDGE_SCAN ||
+           id == UI_SCREEN_SETTINGS_SENSOR;
 }
 
 static void log_mem(const char *label)
@@ -103,6 +106,8 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
     lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
     lazy_creators[UI_SCREEN_BRIDGE_SCAN] = ui_screen_bridge_scan_create;
+    lazy_creators[UI_SCREEN_SENSOR] = ui_screen_sensor_create;
+    lazy_creators[UI_SCREEN_SETTINGS_SENSOR] = ui_screen_settings_sensor_create;
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);
@@ -115,7 +120,8 @@ void ui_init(void)
 static bool is_top_level(ui_screen_id_t id)
 {
     return id == UI_SCREEN_MAIN || id == UI_SCREEN_POMODORO ||
-           id == UI_SCREEN_BUDDY || id == UI_SCREEN_SETTINGS;
+           id == UI_SCREEN_BUDDY || id == UI_SCREEN_SETTINGS ||
+           id == UI_SCREEN_SENSOR;
 }
 
 static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)

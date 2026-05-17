@@ -584,27 +584,6 @@ void tcp_service_send_decision(const char *json)
     xSemaphoreGive(send_mutex);
 }
 
-void tcp_service_send_pair(const char *pairing_code)
-{
-    if (sock < 0 || !pairing_code) return;
-
-    if (xSemaphoreTake(send_mutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
-        ESP_LOGW(TAG, "Send mutex timeout");
-        return;
-    }
-
-    char tx_buf[256];
-    int len = snprintf(tx_buf, sizeof(tx_buf),
-        "{\"type\":\"pair\",\"data\":{\"pairing_code\":\"%s\"}}\n", pairing_code);
-    if (len > 0 && len < (int)sizeof(tx_buf)) {
-        if (!send_raw(tx_buf, len)) {
-            ESP_LOGW(TAG, "Pair send failed");
-        }
-    }
-
-    xSemaphoreGive(send_mutex);
-}
-
 /* ------------------------------------------------------------------ */
 /* NVS config                                                         */
 /* ------------------------------------------------------------------ */

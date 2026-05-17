@@ -13,6 +13,8 @@
 #include "driver/st7789_lcd.h"
 #include "driver/buzzer.h"
 #include "driver/backlight.h"
+#include "driver/aht20.h"
+#include "driver/bmp280.h"
 #include "driver/ws2812.h"
 #include "input/input_handler.h"
 #include "ui/ui_manager.h"
@@ -32,6 +34,8 @@
 #include "ui/ui_screen_settings_debug.h"
 #include "ui/ui_screen_settings_buddy.h"
 #include "ui/ui_screen_bridge_scan.h"
+#include "ui/ui_screen_sensor.h"
+#include "service/sensor_service.h"
 #include "ui/i18n.h"
 
 static const char *TAG = "MAIN";
@@ -427,6 +431,7 @@ static void ui_update_task(void *arg) {
                     ui_screen_main_update_wifi_status(i18n(STR_NO_WIFI), 0x666666);
                 }
             }
+
             lvgl_unlock();
         }
 
@@ -471,6 +476,15 @@ static void ui_update_task(void *arg) {
             last_bridge_scan_tick = now;
         }
 
+        // Sensor page: refresh every 1 second
+        static int64_t last_chart_tick = 0;
+        if (current_screen == UI_SCREEN_SENSOR && now - last_chart_tick >= 1000) {
+            lvgl_lock();
+            ui_screen_sensor_update();
+            lvgl_unlock();
+            last_chart_tick = now;
+        }
+
         // Memory monitor every 30 seconds
         if (now - last_mem_tick >= 30000) {
             multi_heap_info_t info;
@@ -501,9 +515,19 @@ void app_main(void) {
     storage_migrate_settings_keys();
 
     // 2. Non-fatal: drivers
-    // backlight_init();  // TODO: GPIO20 backlight PWM, waiting for HW rework
     buzzer_init();
+    backlight_init();
+    {
+        int32_t bl_level = 10;
+        storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_BL_BRIGHT, &bl_level);
+        backlight_set_brightness((uint8_t)bl_level);
+        ESP_LOGI(TAG, "LCD backlight level=%d", bl_level);
+    }
+
     st7789_lcd_init();
+    aht20_init();
+    bmp280_init();
+    sensor_service_init();
     if (ws2812_init() != 0) ESP_LOGW(TAG, "WS2812 init failed, continuing");
     led_service_init();
 
