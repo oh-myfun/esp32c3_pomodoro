@@ -22,10 +22,10 @@ static const char *TAG = "TCP";
 
 /* Connection parameters */
 #define RECONNECT_DELAY_MS  15000
-#define RX_BUF_SIZE         4096
+#define RX_BUF_SIZE         8192
 #define TX_BUF_SIZE         1024
 #define TASK_STACK_SIZE     9216
-#define TASK_PRIORITY       2
+#define TASK_PRIORITY       3
 
 /* Internal state */
 static char cfg_host[128] = {0};
@@ -269,6 +269,8 @@ static void dispatch_message(const char *type_str, cJSON *root)
 
     if (strcmp(type_str, "waiting_pairing") == 0) {
         ESP_LOGI(TAG, "Waiting for pairing...");
+        s_project[0] = '\0';
+        invoke_on_paired();
     } else if (strcmp(type_str, "paired") == 0) {
         ESP_LOGI(TAG, "Paired successfully!");
         cJSON *proj = cJSON_GetObjectItem(data, "project");
@@ -297,11 +299,14 @@ static void dispatch_message(const char *type_str, cJSON *root)
             cJSON *msg = cJSON_GetObjectItem(data, "message");
             const char *state_str = (st && cJSON_IsString(st)) ? st->valuestring : "";
             const char *msg_str = (msg && cJSON_IsString(msg)) ? msg->valuestring : "";
-            ESP_LOGI(TAG, "Status: %s", state_str);
+            ESP_LOGI(TAG, "Status received: state='%s' msg='%s'", state_str, msg_str);
             invoke_on_status(state_str, msg_str);
+        } else {
+            ESP_LOGW(TAG, "Status message with no data field");
         }
     } else {
-        ESP_LOGD(TAG, "Unknown message type: %s", type_str);
+        ESP_LOGW(TAG, "Unhandled message type: '%s'", type_str);
+        invoke_on_status("error", "unknown message");
     }
 }
 
@@ -367,7 +372,7 @@ static bool recv_and_dispatch(void)
                 }
                 cJSON_Delete(root);
             } else {
-                ESP_LOGD(TAG, "Invalid JSON: %.80s", line_start);
+                ESP_LOGW(TAG, "Invalid JSON: %.80s", line_start);
             }
         }
 
@@ -611,6 +616,32 @@ void tcp_service_save_pairing_code(const char *code)
 bool tcp_service_load_pairing_code(char *code, size_t len)
 {
     return storage_load_string(TCP_NAMESPACE, KEY_PAIRING_CODE, code, len);
+}
+
+void tcp_service_repair(const char *pairing_code)
+{
+    if (!pairing_code || !pairing_code[0]) return;
+    if (sock < 0) {
+        ESP_LOGW(TAG, "Cannot re-pair: not connected");
+        return;
+    }
+
+    /* Save new pairing code to NVS */
+    tcp_service_save_pairing_code(pairing_code);
+
+    /* Send pair message on existing connection */
+    char pair_msg[128];
+    int plen = snprintf(pair_msg, sizeof(pair_msg),
+        "{\"type\":\"pair\",\"data\":{\"pairing_code\":\"%s\"}}\n", pairing_code);
+
+    if (xSemaphoreTake(send_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        if (send_raw(pair_msg, plen)) {
+            ESP_LOGI(TAG, "Re-pair sent with code: %s", pairing_code);
+        } else {
+            ESP_LOGW(TAG, "Re-pair send failed");
+        }
+        xSemaphoreGive(send_mutex);
+    }
 }
 
 #define KEY_PROJECT "project"

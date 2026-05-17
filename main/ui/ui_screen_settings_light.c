@@ -186,6 +186,7 @@ static void update_display(void)
     const char *speed_opts[] = {i18n(STR_SLOW), i18n(STR_MED), i18n(STR_FAST)};
     const char *style_opts[] = {i18n(STR_PURE), i18n(STR_COLOR)};
     const char *anim_opts[] = {i18n(STR_BREATH), i18n(STR_SCAN), i18n(STR_GRADIENT)};
+    const char *demo_opts[] = {i18n(STR_DEMO_WORK), i18n(STR_DEMO_BREAK), i18n(STR_DEMO_LONG_BREAK), i18n(STR_DEMO_PAUSED), i18n(STR_DEMO_SAD)};
 
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_BACKLIGHT));
     snprintf(item_values[0], sizeof(item_values[0]), "%d", light_values[0]);
@@ -206,7 +207,7 @@ static void update_display(void)
     snprintf(item_values[5], sizeof(item_values[5]), "%s", anim_opts[light_values[5] % 3]);
 
     snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_DEMO));
-    snprintf(item_values[6], sizeof(item_values[6]), "%s", led_demo_color_names[light_values[6] % LED_DEMO_COLOR_COUNT]);
+    snprintf(item_values[6], sizeof(item_values[6]), "%s", demo_opts[light_values[6] % LED_DEMO_COLOR_COUNT]);
 
     for (int i = 0; i < LIGHT_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];

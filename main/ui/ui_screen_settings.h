@@ -8,3 +8,4 @@ typedef enum {
 } settings_mode_t;
 
 lv_obj_t* ui_screen_settings_create(void);
+void ui_screen_settings_refresh(void);

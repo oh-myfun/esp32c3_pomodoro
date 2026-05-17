@@ -66,14 +66,14 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SPEED]       = {"⏩Speed",       "⏩速度"},
     [STR_STYLE]       = {"🎨Style",       "🎨样式"},
     [STR_ANIM]        = {"✨Anim",        "✨动画"},
-    [STR_DEMO]        = {"▶Demo",        "▶演示"},
+    [STR_DEMO]        = {"Demo",        "演示"},
     [STR_SLOW]        = {"Slow",        "慢"},
     [STR_MED]         = {"Med",         "中"},
     [STR_FAST]        = {"Fast",        "快"},
     [STR_PURE]        = {"Pure",        "纯色"},
     [STR_COLOR]       = {"Color",       "彩色"},
     [STR_BREATH]      = {"Breath",      "呼吸"},
-    [STR_SCAN]        = {"\xf0\x9f\x94\x8dScan",        "\xf0\x9f\x94\x8d\xe6\x89\xab\xe6\x8f\x8f"},
+    [STR_SCAN]        = {"Scan",        "扫描"},
     [STR_GRADIENT]    = {"Gradient",    "渐变"},
 
     /* Time settings */
@@ -178,6 +178,7 @@ static const char *strings[STR_COUNT][2] = {
 
     /* Sensor page */
     [STR_T_SENSOR]         = {"Sensor",              "传感器"},
+    [STR_T_SENSOR_PAGE]    = {"\xf0\x9f\x8c\xa1Temp Hum Press", "\xf0\x9f\x8c\xa1\xe6\xb8\xa9\xe6\xb9\xbf\xe5\xba\xa6\xe6\xb0\x94\xe5\x8e\x8b"},
     [STR_SENSOR_SETTINGS]  = {"Sensor Settings",     "传感器设置"},
     [STR_TEMP_MIN]         = {"Temp Min",            "温度最小"},
     [STR_TEMP_MAX]         = {"Temp Max",            "温度最大"},
@@ -186,11 +187,18 @@ static const char *strings[STR_COUNT][2] = {
     [STR_ALT_MIN]          = {"Alt Min",             "海拔最小"},
     [STR_ALT_MAX]          = {"Alt Max",             "海拔最大"},
     [STR_SEC_LEVEL]        = {"Sec",                 "秒级"},
-    [STR_MIN_LEVEL]        = {"Min",                 "分级"},
-    [STR_HOUR_LEVEL]       = {"Hour",                "时级"},
-    [STR_DAY_LEVEL]        = {"Day",                 "天级"},
+    [STR_MIN_LEVEL]        = {"Min",                 "分钟级"},
+    [STR_HOUR_LEVEL]       = {"Hour",                "小时级"},
+    [STR_DAY_LEVEL]        = {"Day",                 "日级"},
     [STR_H_SENSOR_HINT]    = {"SET:Level Press:Set", "SET:切换 按:设置"},
     [STR_H_SENSOR_EDIT]    = {"SET:Save Enc:Adj",    "SET:保存 编码器:调节"},
+
+    /* Demo colors */
+    [STR_DEMO_WORK]       = {"Work",        "工作"},
+    [STR_DEMO_BREAK]      = {"Break",       "休息"},
+    [STR_DEMO_LONG_BREAK] = {"LongBreak",   "长休息"},
+    [STR_DEMO_PAUSED]     = {"Paused",      "暂停"},
+    [STR_DEMO_SAD]        = {"Sad",         "悲伤"},
 };
 
 void i18n_init(void)

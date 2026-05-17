@@ -37,6 +37,9 @@ static bool           s_has_request   = false;
 static tcp_request_t  s_current_request = {0};
 static bool           s_include_rules = false;
 
+/* Queued status: saved during ATTENTION, restored when temporary state ends */
+static char s_pending_status[16] = {0};   /* e.g. "running", "idle", "error", "" */
+
 static int      s_heart_level = 2;
 static int64_t  s_last_heart_decay = 0;
 static uint32_t s_session_approved = 0;
@@ -51,12 +54,32 @@ static bool   s_answer_multi = false;
 /* ---- forward declarations ---- */
 
 static void set_state_locked(buddy_state_t new_state);
+static void apply_pending_status(void);
 
 /* ---- helpers ---- */
 
 static bool is_temporary_state(buddy_state_t s)
 {
     return s == BUDDY_CELEBRATE || s == BUDDY_DIZZY || s == BUDDY_HEART;
+}
+
+/* Apply queued status after temporary state ends. Caller must hold s_mutex. */
+static void apply_pending_status(void)
+{
+    if (s_pending_status[0] == '\0') return;
+
+    const char *state = s_pending_status;
+    ESP_LOGI(TAG, "Applying pending status: %s", state);
+
+    if (strcmp(state, "running") == 0) {
+        set_state_locked(BUDDY_BUSY);
+    } else if (strcmp(state, "idle") == 0) {
+        set_state_locked(BUDDY_IDLE);
+    } else if (strcmp(state, "error") == 0) {
+        set_state_locked(BUDDY_DIZZY);
+    }
+
+    s_pending_status[0] = '\0';
 }
 
 /* Caller must hold s_mutex */
@@ -150,6 +173,8 @@ void buddy_on_tcp_request(const tcp_request_t *req)
 void buddy_on_tcp_session_end(void)
 {
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
+    ESP_LOGI(TAG, "session_end: state=%d has_request=%d pending='%s'",
+             s_state, s_has_request, s_pending_status);
     s_has_request = false;
     memset(&s_current_request, 0, sizeof(s_current_request));
     if (s_state == BUDDY_ATTENTION) {
@@ -163,19 +188,33 @@ void buddy_on_status(const char *state, const char *message)
     if (!state || !state[0]) return;
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
 
+    ESP_LOGI(TAG, "on_status: state='%s' buddy_state=%d pending='%s'",
+             state, s_state, s_pending_status);
+
     if (s_state == BUDDY_ATTENTION) {
+        /* Queue status for later, don't discard */
+        strncpy(s_pending_status, state, sizeof(s_pending_status) - 1);
+        s_pending_status[sizeof(s_pending_status) - 1] = '\0';
+        ESP_LOGI(TAG, "Status queued during ATTENTION: '%s'", state);
         xSemaphoreGiveRecursive(s_mutex);
         return;
     }
 
     if (strcmp(state, "running") == 0) {
+        s_pre_random = is_temporary_state(s_state) ? s_pre_random : s_state;
+        ESP_LOGI(TAG, "Status '%s' -> BUSY (pre_random=%d)", state, s_pre_random);
         set_state_locked(BUDDY_BUSY);
     } else if (strcmp(state, "idle") == 0) {
+        ESP_LOGI(TAG, "Status '%s' buddy_state=%d is_temp=%d", state, s_state, is_temporary_state(s_state));
         if (!is_temporary_state(s_state)) {
             set_state_locked(BUDDY_IDLE);
         }
     } else if (strcmp(state, "error") == 0) {
+        s_pre_random = is_temporary_state(s_state) ? s_pre_random : s_state;
+        ESP_LOGI(TAG, "Status '%s' -> DIZZY", state);
         set_state_locked(BUDDY_DIZZY);
+    } else {
+        ESP_LOGW(TAG, "Unknown status: '%s'", state);
     }
 
     xSemaphoreGiveRecursive(s_mutex);
@@ -363,19 +402,31 @@ void buddy_tick(void)
     switch (s_state) {
     case BUDDY_CELEBRATE:
         if (s_tick_count >= CELEBRATE_TICKS) {
-            set_state_locked(s_pre_random);
+            if (s_pending_status[0]) {
+                apply_pending_status();
+            } else {
+                set_state_locked(s_pre_random);
+            }
         }
         break;
 
     case BUDDY_DIZZY:
         if (s_tick_count >= DIZZY_TICKS) {
-            set_state_locked(s_pre_random);
+            if (s_pending_status[0]) {
+                apply_pending_status();
+            } else {
+                set_state_locked(s_pre_random);
+            }
         }
         break;
 
     case BUDDY_HEART:
         if (s_tick_count >= HEART_TICKS) {
-            set_state_locked(s_pre_random);
+            if (s_pending_status[0]) {
+                apply_pending_status();
+            } else {
+                set_state_locked(s_pre_random);
+            }
         }
         break;
 

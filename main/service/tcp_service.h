@@ -63,5 +63,8 @@ void tcp_service_scan(void);
 int  tcp_service_get_scan_count(void);
 const tcp_scan_result_t *tcp_service_get_scan_result(int index);
 
+/* Re-pair on existing connection (no disconnect) */
+void tcp_service_repair(const char *pairing_code);
+
 /* Project name (set on paired, runtime only) */
 const char *tcp_service_get_project(void);

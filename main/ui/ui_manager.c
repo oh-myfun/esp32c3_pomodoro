@@ -15,6 +15,7 @@
 #include "ui_screen_bridge_scan.h"
 #include "ui_screen_sensor.h"
 #include "ui_screen_settings_sensor.h"
+#include "ui_screen_settings.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
@@ -166,6 +167,9 @@ static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
     if (screen_id == UI_SCREEN_WIFI_SAVED) {
         ui_screen_wifi_saved_refresh();
     }
+    if (screen_id == UI_SCREEN_SETTINGS) {
+        ui_screen_settings_refresh();
+    }
 
     // Clean old disposable screen: remove children to free memory
     if (screen_is_disposable(old_screen) && screens[old_screen]) {
@@ -272,6 +276,9 @@ void ui_go_back(void)
     /* Refresh data-driven screens on entry */
     if (prev == UI_SCREEN_WIFI_SAVED) {
         ui_screen_wifi_saved_refresh();
+    }
+    if (prev == UI_SCREEN_SETTINGS) {
+        ui_screen_settings_refresh();
     }
 
     /* Clean old disposable screen */

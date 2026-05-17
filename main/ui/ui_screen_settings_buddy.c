@@ -290,15 +290,27 @@ void ui_screen_settings_buddy_refresh(void)
 
 void ui_screen_settings_buddy_set_scan_result(const char *host, int port, const char *pairing_code)
 {
-    if (host && host[0]) {
-        strncpy(cfg_host, host, sizeof(cfg_host) - 1);
-        cfg_host[sizeof(cfg_host) - 1] = '\0';
-        cfg_port = port;
-        tcp_service_save_config(cfg_host, cfg_port);
-    }
     if (pairing_code && pairing_code[0]) {
         strncpy(cfg_session, pairing_code, sizeof(cfg_session) - 1);
         cfg_session[sizeof(cfg_session) - 1] = '\0';
-        tcp_service_save_pairing_code(cfg_session);
+    }
+    if (host && host[0]) {
+        /* Check if same Bridge — re-pair without disconnect */
+        char cur_host[128] = {0};
+        int cur_port = 0;
+        tcp_service_load_config(cur_host, sizeof(cur_host), &cur_port);
+
+        if (tcp_service_is_connected() && strcmp(host, cur_host) == 0 && port == cur_port) {
+            ESP_LOGI(TAG, "Same Bridge, re-pairing without disconnect");
+            tcp_service_repair(cfg_session);
+        } else {
+            /* Different Bridge or not connected — full reconnect */
+            tcp_service_connect(host, port);
+        }
+    } else if (pairing_code && pairing_code[0]) {
+        /* Same Bridge, only session changed */
+        if (tcp_service_is_connected()) {
+            tcp_service_repair(cfg_session);
+        }
     }
 }

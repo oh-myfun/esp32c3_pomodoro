@@ -6,9 +6,9 @@
 static const char *TAG = "BACKLIGHT";
 
 #define BL_GPIO             GPIO_NUM_20
-#define BL_LEDC_CHANNEL     LEDC_CHANNEL_0
+#define BL_LEDC_CHANNEL     LEDC_CHANNEL_1
 #define BL_LEDC_MODE        LEDC_LOW_SPEED_MODE
-#define BL_LEDC_TIMER       LEDC_TIMER_0
+#define BL_LEDC_TIMER       LEDC_TIMER_1
 #define BL_LEDC_RESOLUTION  LEDC_TIMER_10_BIT
 #define BL_PWM_FREQ         5000
 #define BL_FULL_DUTY        ((1 << BL_LEDC_RESOLUTION) - 1)

@@ -516,6 +516,8 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_border_width(attn_container, 2, 0);
     lv_obj_set_style_border_color(attn_container, lv_color_hex(0xFF4444), 0);
     lv_obj_add_flag(attn_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(attn_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(attn_container, 0, 0);
 
     /* Tool name — 16px, h=22 */
     attn_tool = lv_label_create(attn_container);
@@ -562,14 +564,14 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_radius(attn_scrollbar, 1, 0);
     lv_obj_add_flag(attn_scrollbar, LV_OBJ_FLAG_HIDDEN);
 
-    /* Bottom: description — 14px, 2-line, truncate */
+    /* Bottom: description — 14px, 2-line wrap */
     attn_desc = lv_label_create(attn_container);
     lv_obj_set_style_text_color(attn_desc, lv_color_hex(0x888888), 0);
     lv_label_set_text(attn_desc, "");
     lv_obj_set_style_text_font(attn_desc, &custom_font_14, 0);
     lv_obj_set_pos(attn_desc, 6, 204);
-    lv_obj_set_size(attn_desc, 224, 28);
-    lv_label_set_long_mode(attn_desc, LV_LABEL_LONG_DOT);
+    lv_obj_set_size(attn_desc, 224, 30);
+    lv_label_set_long_mode(attn_desc, LV_LABEL_LONG_WRAP);
 
     /* ---- Register input callbacks ---- */
     static const ui_input_callbacks_t cbs = {

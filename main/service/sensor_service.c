@@ -99,6 +99,11 @@ static void load_day_data(void)
     if (!storage_load_blob(STORAGE_NAMESPACE_SETTINGS, KEY_S_DAY_DATA, &persist, sizeof(persist)))
         return;
 
+    if (persist.count <= 0 || persist.count > DAY_COUNT) {
+        ESP_LOGW(TAG, "Invalid day data count: %d", persist.count);
+        return;
+    }
+
     /* Get current date for age filtering */
     time_t now = time(NULL);
     struct tm t;
@@ -106,24 +111,39 @@ static void load_day_data(void)
     int cur_year = t.tm_year + 1900;
     int cur_mon = t.tm_mon + 1;
     int cur_day = t.tm_mday;
+    int cur_days_approx = cur_year * 366 + cur_mon * 31 + cur_day;
 
-    /* Rebuild ring buffer, keeping only entries within 30 days */
+    /* Read from oldest to newest using the saved ring buffer position */
+    int start = (persist.pos - persist.count + DAY_COUNT) % DAY_COUNT;
     int loaded = 0;
-    for (int i = 0; i < persist.count && i < DAY_COUNT; i++) {
-        sensor_time_t *st = &persist.times[i];
-        /* Calculate approximate day difference */
-        int entry_days = st->year * 366 + st->month * 31 + st->day;
-        int cur_days = cur_year * 366 + cur_mon * 31 + cur_day;
-        if (cur_days - entry_days > 30) continue;
+    for (int i = 0; i < persist.count; i++) {
+        int idx = (start + i) % DAY_COUNT;
+        sensor_time_t *st = &persist.times[idx];
 
-        days_buf[loaded] = persist.samples[i];
-        days_time[loaded] = persist.times[i];
+        /* Age filter: skip entries older than 30 days */
+        int entry_days = st->year * 366 + st->month * 31 + st->day;
+        if (cur_days_approx - entry_days > 30) continue;
+
+        /* Deduplicate: skip if same date already loaded */
+        bool dup = false;
+        for (int j = 0; j < loaded; j++) {
+            if (days_time[j].year == st->year &&
+                days_time[j].month == st->month &&
+                days_time[j].day == st->day) {
+                dup = true;
+                break;
+            }
+        }
+        if (dup) continue;
+
+        days_buf[loaded] = persist.samples[idx];
+        days_time[loaded] = persist.times[idx];
         loaded++;
     }
 
     day_pos = loaded;
     day_count = loaded;
-    ESP_LOGI(TAG, "Loaded day data: %d entries (filtered from %d)", loaded, persist.count);
+    ESP_LOGI(TAG, "Loaded day data: %d entries (from %d saved)", loaded, persist.count);
 }
 
 static void save_setting(const char *key, int32_t val)
@@ -187,6 +207,30 @@ static void aggregate_hour(const struct tm *t)
 static void aggregate_day(const struct tm *t)
 {
     if (hour_count == 0) return;
+
+    int target_year = t->tm_year + 1900;
+    int target_mon = t->tm_mon + 1;
+    int target_day = t->tm_mday;
+
+    /* Check if today already has an entry — update it instead of appending */
+    for (int i = 0; i < day_count; i++) {
+        if (days_time[i].year == target_year &&
+            days_time[i].month == target_mon &&
+            days_time[i].day == target_day) {
+            /* Update existing entry with new average */
+            int count = hour_count < HOUR_COUNT ? hour_count : HOUR_COUNT;
+            days_buf[i] = avg_samples(hours_buf, count);
+            days_time[i] = (sensor_time_t){
+                .year = target_year, .month = target_mon, .day = target_day,
+                .hour = 0, .minute = 0, .second = 0
+            };
+            save_day_data();
+            ESP_LOGI(TAG, "Updated existing day entry: %04d-%02d-%02d", target_year, target_mon, target_day);
+            return;
+        }
+    }
+
+    /* New day: append */
     int count = hour_count < HOUR_COUNT ? hour_count : HOUR_COUNT;
     days_buf[day_pos % DAY_COUNT] = avg_samples(hours_buf, count);
     time_to_sensor_time(t, &days_time[day_pos % DAY_COUNT]);

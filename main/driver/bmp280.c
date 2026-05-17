@@ -108,8 +108,8 @@ void bmp280_init(void)
     /* Config: standby 0.5ms, filter off */
     write_reg(BMP280_REG_CONFIG, 0x00);
 
-    /* Ctrl_meas: normal mode, oversampling x1 for temp and pressure */
-    write_reg(BMP280_REG_CTRL_MEAS, 0x27);
+    /* Ctrl_meas: sleep mode initially, oversampling x1 for temp and pressure */
+    write_reg(BMP280_REG_CTRL_MEAS, 0x24);
 
     initialized = true;
     ESP_LOGI(TAG, "BMP280 initialized (ID=0x%02X)", id);
@@ -150,6 +150,12 @@ static uint32_t compensate_press(int32_t adc_P)
 bool bmp280_read(float *temperature, float *pressure_hpa)
 {
     if (!initialized) return false;
+
+    /* Trigger forced measurement: oversampling x1 for temp, x1 for pressure */
+    write_reg(BMP280_REG_CTRL_MEAS, 0x25);
+
+    /* Wait for measurement (max ~7ms for x1/x1) */
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     uint8_t data[6];
     read_regs(BMP280_REG_PRESS, data, 6);
