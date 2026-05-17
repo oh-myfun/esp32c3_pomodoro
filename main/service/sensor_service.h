@@ -3,15 +3,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define SENSOR_NO_DATA (-999.0f)
+
 typedef struct {
     float temperature;
     float humidity;
     float pressure;
     float altitude;
-    bool temp_valid;
-    bool hum_valid;
-    bool press_valid;
-    bool alt_valid;
 } sensor_sample_t;
 
 typedef struct {

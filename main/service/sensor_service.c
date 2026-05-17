@@ -86,25 +86,36 @@ static void time_to_sensor_time(const struct tm *t, sensor_time_t *st)
     st->second = t->tm_sec;
 }
 
+static sensor_sample_t no_data_sample(void)
+{
+    sensor_sample_t s = {SENSOR_NO_DATA, SENSOR_NO_DATA, SENSOR_NO_DATA, SENSOR_NO_DATA};
+    return s;
+}
+
+static bool is_valid(float val)
+{
+    return val != SENSOR_NO_DATA;
+}
+
 static sensor_sample_t avg_samples(const sensor_sample_t *buf, int count)
 {
-    sensor_sample_t avg = {0};
+    sensor_sample_t avg = no_data_sample();
     if (count <= 0) return avg;
 
     float t_sum = 0, h_sum = 0, p_sum = 0, a_sum = 0;
     int t_cnt = 0, h_cnt = 0, p_cnt = 0, a_cnt = 0;
 
     for (int i = 0; i < count; i++) {
-        if (buf[i].temp_valid)  { t_sum += buf[i].temperature; t_cnt++; }
-        if (buf[i].hum_valid)   { h_sum += buf[i].humidity;    h_cnt++; }
-        if (buf[i].press_valid) { p_sum += buf[i].pressure;    p_cnt++; }
-        if (buf[i].alt_valid)   { a_sum += buf[i].altitude;    a_cnt++; }
+        if (is_valid(buf[i].temperature)) { t_sum += buf[i].temperature; t_cnt++; }
+        if (is_valid(buf[i].humidity))    { h_sum += buf[i].humidity;    h_cnt++; }
+        if (is_valid(buf[i].pressure))    { p_sum += buf[i].pressure;    p_cnt++; }
+        if (is_valid(buf[i].altitude))    { a_sum += buf[i].altitude;    a_cnt++; }
     }
 
-    if (t_cnt) { avg.temperature = t_sum / t_cnt; avg.temp_valid = true; }
-    if (h_cnt) { avg.humidity = h_sum / h_cnt;    avg.hum_valid = true; }
-    if (p_cnt) { avg.pressure = p_sum / p_cnt;    avg.press_valid = true; }
-    if (a_cnt) { avg.altitude = a_sum / a_cnt;    avg.alt_valid = true; }
+    if (t_cnt) avg.temperature = t_sum / t_cnt;
+    if (h_cnt) avg.humidity    = h_sum / h_cnt;
+    if (p_cnt) avg.pressure    = p_sum / p_cnt;
+    if (a_cnt) avg.altitude    = a_sum / a_cnt;
 
     return avg;
 }
@@ -151,22 +162,21 @@ static void sensor_task(void *arg)
         bool ok_aht = aht20_read(&temp, &hum);
         bool ok_bmp = bmp280_read(&bmp_temp, &pressure);
 
-        sensor_sample_t sample = {0};
+        sensor_sample_t sample = no_data_sample();
         if (ok_aht) {
             sample.temperature = temp;
             sample.humidity = hum;
-            sample.temp_valid = true;
-            sample.hum_valid = true;
         }
         if (ok_bmp) {
             sample.pressure = pressure;
             sample.altitude = 44330.0f * (1.0f - powf(pressure / 1013.25f, 0.1903f));
-            sample.press_valid = true;
-            sample.alt_valid = true;
         }
 
-        /* Skip buffer write if both sensors failed */
-        bool any_valid = ok_aht || ok_bmp;
+        /* Skip if both sensors failed */
+        if (!ok_aht && !ok_bmp) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
 
         /* Get current time */
         time_t now = time(NULL);
@@ -175,28 +185,26 @@ static void sensor_task(void *arg)
 
         xSemaphoreTake(mutex, portMAX_DELAY);
 
-        /* Update current sample (always, even if invalid) */
+        /* Update current sample */
         current_sample = sample;
 
-        if (any_valid) {
-            /* Write to seconds buffer */
-            seconds_buf[sec_pos % SEC_COUNT] = sample;
-            time_to_sensor_time(&t, &seconds_time[sec_pos % SEC_COUNT]);
-            sec_pos++;
-            if (sec_count < SEC_COUNT) sec_count++;
+        /* Write to seconds buffer */
+        seconds_buf[sec_pos % SEC_COUNT] = sample;
+        time_to_sensor_time(&t, &seconds_time[sec_pos % SEC_COUNT]);
+        sec_pos++;
+        if (sec_count < SEC_COUNT) sec_count++;
 
-            /* Aggregation at time boundaries */
-            if (t.tm_sec == 0 && t.tm_sec != last_sec) {
-                aggregate_minute(&t);
-            }
-            if (t.tm_sec == 0 && t.tm_min == 0 && (t.tm_sec != last_sec || t.tm_min != last_min)) {
-                aggregate_hour(&t);
-            }
-            if (t.tm_sec == 0 && t.tm_min == 0 && t.tm_hour == 0 &&
-                (t.tm_sec != last_sec || t.tm_min != last_min || t.tm_hour != last_hour)) {
-                aggregate_day(&t);
-            }
-        } /* end if (any_valid) */
+        /* Aggregation at time boundaries */
+        if (t.tm_sec == 0 && t.tm_sec != last_sec) {
+            aggregate_minute(&t);
+        }
+        if (t.tm_sec == 0 && t.tm_min == 0 && (t.tm_sec != last_sec || t.tm_min != last_min)) {
+            aggregate_hour(&t);
+        }
+        if (t.tm_sec == 0 && t.tm_min == 0 && t.tm_hour == 0 &&
+            (t.tm_sec != last_sec || t.tm_min != last_min || t.tm_hour != last_hour)) {
+            aggregate_day(&t);
+        }
 
         last_sec = t.tm_sec;
         last_min = t.tm_min;
@@ -215,7 +223,7 @@ void sensor_service_init(void)
     mutex = xSemaphoreCreateMutex();
     load_settings();
 
-    memset(&current_sample, 0, sizeof(current_sample));
+    current_sample = no_data_sample();
     running = true;
 
     xTaskCreate(sensor_task, "SensorSvc", 4096, NULL, 1, NULL);
