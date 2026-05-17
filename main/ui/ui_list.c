@@ -59,8 +59,9 @@ static void create_labels(lv_obj_t *list, int visible_count)
     if (!data) return;
 
     int key_w = (data->list_width * (100 - data->value_pct)) / 100;
-    int value_x = data->list_width - (data->list_width * data->value_pct / 100) - 4;
-    int value_w = (data->list_width * data->value_pct) / 100;
+    int scrollbar_margin = 8;  /* leave room for scrollbar (x=width-7, w=3) */
+    int value_w = (data->list_width * data->value_pct) / 100 - scrollbar_margin;
+    int value_x = data->list_width - value_w - scrollbar_margin;
 
     for (int i = 0; i < visible_count; i++) {
         data->key_labels[i] = lv_label_create(list);

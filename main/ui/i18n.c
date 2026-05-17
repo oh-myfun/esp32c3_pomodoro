@@ -124,7 +124,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_LOWERCASE]     = {"Lowercase",   "小写"},
 
     /* Main screen hints */
-    [STR_SET_SYNC]       = {"SET:sync",    "SET:同步"},
+    [STR_SET_SYNC]       = {"TOP:sync",    "顶:同步"},
     [STR_WIFI_CONNECTED] = {"[● Connected]", "[● 已连接]"},
     [STR_WIFI_SYNCING]   = {"[◎ Syncing]", "[◎ 同步中]"},
     [STR_CONNECT_FAILED] = {"[✕ Failed]", "[✕ 连接失败]"},
@@ -132,22 +132,22 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SCANNING_MAIN]  = {"[○ Scanning]", "[○ 扫描中]"},
     [STR_NO_WIFI]        = {"[○ No WiFi]", "[○ 无WiFi]"},
 
-    /* Hint bars */
-    [STR_H_SET_ENTER_PRESS_BACK]       = {"SET:enter|Press:back",  "SET:进入|Press:返回"},
-    [STR_H_SET_ENTER]                   = {"SET:enter",             "SET:进入"},
-    [STR_H_SET_TOGGLE_PRESS_BACK]      = {"SET:toggle|Press:back", "SET:切换|Press:返回"},
-    [STR_H_SET_SAVE_PRESS_CANCEL]      = {"SET:save|Press:cancel", "SET:保存|Press:取消"},
-    [STR_H_SET_EDIT_PRESS_BACK]        = {"SET:edit|Press:back",   "SET:编辑|Press:返回"},
-    [STR_H_SET_CONFIRM_DEFAULT]        = {"SET:confirm default",   "SET:确认默认"},
-    [STR_H_SET_CONFIRM_RESET]          = {"SET:confirm reset",     "SET:确认重置"},
-    [STR_H_SET_SELECT_PRESS_BACK]      = {"SET:select|Press:back", "SET:选择|Press:返回"},
-    [STR_H_SET_INPUT_PRESS_BACK]       = {"SET:input|Press:back",  "SET:输入|Press:返回"},
-    [STR_H_SET_START_PAUSE_PRESS_STOP] = {"SET:start/pause|Press:stop", "SET:开始/暂停|Press:停止"},
-    [STR_H_PRESS_BACK_SET_INFO]        = {"Press:back|SET:info",   "Press:返回|SET:信息"},
-    [STR_H_BUDDY_HINT]                 = {"SET:interact|Press:set","SET:互动|Press:设置"},
-    [STR_H_PRESS_BACK_SET_SELECT]      = {"Press:back|SET:select", "Press:返回|SET:选择"},
+    /* Hint bars: TOP=顶键(SET), SIDE=侧键(Encoder Press) */
+    [STR_H_SET_ENTER_PRESS_BACK]       = {"TOP:enter|SIDE:back",  "顶:进入|侧:返回"},
+    [STR_H_SET_ENTER]                   = {"TOP:enter",             "顶:进入"},
+    [STR_H_SET_TOGGLE_PRESS_BACK]      = {"TOP:toggle|SIDE:back", "顶:切换|侧:返回"},
+    [STR_H_SET_SAVE_PRESS_CANCEL]      = {"TOP:save|SIDE:cancel", "顶:保存|侧:取消"},
+    [STR_H_SET_EDIT_PRESS_BACK]        = {"TOP:edit|SIDE:back",   "顶:编辑|侧:返回"},
+    [STR_H_SET_CONFIRM_DEFAULT]        = {"TOP:confirm default",   "顶:确认默认"},
+    [STR_H_SET_CONFIRM_RESET]          = {"TOP:confirm reset",     "顶:确认重置"},
+    [STR_H_SET_SELECT_PRESS_BACK]      = {"TOP:select|SIDE:back", "顶:选择|侧:返回"},
+    [STR_H_SET_INPUT_PRESS_BACK]       = {"TOP:input|SIDE:back",  "顶:输入|侧:返回"},
+    [STR_H_SET_START_PAUSE_PRESS_STOP] = {"TOP:start/pause|SIDE:stop", "顶:开始/暂停|侧:停止"},
+    [STR_H_PRESS_BACK_SET_INFO]        = {"SIDE:back|TOP:info",   "侧:返回|顶:信息"},
+    [STR_H_BUDDY_HINT]                 = {"TOP:interact|SIDE:set","顶:互动|侧:设置"},
+    [STR_H_PRESS_BACK_SET_SELECT]      = {"SIDE:back|TOP:select", "侧:返回|顶:选择"},
     [STR_H_ANY_KEY_BACK_ENCODER_SCROLL]= {"Any key:back|Encoder:scroll", "任意键:返回|编码器:滚动"},
-    [STR_H_SET_PRESS_STOP_DEMO]        = {"SET/Press:stop demo",   "SET/Press:停止演示"},
+    [STR_H_SET_PRESS_STOP_DEMO]        = {"TOP/SIDE:stop demo",   "顶/侧:停止演示"},
 
     /* Weekday abbreviations */
     [STR_SUN]  = {"Sun", "周日"},
@@ -194,8 +194,8 @@ static const char *strings[STR_COUNT][2] = {
     [STR_MIN_LEVEL]        = {"Min",                 "分钟级"},
     [STR_HOUR_LEVEL]       = {"Hour",                "小时级"},
     [STR_DAY_LEVEL]        = {"Day",                 "日级"},
-    [STR_H_SENSOR_HINT]    = {"SET:Level Press:Set", "SET:切换 按:设置"},
-    [STR_H_SENSOR_EDIT]    = {"SET:Save Enc:Adj",    "SET:保存 编码器:调节"},
+    [STR_H_SENSOR_HINT]    = {"TOP:Level SIDE:Set", "顶:切换 侧:设置"},
+    [STR_H_SENSOR_EDIT]    = {"TOP:Save Enc:Adj",    "顶:保存 编码器:调节"},
 
     /* Demo colors */
     [STR_DEMO_WORK]       = {"Work",        "工作"},

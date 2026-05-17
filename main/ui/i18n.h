@@ -125,7 +125,7 @@ typedef enum {
     STR_UPPERCASE,
     STR_LOWERCASE,
 
-    /* Main screen hints */
+    /* Main screen hints  (hint bars: TOP=顶键, SIDE=侧键) */
     STR_SET_SYNC,
     STR_WIFI_CONNECTED,   /* "[● Connected]" / "[● 已连接]" */
     STR_WIFI_SYNCING,     /* "[◎ Syncing]" / "[◎ 同步中]" */
@@ -190,8 +190,8 @@ typedef enum {
     STR_MIN_LEVEL,         /* "Min" / "分级" */
     STR_HOUR_LEVEL,        /* "Hour" / "时级" */
     STR_DAY_LEVEL,         /* "Day" / "天级" */
-    STR_H_SENSOR_HINT,     /* "SET:Level Press:Set" / "SET:切换 按:设置" */
-    STR_H_SENSOR_EDIT,     /* "SET:Save Encoder:Adj" / "SET:保存 编码器:调节" */
+    STR_H_SENSOR_HINT,     /* "TOP:Level SIDE:Set" / "顶:切换 侧:设置" */
+    STR_H_SENSOR_EDIT,     /* "TOP:Save Enc:Adj" / "顶:保存 编码器:调节" */
 
     /* Demo colors */
     STR_DEMO_WORK,

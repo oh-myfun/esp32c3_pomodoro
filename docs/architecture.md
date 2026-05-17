@@ -63,7 +63,7 @@ WiFi 连接 (wifi_service)
 | GPIO6 | OUT | LCD SPI 时钟 (SCK) | `st7789_lcd.c` |
 | GPIO7 | OUT | LCD SPI 数据 (MOSI) | `st7789_lcd.c` |
 | GPIO8 | OUT | WS2812 RGB LED 数据 | `ws2812.c` |
-| GPIO9 | IN | SET 按键 (低电平有效) | `input_handler.c` |
+| GPIO9 | IN | 顶键 (低电平有效) | `input_handler.c` |
 | GPIO10 | OUT | LCD 数据/命令选择 (DC) | `st7789_lcd.c` |
 | GPIO20 | OUT | 蜂鸣器 PWM (LEDC) | `buzzer.c` |
 | GPIO21 | IN | EC11 编码器按键 (低电平有效) | `input_handler.c` |

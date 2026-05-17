@@ -11,7 +11,7 @@
 | GPIO6 | LCD SPI 时钟 (SCK) |
 | GPIO7 | LCD SPI 数据 (MOSI) |
 | GPIO8 | WS2812 RGB LED |
-| GPIO9 | SET 按键 (低电平有效) |
+| GPIO9 | 顶键 (低电平有效) |
 | GPIO10 | LCD 数据/命令 (DC) |
 | GPIO20 | 蜂鸣器 (PWM) |
 | GPIO21 | EC11 编码器按键 |

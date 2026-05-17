@@ -250,7 +250,7 @@ static void show_symbol_view(void)
     }
 
     if (hint_label) {
-        lv_label_set_text(hint_label, "SET:log|Encoder:scroll|Press:back");
+        lv_label_set_text(hint_label, "TOP:log|Encoder:scroll|SIDE:back");
     }
 }
 

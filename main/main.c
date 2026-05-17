@@ -402,20 +402,29 @@ static void ui_update_task(void *arg) {
             last_pomodoro_tick = now;
         }
 
-        // Main screen: time update every tick, WiFi status every 1 second
+        // Main screen: time update every tick
         if (current_screen == UI_SCREEN_MAIN) {
             lvgl_lock();
             ui_screen_main_update_time();
+            lvgl_unlock();
+        }
 
-            if (now - last_wifi_ui_tick >= 1000) {
-                wifi_state_t wifi_state = wifi_service_get_state();
-                int64_t now_ms = esp_timer_get_time() / 1000;
+        // WiFi state tracking: always update variables, only push UI on main screen
+        if (now - last_wifi_ui_tick >= 1000) {
+            wifi_state_t wifi_state = wifi_service_get_state();
+            int64_t now_ms = esp_timer_get_time() / 1000;
 
+            /* Keep wifi_connected_since fresh while connected */
+            if (wifi_state == WIFI_STATE_CONNECTED) {
+                wifi_fail_time = 0;
+                wifi_connected_since = now_ms;
+            }
+
+            if (current_screen == UI_SCREEN_MAIN) {
+                lvgl_lock();
                 if (wifi_fail_time > 0 && (now_ms - wifi_fail_time) < 3000) {
                     ui_screen_main_update_wifi_status(i18n(STR_CONNECT_FAILED), 0xFF4444);
                 } else if (wifi_state == WIFI_STATE_CONNECTED) {
-                    wifi_fail_time = 0;
-                    wifi_connected_since = now_ms;
                     bool synced = time_service_is_synced();
                     ui_screen_main_update_wifi_status(
                         synced ? i18n(STR_WIFI_CONNECTED) : i18n(STR_WIFI_SYNCING),
@@ -430,13 +439,9 @@ static void ui_update_task(void *arg) {
                     wifi_connected_since = 0;
                     ui_screen_main_update_wifi_status(i18n(STR_NO_WIFI), 0x666666);
                 }
+                lvgl_unlock();
             }
 
-            lvgl_unlock();
-        }
-
-        // WiFi list & saved list refresh every 1 second
-        if (now - last_wifi_ui_tick >= 1000) {
             if (current_screen == UI_SCREEN_WIFI_LIST) {
                 ui_screen_wifi_list_refresh();
             }

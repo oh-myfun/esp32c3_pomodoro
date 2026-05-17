@@ -125,7 +125,7 @@ LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()
 | GPIO6 | LCD SPI 时钟 (SCK) | `st7789_lcd.c` |
 | GPIO7 | LCD SPI 数据 (SDA/MOSI) | `st7789_lcd.c` |
 | GPIO8 | WS2812 数据 (DIN) | `ws2812.h` |
-| GPIO9 | SET 按键 (低电平有效) | `input_handler.c` |
+| GPIO9 | 顶键 (低电平有效) | `input_handler.c` |
 | GPIO10 | LCD 数据/命令选择 (RS/DC) | `st7789_lcd.c` |
 | GPIO20 | 蜂鸣器 (PWM/LEDC) | `buzzer.c` |
 | GPIO21 | 编码器按键 (低电平有效) | `input_handler.c` |
@@ -152,7 +152,7 @@ ESP32-C3 只有约 400KB 可用 RAM，Bluedroid BLE 协议栈初始化时 `BTU_S
 
 ### LVGL 递归互斥量
 
-不能用普通 `xSemaphoreCreateMutex()`。输入回调（encoder press → UI 回调 → `ui_switch_screen` → `lv_scr_load`）可能在已持锁的上下文中再次请求锁。必须用 `xSemaphoreCreateRecursiveMutex()` + `xSemaphoreTakeRecursive` / `xSemaphoreGiveRecursive`。
+不能用普通 `xSemaphoreCreateMutex()`。输入回调（侧键 → UI 回调 → `ui_switch_screen` → `lv_scr_load`）可能在已持锁的上下文中再次请求锁。必须用 `xSemaphoreCreateRecursiveMutex()` + `xSemaphoreTakeRecursive` / `xSemaphoreGiveRecursive`。
 
 ### LVGL 任务竞态
 
