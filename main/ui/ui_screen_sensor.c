@@ -19,7 +19,10 @@ static const char *TAG = "UI_SENSOR";
 static sensor_level_t current_level = SENSOR_LEVEL_SECONDS;
 
 /* UI objects */
-static lv_obj_t *values_label = NULL;
+static lv_obj_t *temp_label = NULL;
+static lv_obj_t *hum_label = NULL;
+static lv_obj_t *press_label = NULL;
+static lv_obj_t *alt_label = NULL;
 static lv_obj_t *chart = NULL;
 static lv_obj_t *time_left_label = NULL;
 static lv_obj_t *time_right_label = NULL;
@@ -132,14 +135,46 @@ static void update_chart(void)
 static void update_values(void)
 {
     sensor_sample_t s = sensor_service_get_current();
-    char buf[64];
-    int off = 0;
-    if (s.temp_valid)  off += snprintf(buf + off, sizeof(buf) - off, "%.1fC ", s.temperature);
-    if (s.hum_valid)   off += snprintf(buf + off, sizeof(buf) - off, "%.0f%% ", s.humidity);
-    if (s.press_valid) off += snprintf(buf + off, sizeof(buf) - off, "%.0fhPa ", s.pressure);
-    if (s.alt_valid)   off += snprintf(buf + off, sizeof(buf) - off, "%.0fm", s.altitude);
-    if (off == 0) snprintf(buf, sizeof(buf), "No sensor");
-    lv_label_set_text(values_label, buf);
+
+    if (temp_label) {
+        if (s.temp_valid) {
+            char buf[20];
+            snprintf(buf, sizeof(buf), "\xE2\x97\x8F%.1fC", s.temperature);
+            lv_label_set_text(temp_label, buf);
+        } else {
+            lv_label_set_text(temp_label, "");
+        }
+    }
+
+    if (hum_label) {
+        if (s.hum_valid) {
+            char buf[20];
+            snprintf(buf, sizeof(buf), "\xE2\x97\x8F%.0f%%", s.humidity);
+            lv_label_set_text(hum_label, buf);
+        } else {
+            lv_label_set_text(hum_label, "");
+        }
+    }
+
+    if (press_label) {
+        if (s.press_valid) {
+            char buf[20];
+            snprintf(buf, sizeof(buf), "\xE2\x97\x8F%.0fhPa", s.pressure);
+            lv_label_set_text(press_label, buf);
+        } else {
+            lv_label_set_text(press_label, "");
+        }
+    }
+
+    if (alt_label) {
+        if (s.alt_valid) {
+            char buf[20];
+            snprintf(buf, sizeof(buf), "\xE2\x97\x8F%.0fm", s.altitude);
+            lv_label_set_text(alt_label, buf);
+        } else {
+            lv_label_set_text(alt_label, "");
+        }
+    }
 }
 
 static void update_hint(void)
@@ -182,12 +217,30 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
     lv_obj_set_size(screen, 240, 240);
 
-    /* Top: current values */
-    values_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(values_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(values_label, &custom_font_16, 0);
-    lv_label_set_text(values_label, "--C --% --hPa --m");
-    lv_obj_align(values_label, LV_ALIGN_TOP_LEFT, 5, 5);
+    /* Top: individual value labels with colored dots */
+    temp_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(temp_label, COLOR_TEMP, 0);
+    lv_obj_set_style_text_font(temp_label, &custom_font_14, 0);
+    lv_label_set_text(temp_label, "");
+    lv_obj_align(temp_label, LV_ALIGN_TOP_LEFT, 5, 5);
+
+    hum_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(hum_label, COLOR_HUM, 0);
+    lv_obj_set_style_text_font(hum_label, &custom_font_14, 0);
+    lv_label_set_text(hum_label, "");
+    lv_obj_align(hum_label, LV_ALIGN_TOP_RIGHT, -60, 5);
+
+    press_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(press_label, COLOR_PRESS, 0);
+    lv_obj_set_style_text_font(press_label, &custom_font_14, 0);
+    lv_label_set_text(press_label, "");
+    lv_obj_align(press_label, LV_ALIGN_TOP_LEFT, 5, 20);
+
+    alt_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(alt_label, COLOR_ALT, 0);
+    lv_obj_set_style_text_font(alt_label, &custom_font_14, 0);
+    lv_label_set_text(alt_label, "");
+    lv_obj_align(alt_label, LV_ALIGN_TOP_RIGHT, -5, 20);
 
     /* Time axis: left label */
     time_left_label = lv_label_create(screen);
@@ -208,6 +261,7 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_obj_set_style_bg_color(chart, lv_color_hex(0x0a0a0a), 0);
     lv_obj_set_style_border_width(chart, 0, 0);
     lv_obj_set_style_pad_all(chart, 0, 0);
+    lv_obj_set_style_line_width(chart, 1, LV_PART_ITEMS);       /* 曲线宽度 */
     lv_obj_set_size(chart, 230, 145);
     lv_obj_align(chart, LV_ALIGN_TOP_MID, 0, 42);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
@@ -215,12 +269,23 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_chart_set_update_mode(chart, LV_CHART_UPDATE_MODE_SHIFT);
     lv_chart_set_div_line_count(chart, 0, 0);
 
+    /* Hide default axis lines and point markers */
+    lv_obj_set_style_line_width(chart, 0, LV_PART_MAIN);          /* 隐藏默认轴线 */
+    lv_obj_set_style_size(chart, 0, 0, LV_PART_INDICATOR);        /* 隐藏数据点圆圈 */
+
     /* Add series */
     ser_temp = lv_chart_add_series(chart, COLOR_TEMP, LV_CHART_AXIS_PRIMARY_Y);
     ser_hum = lv_chart_add_series(chart, COLOR_HUM, LV_CHART_AXIS_PRIMARY_Y);
     ser_press = lv_chart_add_series(chart, COLOR_PRESS, LV_CHART_AXIS_PRIMARY_Y);
     ser_alt = lv_chart_add_series(chart, COLOR_ALT, LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_set_point_count(chart, 60);
+
+    /* X axis line at bottom of chart */
+    lv_obj_t *xaxis = lv_line_create(screen);
+    static lv_point_precise_t xaxis_pts[] = {{5, 192}, {235, 192}};
+    lv_line_set_points(xaxis, xaxis_pts, 2);
+    lv_obj_set_style_line_color(xaxis, lv_color_hex(0x444444), 0);
+    lv_obj_set_style_line_width(xaxis, 1, 0);
 
     /* Bottom: hint */
     hint_label = lv_label_create(screen);
@@ -246,7 +311,7 @@ lv_obj_t* ui_screen_sensor_create(void)
 
 void ui_screen_sensor_update(void)
 {
-    if (values_label == NULL) return;
+    if (temp_label == NULL) return;
     update_values();
     update_chart();
 }
