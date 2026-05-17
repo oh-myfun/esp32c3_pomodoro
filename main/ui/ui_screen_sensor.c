@@ -92,16 +92,16 @@ static void update_chart(void)
     float p_min = (float)s.press_min, p_max = (float)s.press_max;
     float a_min = (float)s.alt_min, a_max = (float)s.alt_max;
 
-    /* Fill series data — SENSOR_NO_DATA → LV_CHART_POINT_NONE */
+    /* Fill series data — invalid fields → LV_CHART_POINT_NONE */
     for (int i = 0; i < count; i++) {
         lv_chart_set_series_value_by_id(chart, ser_temp, i,
-            data[i].temperature != SENSOR_NO_DATA ? normalize(data[i].temperature, t_min, t_max) : LV_CHART_POINT_NONE);
+            data[i].temp_valid ? normalize(data[i].temperature, t_min, t_max) : LV_CHART_POINT_NONE);
         lv_chart_set_series_value_by_id(chart, ser_hum, i,
-            data[i].humidity != SENSOR_NO_DATA ? normalize(data[i].humidity, 0, 100) : LV_CHART_POINT_NONE);
+            data[i].hum_valid ? normalize(data[i].humidity, 0, 100) : LV_CHART_POINT_NONE);
         lv_chart_set_series_value_by_id(chart, ser_press, i,
-            data[i].pressure != SENSOR_NO_DATA ? normalize(data[i].pressure, p_min, p_max) : LV_CHART_POINT_NONE);
+            data[i].press_valid ? normalize(data[i].pressure, p_min, p_max) : LV_CHART_POINT_NONE);
         lv_chart_set_series_value_by_id(chart, ser_alt, i,
-            data[i].altitude != SENSOR_NO_DATA ? normalize(data[i].altitude, a_min, a_max) : LV_CHART_POINT_NONE);
+            data[i].alt_valid ? normalize(data[i].altitude, a_min, a_max) : LV_CHART_POINT_NONE);
     }
     /* Fill remaining with LV_CHART_POINT_NONE */
     for (int i = count; i < pt_count; i++) {
@@ -134,10 +134,10 @@ static void update_values(void)
     sensor_sample_t s = sensor_service_get_current();
     char buf[64];
     int off = 0;
-    if (s.temperature != SENSOR_NO_DATA) off += snprintf(buf + off, sizeof(buf) - off, "%.1fC ", s.temperature);
-    if (s.humidity != SENSOR_NO_DATA)    off += snprintf(buf + off, sizeof(buf) - off, "%.0f%% ", s.humidity);
-    if (s.pressure != SENSOR_NO_DATA)    off += snprintf(buf + off, sizeof(buf) - off, "%.0fhPa ", s.pressure);
-    if (s.altitude != SENSOR_NO_DATA)    off += snprintf(buf + off, sizeof(buf) - off, "%.0fm", s.altitude);
+    if (s.temp_valid)  off += snprintf(buf + off, sizeof(buf) - off, "%.1fC ", s.temperature);
+    if (s.hum_valid)   off += snprintf(buf + off, sizeof(buf) - off, "%.0f%% ", s.humidity);
+    if (s.press_valid) off += snprintf(buf + off, sizeof(buf) - off, "%.0fhPa ", s.pressure);
+    if (s.alt_valid)   off += snprintf(buf + off, sizeof(buf) - off, "%.0fm", s.altitude);
     if (off == 0) snprintf(buf, sizeof(buf), "No sensor");
     lv_label_set_text(values_label, buf);
 }
