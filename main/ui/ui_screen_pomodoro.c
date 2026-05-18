@@ -207,8 +207,7 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
         case 4:
             color = 0xFFFF00;
             phase_text = i18n(STR_PHASE_PAUSED);
-            total_seconds = 1;  /* force full arc */
-            remaining_seconds = 1;
+            total_seconds = remaining_seconds;  /* next phase time → full arc */
             break;
         default:
             color = 0xAAAAAA;
