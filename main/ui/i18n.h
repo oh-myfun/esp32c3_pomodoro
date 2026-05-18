@@ -208,6 +208,12 @@ typedef enum {
     /* Pressure info */
     STR_PRESSURE_INFO,
     STR_PRESSURE_TIP,
+    STR_PI_HDR,         /* table header */
+    STR_PI_DAILY,
+    STR_PI_RAIN,
+    STR_PI_STORM,
+    STR_PI_TYPHOON,
+    STR_PI_NOTE,        /* bottom note */
 
     STR_COUNT
 } str_id_t;
