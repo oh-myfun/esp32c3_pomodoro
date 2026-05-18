@@ -567,7 +567,7 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     /* Bottom: description — 14px, 2-line wrap */
     attn_desc = lv_label_create(attn_container);
-    lv_obj_set_style_text_color(attn_desc, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(attn_desc, lv_color_hex(0xFFCC00), 0);
     lv_label_set_text(attn_desc, "");
     lv_obj_set_style_text_font(attn_desc, &custom_font_14, 0);
     lv_obj_set_pos(attn_desc, 6, 184);

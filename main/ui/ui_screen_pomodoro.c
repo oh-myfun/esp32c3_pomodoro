@@ -113,7 +113,7 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
 
     completed_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(completed_label, lv_color_hex(0xFF6B6B), 0);
     lv_label_set_text(completed_label, "🍅x0");
     lv_obj_set_style_text_font(completed_label, &custom_font_16, 0);
     lv_obj_align(completed_label, LV_ALIGN_TOP_RIGHT, -10, 8);

@@ -120,8 +120,12 @@ static void safe_strcpy(char *dst, const char *src, size_t dst_size)
 }
 
 /* Format permission_suggestions JSON into readable text
- * Format: +Tool: rule → behavior (scope)
- * e.g. "+Bash: npm install → allow (local)"
+ * +Tool: rule (scope)  — add rule
+ * -Tool: rule (scope)  — remove rule
+ * =Tool: rule (scope)  — replace rule
+ * Mode→auto (scope)    — set permission mode
+ * +Dir /path           — add directory
+ * -Dir /path           — remove directory
  */
 static void format_suggestions_text(const cJSON *suggestions, char *out, size_t out_size)
 {
@@ -142,14 +146,16 @@ static void format_suggestions_text(const cJSON *suggestions, char *out, size_t 
         const char *dest = cJSON_GetStringValue(cJSON_GetObjectItem(item, "destination"));
         const cJSON *rules = cJSON_GetObjectItem(item, "rules");
 
-        /* Type prefix */
-        char prefix = '+';  /* default addRules */
+        /* Type classification */
+        bool is_set_mode = (type && strcmp(type, "setMode") == 0);
+        bool is_add_dir = (type && strcmp(type, "addDirectories") == 0);
+        bool is_rm_dir = (type && strcmp(type, "removeDirectories") == 0);
+
+        /* Type prefix for rules */
+        char prefix = '+';
         if (type) {
             if (strcmp(type, "removeRules") == 0)       prefix = '-';
             else if (strcmp(type, "replaceRules") == 0)  prefix = '=';
-            else if (strcmp(type, "setMode") == 0)       prefix = 'M';
-            else if (strcmp(type, "addDirectories") == 0) prefix = '>';
-            else if (strcmp(type, "removeDirectories") == 0) prefix = '<';
         }
 
         /* Destination short name */
@@ -161,7 +167,33 @@ static void format_suggestions_text(const cJSON *suggestions, char *out, size_t 
             else if (strcmp(dest, "userSettings") == 0)    scope = "user";
         }
 
-        if (rules && cJSON_IsArray(rules)) {
+        if (is_set_mode) {
+            /* Mode change — behavior is the mode name */
+            if (off > 0) off += snprintf(out + off, out_size - off, "\n");
+            if (off >= (int)out_size - 1) break;
+            off += snprintf(out + off, out_size - off, "\xe2\x86\x92Mode: %s", behavior ? behavior : "?");
+            if (scope[0]) off += snprintf(out + off, out_size - off, " (%s)", scope);
+        } else if (is_add_dir || is_rm_dir) {
+            /* Directory add/remove */
+            if (rules && cJSON_IsArray(rules)) {
+                int rule_count = cJSON_GetArraySize(rules);
+                for (int r = 0; r < rule_count && off < (int)out_size - 2; r++) {
+                    const cJSON *rule = cJSON_GetArrayItem(rules, r);
+                    const char *path = cJSON_GetStringValue(rule);
+                    if (!path) path = cJSON_GetStringValue(cJSON_GetObjectItem(rule, "path"));
+                    if (off > 0) off += snprintf(out + off, out_size - off, "\n");
+                    if (off >= (int)out_size - 1) break;
+                    off += snprintf(out + off, out_size - off, "%cDir: %s",
+                                    is_add_dir ? '+' : '-', path ? path : "?");
+                }
+            } else {
+                if (off > 0) off += snprintf(out + off, out_size - off, "\n");
+                if (off >= (int)out_size - 1) break;
+                off += snprintf(out + off, out_size - off, "%cDir",
+                                is_add_dir ? '+' : '-');
+            }
+        } else if (rules && cJSON_IsArray(rules)) {
+            /* Tool rules */
             int rule_count = cJSON_GetArraySize(rules);
             for (int r = 0; r < rule_count && off < (int)out_size - 2; r++) {
                 const cJSON *rule = cJSON_GetArrayItem(rules, r);
@@ -176,19 +208,15 @@ static void format_suggestions_text(const cJSON *suggestions, char *out, size_t 
                 if (rule_content) {
                     off += snprintf(out + off, out_size - off, ": %s", rule_content);
                 }
-                if (behavior) {
-                    off += snprintf(out + off, out_size - off, " \xe2\x86\x92 %s", behavior);
-                }
                 if (scope[0]) {
                     off += snprintf(out + off, out_size - off, " (%s)", scope);
                 }
             }
         } else {
-            /* No rules array, just show type summary */
+            /* Fallback: no rules array */
             if (off > 0) off += snprintf(out + off, out_size - off, "\n");
             if (off >= (int)out_size - 1) break;
             off += snprintf(out + off, out_size - off, "%c", prefix);
-            if (behavior) off += snprintf(out + off, out_size - off, " \xe2\x86\x92 %s", behavior);
             if (scope[0]) off += snprintf(out + off, out_size - off, " (%s)", scope);
         }
     }
