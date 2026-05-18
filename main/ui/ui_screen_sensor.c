@@ -4,6 +4,7 @@
 #include "ui_manager.h"
 #include "service/sensor_service.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -13,7 +14,10 @@ static const char *TAG = "UI_SENSOR";
 #define COLOR_TEMP    lv_color_hex(0xFF6B6B)
 #define COLOR_HUM     lv_color_hex(0x4D96FF)
 #define COLOR_PRESS   lv_color_hex(0x66CC66)
+#define COLOR_ALT     lv_color_hex(0xFFDD00)
 
+typedef enum { VIEW_REALTIME, VIEW_CHART } sensor_view_t;
+static sensor_view_t view_mode = VIEW_REALTIME;
 static sensor_level_t current_level = SENSOR_LEVEL_SECONDS;
 
 /* UI objects */
@@ -31,6 +35,13 @@ static lv_obj_t *hint_label = NULL;
 static lv_chart_series_t *ser_temp = NULL;
 static lv_chart_series_t *ser_hum = NULL;
 static lv_chart_series_t *ser_press = NULL;
+
+/* Real-time view objects (4 quadrant containers) */
+static lv_obj_t *rt_containers[4] = {NULL};
+static lv_obj_t *rt_temp_val = NULL;
+static lv_obj_t *rt_hum_val  = NULL;
+static lv_obj_t *rt_press_val = NULL;
+static lv_obj_t *rt_alt_val  = NULL;
 
 static const str_id_t level_names[SENSOR_LEVEL_COUNT] = {
     STR_SEC_LEVEL, STR_MIN_LEVEL, STR_HOUR_LEVEL, STR_DAY_LEVEL
@@ -167,29 +178,84 @@ static void update_values(void)
     }
 }
 
+static void update_realtime(void)
+{
+    sensor_sample_t s = sensor_service_get_current();
+
+    if (rt_temp_val) {
+        if (s.temp_valid) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.1f", s.temperature);
+            lv_label_set_text(rt_temp_val, buf);
+        } else {
+            lv_label_set_text(rt_temp_val, "--");
+        }
+    }
+
+    if (rt_hum_val) {
+        if (s.hum_valid) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0f", s.humidity);
+            lv_label_set_text(rt_hum_val, buf);
+        } else {
+            lv_label_set_text(rt_hum_val, "--");
+        }
+    }
+
+    if (rt_press_val) {
+        if (s.press_valid) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0f", s.pressure);
+            lv_label_set_text(rt_press_val, buf);
+        } else {
+            lv_label_set_text(rt_press_val, "--");
+        }
+    }
+
+    if (rt_alt_val) {
+        if (s.alt_valid) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%.0f", s.altitude);
+            lv_label_set_text(rt_alt_val, buf);
+        } else {
+            lv_label_set_text(rt_alt_val, "--");
+        }
+    }
+}
+
+static void update_hint(void);
+
+static void set_view_mode(sensor_view_t mode)
+{
+    view_mode = mode;
+
+    lv_obj_t *chart_objs[] = {
+        temp_label, hum_label, press_label, alt_label,
+        chart, time_left_label, time_right_label, level_label
+    };
+    bool show_chart = (mode == VIEW_CHART);
+    for (int i = 0; i < 8; i++) {
+        if (chart_objs[i]) {
+            if (show_chart) lv_obj_clear_flag(chart_objs[i], LV_OBJ_FLAG_HIDDEN);
+            else            lv_obj_add_flag(chart_objs[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (rt_containers[i]) {
+            if (show_chart) lv_obj_add_flag(rt_containers[i], LV_OBJ_FLAG_HIDDEN);
+            else            lv_obj_clear_flag(rt_containers[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (mode == VIEW_REALTIME) update_realtime();
+    if (mode == VIEW_CHART)    { update_chart(); update_values(); update_hint(); }
+}
+
 static void update_hint(void)
 {
     if (level_label) {
-        if (current_level == SENSOR_LEVEL_SECONDS) {
-            /* Show actual interval for raw samples level */
-            sensor_settings_t s;
-            sensor_service_get_settings(&s);
-            int32_t interval = s.sample_interval;
-            if (interval < 1) interval = 1;
-            if (interval > 60) interval = 60;
-            int32_t total_sec = interval * 60;
-            char buf[16];
-            if (total_sec >= 3600) {
-                snprintf(buf, sizeof(buf), "%dh", (int)(total_sec / 3600));
-            } else if (total_sec >= 60) {
-                snprintf(buf, sizeof(buf), "%dmin", (int)(total_sec / 60));
-            } else {
-                snprintf(buf, sizeof(buf), "%ds", (int)total_sec);
-            }
-            lv_label_set_text(level_label, buf);
-        } else {
-            lv_label_set_text(level_label, i18n(level_names[current_level]));
-        }
+        lv_label_set_text(level_label, i18n(level_names[current_level]));
     }
     if (hint_label) {
         lv_label_set_text(hint_label, i18n(STR_H_SENSOR_HINT));
@@ -213,9 +279,19 @@ static void sensor_on_encoder_press(void)
 
 static void sensor_on_settings_press(void)
 {
-    current_level = (current_level + 1) % SENSOR_LEVEL_COUNT;
-    update_hint();
-    update_chart();
+    if (view_mode == VIEW_REALTIME) {
+        set_view_mode(VIEW_CHART);
+        current_level = SENSOR_LEVEL_SECONDS;
+    } else {
+        current_level = (current_level + 1) % SENSOR_LEVEL_COUNT;
+        if (current_level == SENSOR_LEVEL_SECONDS && view_mode == VIEW_CHART) {
+            /* Wrapped back to seconds level → return to realtime view */
+            set_view_mode(VIEW_REALTIME);
+            return;
+        }
+        update_hint();
+        update_chart();
+    }
 }
 
 static void sensor_on_encoder_long_press(void)
@@ -286,8 +362,8 @@ lv_obj_t* ui_screen_sensor_create(void)
 
     /* Altitude label: top-right corner of chart (created after chart to be on top) */
     alt_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(alt_label, lv_color_hex(0xFFAA33), 0);
-    lv_obj_set_style_text_font(alt_label, &custom_font_14, 0);
+    lv_obj_set_style_text_color(alt_label, COLOR_ALT, 0);
+    lv_obj_set_style_text_font(alt_label, &custom_font_16, 0);
     lv_label_set_text(alt_label, "");
     lv_obj_set_pos(alt_label, 170, 48);
 
@@ -316,6 +392,85 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -4);
 
+    /* ---- Real-time view: 4 quadrants ---- */
+    /* Layout: top y=26 h=96, bottom y=122 h=96, left w=120, right w=120 */
+    #define RT_QW  120
+    #define RT_QH  96
+    #define RT_YT  26
+    #define RT_YB  122
+
+    /* Temperature (top-left, red) */
+    rt_containers[0] = lv_obj_create(screen);
+    lv_obj_remove_style_all(rt_containers[0]);
+    lv_obj_set_size(rt_containers[0], RT_QW, RT_QH);
+    lv_obj_set_pos(rt_containers[0], 0, RT_YT);
+
+    rt_temp_val = lv_label_create(rt_containers[0]);
+    lv_obj_set_style_text_font(rt_temp_val, &lv_font_montserrat_40, 0);
+    lv_obj_set_style_text_color(rt_temp_val, COLOR_TEMP, 0);
+    lv_label_set_text(rt_temp_val, "--");
+    lv_obj_align(rt_temp_val, LV_ALIGN_CENTER, 0, -12);
+
+    lv_obj_t *rt_temp_unit = lv_label_create(rt_containers[0]);
+    lv_obj_set_style_text_font(rt_temp_unit, &custom_font_16, 0);
+    lv_obj_set_style_text_color(rt_temp_unit, COLOR_TEMP, 0);
+    lv_label_set_text(rt_temp_unit, "\xc2\xb0""C");
+    lv_obj_align(rt_temp_unit, LV_ALIGN_CENTER, 0, 24);
+
+    /* Humidity (top-right, blue) */
+    rt_containers[1] = lv_obj_create(screen);
+    lv_obj_remove_style_all(rt_containers[1]);
+    lv_obj_set_size(rt_containers[1], RT_QW, RT_QH);
+    lv_obj_set_pos(rt_containers[1], RT_QW, RT_YT);
+
+    rt_hum_val = lv_label_create(rt_containers[1]);
+    lv_obj_set_style_text_font(rt_hum_val, &lv_font_montserrat_40, 0);
+    lv_obj_set_style_text_color(rt_hum_val, COLOR_HUM, 0);
+    lv_label_set_text(rt_hum_val, "--");
+    lv_obj_align(rt_hum_val, LV_ALIGN_CENTER, 0, -12);
+
+    lv_obj_t *rt_hum_unit = lv_label_create(rt_containers[1]);
+    lv_obj_set_style_text_font(rt_hum_unit, &custom_font_16, 0);
+    lv_obj_set_style_text_color(rt_hum_unit, COLOR_HUM, 0);
+    lv_label_set_text(rt_hum_unit, "%RH");
+    lv_obj_align(rt_hum_unit, LV_ALIGN_CENTER, 0, 24);
+
+    /* Pressure (bottom-left, green) */
+    rt_containers[2] = lv_obj_create(screen);
+    lv_obj_remove_style_all(rt_containers[2]);
+    lv_obj_set_size(rt_containers[2], RT_QW, RT_QH);
+    lv_obj_set_pos(rt_containers[2], 0, RT_YB);
+
+    rt_press_val = lv_label_create(rt_containers[2]);
+    lv_obj_set_style_text_font(rt_press_val, &lv_font_montserrat_40, 0);
+    lv_obj_set_style_text_color(rt_press_val, COLOR_PRESS, 0);
+    lv_label_set_text(rt_press_val, "--");
+    lv_obj_align(rt_press_val, LV_ALIGN_CENTER, 0, -12);
+
+    lv_obj_t *rt_press_unit = lv_label_create(rt_containers[2]);
+    lv_obj_set_style_text_font(rt_press_unit, &custom_font_16, 0);
+    lv_obj_set_style_text_color(rt_press_unit, COLOR_PRESS, 0);
+    lv_label_set_text(rt_press_unit, "hPa");
+    lv_obj_align(rt_press_unit, LV_ALIGN_CENTER, 0, 24);
+
+    /* Altitude (bottom-right, orange) */
+    rt_containers[3] = lv_obj_create(screen);
+    lv_obj_remove_style_all(rt_containers[3]);
+    lv_obj_set_size(rt_containers[3], RT_QW, RT_QH);
+    lv_obj_set_pos(rt_containers[3], RT_QW, RT_YB);
+
+    rt_alt_val = lv_label_create(rt_containers[3]);
+    lv_obj_set_style_text_font(rt_alt_val, &lv_font_montserrat_40, 0);
+    lv_obj_set_style_text_color(rt_alt_val, COLOR_ALT, 0);
+    lv_label_set_text(rt_alt_val, "--");
+    lv_obj_align(rt_alt_val, LV_ALIGN_CENTER, 0, -12);
+
+    lv_obj_t *rt_alt_unit = lv_label_create(rt_containers[3]);
+    lv_obj_set_style_text_font(rt_alt_unit, &custom_font_16, 0);
+    lv_obj_set_style_text_color(rt_alt_unit, COLOR_ALT, 0);
+    lv_label_set_text(rt_alt_unit, "m");
+    lv_obj_align(rt_alt_unit, LV_ALIGN_CENTER, 0, 24);
+
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = sensor_on_encoder_cw,
         .on_encoder_ccw = sensor_on_encoder_ccw,
@@ -327,6 +482,7 @@ lv_obj_t* ui_screen_sensor_create(void)
 
     current_level = SENSOR_LEVEL_SECONDS;
     update_hint();
+    set_view_mode(VIEW_REALTIME);
 
     ESP_LOGI(TAG, "Sensor screen created");
     return screen;
@@ -335,6 +491,19 @@ lv_obj_t* ui_screen_sensor_create(void)
 void ui_screen_sensor_update(void)
 {
     if (temp_label == NULL) return;
-    update_values();
-    update_chart();
+
+    /* Detect re-entry: reset to realtime view when screen becomes active again */
+    static int64_t last_update_ms = 0;
+    int64_t now = esp_timer_get_time() / 1000;
+    if (now - last_update_ms > 2000) {
+        set_view_mode(VIEW_REALTIME);
+    }
+    last_update_ms = now;
+
+    if (view_mode == VIEW_REALTIME) {
+        update_realtime();
+    } else {
+        update_values();
+        update_chart();
+    }
 }

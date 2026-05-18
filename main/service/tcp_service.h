@@ -60,6 +60,7 @@ typedef struct {
 } tcp_scan_result_t;
 
 void tcp_service_scan(void);
+bool tcp_service_is_scan_busy(void);
 int  tcp_service_get_scan_count(void);
 const tcp_scan_result_t *tcp_service_get_scan_result(int index);
 

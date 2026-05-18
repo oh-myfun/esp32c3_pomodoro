@@ -93,8 +93,8 @@ static void set_state_locked(buddy_state_t new_state)
 
     ESP_LOGI(TAG, "state: %d -> %d", s_state, new_state);
 
-    /* Stop previous LED effect */
-    led_service_stop();
+    /* Stop previous LED effect (only buddy's wait, not pomodoro's) */
+    led_service_wait_done(LED_WAIT_BUDDY);
 
     s_state      = new_state;
     s_tick_count = 0;
@@ -104,7 +104,7 @@ static void set_state_locked(buddy_state_t new_state)
         case BUDDY_ATTENTION:
             sound_service_play(SOUND_BUDDY_ATTENTION);
             led_service_play(LED_COLOR_ATTENTION);
-            led_service_wait(LED_COLOR_ATTENTION);
+            led_service_wait(LED_COLOR_ATTENTION, LED_WAIT_BUDDY);
             break;
         case BUDDY_CELEBRATE:
             led_service_play(LED_COLOR_CELEBRATE);
@@ -463,7 +463,7 @@ void buddy_tick(void)
         break;
 
     case BUDDY_ATTENTION:
-        led_service_wait(LED_COLOR_ATTENTION);
+        led_service_wait(LED_COLOR_ATTENTION, LED_WAIT_BUDDY);
         break;
 
     default:

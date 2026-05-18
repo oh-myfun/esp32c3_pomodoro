@@ -42,7 +42,7 @@ static const char *TAG = "MAIN";
 
 #define LVGL_DRAW_BUF_LINES 20
 #define LVGL_TICK_PERIOD_MS 1
-#define LVGL_TASK_MAX_DELAY_MS 10
+#define LVGL_TASK_MAX_DELAY_MS 100
 #define LVGL_TASK_MIN_DELAY_MS 1
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 5
@@ -128,15 +128,8 @@ static void lvgl_port_task(void *arg)
 
 /* ---- Callback wiring ---- */
 
-static int64_t wifi_fail_time = 0;  // Timestamp of last connect failure
-
-// WiFi -> time_service + UI
-static int64_t wifi_connected_since = 0;  // 0 = not confirmed connected
-
 static void on_wifi_connected(const char *ip) {
     ESP_LOGI(TAG, "WiFi connected, IP: %s", ip ? ip : "null");
-    wifi_fail_time = 0;
-    wifi_connected_since = esp_timer_get_time() / 1000;
     sound_service_play(SOUND_WIFI_CONNECTED);
     time_service_request_sync();
 
@@ -158,7 +151,6 @@ static void on_wifi_connected(const char *ip) {
 
 static void on_wifi_disconnected(void) {
     ESP_LOGI(TAG, "WiFi disconnected");
-    wifi_connected_since = 0;
     if (ui_get_current_screen() == UI_SCREEN_WIFI_SAVED) {
         lvgl_lock();
         ui_screen_wifi_saved_refresh();
@@ -172,7 +164,6 @@ static void on_wifi_scan_complete(int count) {
 
 static void on_wifi_connect_failed(void) {
     ESP_LOGI(TAG, "WiFi connect failed");
-    wifi_fail_time = esp_timer_get_time() / 1000;
     sound_service_play(SOUND_WIFI_FAILED);
 }
 
@@ -379,7 +370,7 @@ static void ui_update_task(void *arg) {
                         // Manual: work ended, waiting for user
                         sound_service_play(SOUND_POMO_WORK_DONE);
                         led_service_play(LED_COLOR_BREAK);
-                        led_service_wait(LED_COLOR_BREAK);
+                        led_service_wait(LED_COLOR_BREAK, LED_WAIT_POMODORO);
                     } else if (state.phase == POMODORO_PHASE_BREAK) {
                         // Auto: directly starting break
                         sound_service_play(SOUND_POMO_BREAK_START);
@@ -393,7 +384,7 @@ static void ui_update_task(void *arg) {
                         // Manual: break ended, waiting for user
                         sound_service_play(SOUND_POMO_BREAK_DONE);
                         led_service_play(LED_COLOR_WORK);
-                        led_service_wait(LED_COLOR_WORK);
+                        led_service_wait(LED_COLOR_WORK, LED_WAIT_POMODORO);
                     } else if (state.phase == POMODORO_PHASE_WORK) {
                         // Auto: directly starting work
                         sound_service_play(SOUND_POMO_WORK_START);
@@ -415,22 +406,12 @@ static void ui_update_task(void *arg) {
             lvgl_unlock();
         }
 
-        // WiFi state tracking: always update variables, only push UI on main screen
+        // WiFi status: query real state from services, only push UI on main screen
         if (now - last_wifi_ui_tick >= 1000) {
-            wifi_state_t wifi_state = wifi_service_get_state();
-            int64_t now_ms = esp_timer_get_time() / 1000;
-
-            /* Keep wifi_connected_since fresh while connected */
-            if (wifi_state == WIFI_STATE_CONNECTED) {
-                wifi_fail_time = 0;
-                wifi_connected_since = now_ms;
-            }
-
             if (current_screen == UI_SCREEN_MAIN) {
+                wifi_state_t wifi_state = wifi_service_get_state();
                 lvgl_lock();
-                if (wifi_fail_time > 0 && (now_ms - wifi_fail_time) < 3000) {
-                    ui_screen_main_update_wifi_status(i18n(STR_CONNECT_FAILED), 0xFF4444);
-                } else if (wifi_state == WIFI_STATE_CONNECTED) {
+                if (wifi_state == WIFI_STATE_CONNECTED) {
                     bool synced = time_service_is_synced();
                     ui_screen_main_update_wifi_status(
                         synced ? i18n(STR_WIFI_CONNECTED) : i18n(STR_WIFI_SYNCING),
@@ -439,10 +420,7 @@ static void ui_update_task(void *arg) {
                     ui_screen_main_update_wifi_status(i18n(STR_SCANNING_MAIN), 0xAAAAAA);
                 } else if (wifi_state == WIFI_STATE_CONNECTING) {
                     ui_screen_main_update_wifi_status(i18n(STR_CONNECTING), 0xFFAA00);
-                } else if (wifi_connected_since > 0 && (now_ms - wifi_connected_since) < 5000) {
-                    // Recently connected, brief disconnection — keep showing connected
                 } else {
-                    wifi_connected_since = 0;
                     ui_screen_main_update_wifi_status(i18n(STR_NO_WIFI), 0x666666);
                 }
                 lvgl_unlock();

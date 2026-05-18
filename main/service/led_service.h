@@ -31,10 +31,15 @@ extern const char *const led_demo_color_names[LED_DEMO_COLOR_COUNT];
 
 void led_service_init(void);
 
+// Wait source identifiers (bitmask indices)
+#define LED_WAIT_POMODORO  0
+#define LED_WAIT_BUDDY     1
+
 // Scene triggers (same timing as sound effects)
-void led_service_play(led_color_t color);   // Outer ring: play 1 round
-void led_service_wait(led_color_t color);   // Center LED: start looping
-void led_service_stop(void);                // All off
+void led_service_play(led_color_t color);         // Outer ring: play 2 rounds (overrides current)
+void led_service_wait(led_color_t color, uint8_t source);  // Center LED: start looping (source-tracked)
+void led_service_wait_done(uint8_t source);       // Clear one source's wait; all-off when none left
+void led_service_stop(void);                      // Force all off, clear all waits
 
 // Settings
 void led_service_set_enabled(bool on);

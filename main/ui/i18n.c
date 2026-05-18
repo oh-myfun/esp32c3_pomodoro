@@ -178,7 +178,7 @@ static const char *strings[STR_COUNT][2] = {
 
     /* Sensor page */
     [STR_T_SENSOR]         = {"Sensor",              "传感器"},
-    [STR_T_SENSOR_PAGE]    = {"\xf0\x9f\x8c\xa1Temp Hum Press", "\xf0\x9f\x8c\xa1\xe6\xb8\xa9\xe6\xb9\xbf\xe5\xba\xa6\xe6\xb0\x94\xe5\x8e\x8b"},
+    [STR_T_SENSOR_PAGE]    = {"\xf0\x9f\x8c\xa1Temp Hum Press Alt", "\xf0\x9f\x8c\xa1\xe6\xb8\xa9\xe6\xb9\xbf\xe5\xba\xa6\xe6\xb0\x94\xe5\x8e\x8b\xe6\xb5\xb7\xe6\x8b\x94"},
     [STR_SENSOR_SETTINGS]  = {"Sensor Settings",     "传感器设置"},
     [STR_TEMP_MIN]         = {"Temp Min",            "温度最小"},
     [STR_TEMP_MAX]         = {"Temp Max",            "温度最大"},
@@ -195,7 +195,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_MIN_LEVEL]        = {"Min",                 "分钟级"},
     [STR_HOUR_LEVEL]       = {"Hour",                "小时级"},
     [STR_DAY_LEVEL]        = {"Day",                 "日级"},
-    [STR_H_SENSOR_HINT]    = {"TOP:Level SIDE:Set", "顶:切换 侧:设置"},
+    [STR_H_SENSOR_HINT]    = {"TOP:View SIDE:Set", "顶:切换 侧:设置"},
     [STR_H_SENSOR_EDIT]    = {"TOP:Save Enc:Adj",    "顶:保存 编码器:调节"},
 
     /* Demo colors */

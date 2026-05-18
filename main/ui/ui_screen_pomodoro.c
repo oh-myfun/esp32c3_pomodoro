@@ -18,20 +18,18 @@ static bool pomo_is_running(void)
 
 static void pomo_on_encoder_cw(void)
 {
-    if (pomo_is_running()) return;
     ui_switch_screen(UI_SCREEN_BUDDY);
 }
 
 static void pomo_on_encoder_ccw(void)
 {
-    if (pomo_is_running()) return;
     ui_switch_screen(UI_SCREEN_SENSOR);
 }
 
 static void pomo_on_encoder_press(void)
 {
     pomodoro_engine_stop();
-    led_service_stop();
+    led_service_wait_done(LED_WAIT_POMODORO);
 }
 
 static void pomo_on_settings_press(void)
@@ -44,7 +42,7 @@ static void pomo_on_settings_press(void)
     } else if (state.is_paused) {
         pomodoro_engine_resume();
         pomodoro_state_t resumed = pomodoro_engine_get_state();
-        led_service_stop();
+        led_service_wait_done(LED_WAIT_POMODORO);
         if (resumed.phase == POMODORO_PHASE_WORK) {
             sound_service_play(SOUND_POMO_WORK_START);
             led_service_play(LED_COLOR_WORK);
@@ -58,7 +56,7 @@ static void pomo_on_settings_press(void)
     } else {
         pomodoro_engine_pause();
         sound_service_play(SOUND_CONFIRM);
-        led_service_wait((led_color_t){255, 255, 0});
+        led_service_wait((led_color_t){255, 255, 0}, LED_WAIT_POMODORO);
     }
 }
 

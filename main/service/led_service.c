@@ -13,6 +13,7 @@ static const char *TAG = "LED";
 #define CENTER_INDEX    0
 #define OUTER_COUNT     8
 #define OUTER_INDEX     1   // outer ring starts at index 1
+#define WAIT_SOURCE_MAX 2   // LED_WAIT_POMODORO, LED_WAIT_BUDDY
 
 // Frame timer
 #define FRAME_INTERVAL_US   20000   // 20ms = 50fps
@@ -58,8 +59,9 @@ static struct {
     esp_timer_handle_t frame_timer;
     bool timer_running;
 
-    // Wait flag: set by led_service_wait(), checked after outer ring completes
-    bool wait_pending;
+    // Wait flag: source-tracked, bitmask of active wait sources
+    uint8_t wait_sources;                           // active wait bitmask
+    led_color_t wait_colors[WAIT_SOURCE_MAX];       // per-source wait color
 
     // Demo
     demo_state_t demo;
@@ -214,6 +216,15 @@ static void all_off(void)
 }
 
 // ---- Animation rendering ----
+
+// Pick highest-priority active wait color (BUDDY > POMODORO)
+static led_color_t get_active_wait_color(void)
+{
+    for (int i = WAIT_SOURCE_MAX - 1; i >= 0; i--) {
+        if (led.wait_sources & (1 << i)) return led.wait_colors[i];
+    }
+    return (led_color_t){0, 0, 0};
+}
 
 // Center LED rendering
 static led_color_t render_center(led_color_t base, float phase)
@@ -390,8 +401,9 @@ static void frame_callback(void *arg)
             } else {
                 memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
                 ws2812_set_pixels(led.pixels, LED_COUNT);
-                if (led.wait_pending) {
+                if (led.wait_sources) {
                     led.state = LED_STATE_WAITING_CENTER;
+                    led.wait_color = get_active_wait_color();
                     led.wait_start_us = now;
                 } else {
                     led.state = LED_STATE_IDLE;
@@ -488,42 +500,58 @@ void led_service_play(led_color_t color)
 {
     if (!led.enabled) return;
 
-    // Ensure previous animation is fully stopped
     stop_timer();
 
     led.play_color = color;
     led.state = LED_STATE_PLAYING_OUTER;
     led.play_start_us = esp_timer_get_time();
     led.play_round = 1;
-    led.wait_pending = false;
 
-    // Start from clean state
     memset(&led.pixels[OUTER_INDEX], 0, OUTER_COUNT * sizeof(rgb_t));
     ws2812_set_pixels(led.pixels, LED_COUNT);
 
     start_timer();
 }
 
-void led_service_wait(led_color_t color)
+void led_service_wait(led_color_t color, uint8_t source)
 {
     if (!led.enabled) return;
+    if (source >= WAIT_SOURCE_MAX) return;
 
-    led.wait_color = color;
-    led.wait_pending = true;
+    led.wait_colors[source] = color;
+    led.wait_sources |= (1 << source);
 
     if (led.state == LED_STATE_IDLE) {
         led.state = LED_STATE_WAITING_CENTER;
+        led.wait_color = color;
         led.wait_start_us = esp_timer_get_time();
         start_timer();
+    } else if (led.state == LED_STATE_WAITING_CENTER) {
+        led.wait_color = get_active_wait_color();
     }
     // If PLAYING_OUTER, wait will start after outer ring completes (see frame_callback)
 }
 
 void led_service_stop(void)
 {
+    led.wait_sources = 0;
     led.state = LED_STATE_IDLE;
     stop_timer();
     all_off();
+}
+
+void led_service_wait_done(uint8_t source)
+{
+    if (source >= WAIT_SOURCE_MAX) return;
+    led.wait_sources &= ~(1 << source);
+
+    if (led.wait_sources == 0) {
+        led.state = LED_STATE_IDLE;
+        stop_timer();
+        all_off();
+    } else if (led.state == LED_STATE_WAITING_CENTER) {
+        led.wait_color = get_active_wait_color();
+    }
 }
 
 // Settings

@@ -269,8 +269,6 @@ static void dispatch_message(const char *type_str, cJSON *root)
 
     if (strcmp(type_str, "waiting_pairing") == 0) {
         ESP_LOGI(TAG, "Waiting for pairing...");
-        s_project[0] = '\0';
-        invoke_on_paired();
     } else if (strcmp(type_str, "paired") == 0) {
         ESP_LOGI(TAG, "Paired successfully!");
         cJSON *proj = cJSON_GetObjectItem(data, "project");
@@ -839,6 +837,11 @@ void tcp_service_scan(void)
     s_scan_count = 0;
 
     xTaskCreate(scan_task, "tcp_scan", 6144, NULL, TASK_PRIORITY, NULL);
+}
+
+bool tcp_service_is_scan_busy(void)
+{
+    return s_scan_busy;
 }
 
 int tcp_service_get_scan_count(void)

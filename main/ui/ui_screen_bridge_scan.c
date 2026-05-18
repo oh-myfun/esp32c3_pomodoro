@@ -39,6 +39,7 @@ static int scroll_off = 0;   /* first visible row index */
 static int last_scan_count = -1;
 static int total_hosts = 0;
 static int total_sessions = 0;
+static bool scan_done = false;  /* true after first scan completes */
 
 /* ---- Helpers ---- */
 
@@ -175,17 +176,28 @@ static void scan_on_encoder_long_press(void)
 
 static void scan_on_settings_press(void)
 {
-    if (cursor < 0 || cursor >= item_count) return;
-    if (items[cursor].is_header) return;
+    /* If a session is selected, confirm and go back */
+    if (cursor >= 0 && cursor < item_count && !items[cursor].is_header) {
+        int hi = items[cursor].host_idx;
+        int si = items[cursor].session_idx;
+        const tcp_scan_result_t *r = tcp_service_get_scan_result(hi);
+        if (r && si >= 0 && si < r->session_count) {
+            ui_screen_settings_buddy_set_scan_result(
+                r->host, r->port, r->sessions[si].pairing_code);
+            ui_go_back();
+            return;
+        }
+    }
 
-    int hi = items[cursor].host_idx;
-    int si = items[cursor].session_idx;
-    const tcp_scan_result_t *r = tcp_service_get_scan_result(hi);
-    if (!r || si < 0 || si >= r->session_count) return;
-
-    ui_screen_settings_buddy_set_scan_result(
-        r->host, r->port, r->sessions[si].pairing_code);
-    ui_go_back();
+    /* No results or scanning done — re-scan */
+    if (scan_done && !tcp_service_is_scan_busy()) {
+        tcp_service_scan();
+        scan_done = false;
+        last_scan_count = -1;
+        item_count = 0;
+        update_visible();
+        if (hint_label) lv_label_set_text(hint_label, i18n(STR_SCANNING));
+    }
 }
 
 /* ---- Public API ---- */
@@ -203,6 +215,7 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
     scrollbar = NULL;
     last_scan_count = -1;
     item_count = 0;
+    scan_done = false;
 
     /* Row labels (created first so title/hint render on top) */
     for (int i = 0; i < VISIBLE_ROWS; i++) {
@@ -254,9 +267,13 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
 
 void ui_screen_bridge_scan_refresh(void)
 {
+    if (tcp_service_is_scan_busy()) return;  /* still scanning, wait */
+    if (scan_done) return;  /* already processed results */
+
     int count = tcp_service_get_scan_count();
-    if (count == last_scan_count) return;
+    if (count == last_scan_count && count > 0) return;
     last_scan_count = count;
+    scan_done = true;
 
     rebuild_items();
     update_visible();

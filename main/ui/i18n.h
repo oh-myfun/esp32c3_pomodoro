@@ -174,7 +174,7 @@ typedef enum {
 
     /* Sensor page */
     STR_T_SENSOR,          /* "Sensor" / "传感器" */
-    STR_T_SENSOR_PAGE,     /* "🌡Temp Hum Alt" / "🌡温湿度海拔" */
+    STR_T_SENSOR_PAGE,     /* "🌡Temp Hum Press Alt" / "🌡温湿度气压海拔" */
     STR_SENSOR_SETTINGS,   /* "Sensor Settings" / "传感器设置" */
     STR_TEMP_MIN,          /* "Temp Min" / "温度最小" */
     STR_TEMP_MAX,          /* "Temp Max" / "温度最大" */
@@ -191,7 +191,7 @@ typedef enum {
     STR_MIN_LEVEL,         /* "Min" / "分级" */
     STR_HOUR_LEVEL,        /* "Hour" / "时级" */
     STR_DAY_LEVEL,         /* "Day" / "天级" */
-    STR_H_SENSOR_HINT,     /* "TOP:Level SIDE:Set" / "顶:切换 侧:设置" */
+    STR_H_SENSOR_HINT,     /* "TOP:View SIDE:Set" / "顶:切换 侧:设置" */
     STR_H_SENSOR_EDIT,     /* "TOP:Save Enc:Adj" / "顶:保存 编码器:调节" */
 
     /* Demo colors */
