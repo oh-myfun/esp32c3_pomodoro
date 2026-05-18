@@ -39,7 +39,7 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     lv_obj_t *sep = lv_label_create(screen);
     lv_obj_set_style_text_color(sep, lv_color_hex(0xAAAAAA), 0);
     lv_obj_set_style_text_font(sep, &custom_font_16, 0);
-    lv_label_set_text(sep, "--------------------");
+    lv_label_set_text(sep, "-----------------------");
     lv_obj_set_pos(sep, 8, 54);
 
     /* Table rows: y=76,98,120,142 */
