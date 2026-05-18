@@ -50,6 +50,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DEFAULT]      = {"📌Default",     "📌默认值"},
     [STR_RESET]        = {"🔄Reset",       "🔄重置"},
     [STR_FMT_MIN]      = {"%d min",      "%d分钟"},
+    [STR_FMT_SEC]      = {"%ds",         "%d秒"},
     [STR_FMT_DONE]     = {"%lu done",    "%lu次"},
 
     /* Pomodoro phases */
@@ -197,6 +198,9 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DAY_LEVEL]        = {"Day",                 "日级"},
     [STR_H_SENSOR_HINT]    = {"TOP:View SIDE:Set", "顶:切换 侧:设置"},
     [STR_H_SENSOR_EDIT]    = {"TOP:Save Enc:Adj",    "顶:保存 编码器:调节"},
+
+    /* Sleep timeout */
+    [STR_SLEEP_TIMEOUT] = {"💤Sleep",      "💤休眠"},
 
     /* Demo colors */
     [STR_DEMO_WORK]       = {"Work",        "工作"},

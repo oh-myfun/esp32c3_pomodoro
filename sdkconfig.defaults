@@ -33,3 +33,6 @@ CONFIG_ESP_TIMER_TASK_STACK_SIZE=2560
 
 # Reduce log overhead
 CONFIG_LOG_TAG_LEVEL_IMPL_CACHE_SIZE=8
+
+# Power Management (DFS auto-lowers CPU when idle)
+CONFIG_PM_ENABLE=y

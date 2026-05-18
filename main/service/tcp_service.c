@@ -119,6 +119,83 @@ static void safe_strcpy(char *dst, const char *src, size_t dst_size)
     }
 }
 
+/* Format permission_suggestions JSON into readable text
+ * Format: +Tool: rule → behavior (scope)
+ * e.g. "+Bash: npm install → allow (local)"
+ */
+static void format_suggestions_text(const cJSON *suggestions, char *out, size_t out_size)
+{
+    if (!suggestions || !cJSON_IsArray(suggestions) || !out || out_size == 0) {
+        if (out) out[0] = '\0';
+        return;
+    }
+
+    int off = 0;
+    int count = cJSON_GetArraySize(suggestions);
+
+    for (int i = 0; i < count && off < (int)out_size - 2; i++) {
+        const cJSON *item = cJSON_GetArrayItem(suggestions, i);
+        if (!item) continue;
+
+        const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(item, "type"));
+        const char *behavior = cJSON_GetStringValue(cJSON_GetObjectItem(item, "behavior"));
+        const char *dest = cJSON_GetStringValue(cJSON_GetObjectItem(item, "destination"));
+        const cJSON *rules = cJSON_GetObjectItem(item, "rules");
+
+        /* Type prefix */
+        char prefix = '+';  /* default addRules */
+        if (type) {
+            if (strcmp(type, "removeRules") == 0)       prefix = '-';
+            else if (strcmp(type, "replaceRules") == 0)  prefix = '=';
+            else if (strcmp(type, "setMode") == 0)       prefix = 'M';
+            else if (strcmp(type, "addDirectories") == 0) prefix = '>';
+            else if (strcmp(type, "removeDirectories") == 0) prefix = '<';
+        }
+
+        /* Destination short name */
+        const char *scope = "";
+        if (dest) {
+            if (strcmp(dest, "session") == 0)            scope = "tmp";
+            else if (strcmp(dest, "localSettings") == 0)  scope = "local";
+            else if (strcmp(dest, "projectSettings") == 0) scope = "proj";
+            else if (strcmp(dest, "userSettings") == 0)    scope = "user";
+        }
+
+        if (rules && cJSON_IsArray(rules)) {
+            int rule_count = cJSON_GetArraySize(rules);
+            for (int r = 0; r < rule_count && off < (int)out_size - 2; r++) {
+                const cJSON *rule = cJSON_GetArrayItem(rules, r);
+                const char *tool_name = cJSON_GetStringValue(cJSON_GetObjectItem(rule, "toolName"));
+                const char *rule_content = cJSON_GetStringValue(cJSON_GetObjectItem(rule, "ruleContent"));
+
+                if (off > 0) off += snprintf(out + off, out_size - off, "\n");
+                if (off >= (int)out_size - 1) break;
+
+                off += snprintf(out + off, out_size - off, "%c%s",
+                                prefix, tool_name ? tool_name : "?");
+                if (rule_content) {
+                    off += snprintf(out + off, out_size - off, ": %s", rule_content);
+                }
+                if (behavior) {
+                    off += snprintf(out + off, out_size - off, " \xe2\x86\x92 %s", behavior);
+                }
+                if (scope[0]) {
+                    off += snprintf(out + off, out_size - off, " (%s)", scope);
+                }
+            }
+        } else {
+            /* No rules array, just show type summary */
+            if (off > 0) off += snprintf(out + off, out_size - off, "\n");
+            if (off >= (int)out_size - 1) break;
+            off += snprintf(out + off, out_size - off, "%c", prefix);
+            if (behavior) off += snprintf(out + off, out_size - off, " \xe2\x86\x92 %s", behavior);
+            if (scope[0]) off += snprintf(out + off, out_size - off, " (%s)", scope);
+        }
+    }
+
+    out[off < (int)out_size ? off : (int)out_size - 1] = '\0';
+}
+
 static void parse_request_message(cJSON *data)
 {
     if (!data) {
@@ -244,6 +321,8 @@ static void parse_request_message(cJSON *data)
                 safe_strcpy(req.permission_suggestions_json, sjson, sizeof(req.permission_suggestions_json));
                 cJSON_free(sjson);
             }
+            format_suggestions_text(suggestions, req.permission_suggestions_text,
+                                   sizeof(req.permission_suggestions_text));
         }
     }
 

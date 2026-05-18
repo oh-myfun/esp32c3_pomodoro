@@ -26,6 +26,7 @@ typedef struct {
     int selected_count;
     char questions_json[512];
     char permission_suggestions_json[512];
+    char permission_suggestions_text[512];   /* formatted for display */
 } tcp_request_t;
 
 typedef struct {

@@ -25,6 +25,7 @@
 #define KEY_BL_BRIGHT    "bl_bright"
 #define KEY_LED_STYLE    "led_style"
 #define KEY_LED_ANIM     "led_anim"
+#define KEY_SLEEP_TIMEOUT "sleep_timeout"
 
 // NVS key migration (call once at startup)
 void storage_migrate_settings_keys(void);

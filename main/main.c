@@ -2,6 +2,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_pm.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -48,6 +49,31 @@ static const char *TAG = "MAIN";
 #define LVGL_TASK_PRIORITY 5
 
 static lv_display_t *display = NULL;
+
+/* ---- Idle / Sleep ---- */
+#define SLEEP_OPTIONS_COUNT  5
+static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, 1, 2, 5, 10};
+int sleep_timeout_idx = 1;   /* default: 1 min, accessed by settings UI */
+static bool is_sleeping = false;
+static int64_t s_last_activity_us = 0;
+static uint8_t s_saved_brightness = 10;
+static esp_pm_lock_handle_t s_pm_lock = NULL;
+
+void activity_touch(void)
+{
+    s_last_activity_us = esp_timer_get_time();
+    if (is_sleeping) {
+        is_sleeping = false;
+        backlight_set_brightness(s_saved_brightness);
+        if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
+        ESP_LOGI(TAG, "Wake up");
+    }
+}
+
+int get_sleep_timeout_minutes(void)
+{
+    return sleep_minutes[sleep_timeout_idx];
+}
 static esp_timer_handle_t lvgl_tick_timer = NULL;
 
 static lv_color_t *buf1 = NULL;
@@ -186,6 +212,7 @@ static void on_tcp_disconnected(void) {
 
 static void on_tcp_request(const tcp_request_t *req) {
     ESP_LOGI(TAG, "TCP request: tool=%s type=%d", req->tool, req->type);
+    activity_touch();
     buddy_on_tcp_request(req);
 
     /* Build option labels + descriptions for the UI */
@@ -202,7 +229,8 @@ static void on_tcp_request(const tcp_request_t *req) {
                                   opt_labels, req->option_count,
                                   opt_descs,
                                   req->permission_suggestions_json[0] != '\0',
-                                  req->permission_suggestions_json);
+                                  req->permission_suggestions_text[0] ? req->permission_suggestions_text
+                                                                      : req->permission_suggestions_json);
     lvgl_unlock();
 }
 
@@ -213,11 +241,13 @@ static void on_tcp_session_end(void) {
 
 static void on_tcp_status(const char *state, const char *message) {
     ESP_LOGI(TAG, "TCP status: %s", state);
+    activity_touch();
     buddy_on_status(state, message);
 }
 
 static void on_tcp_paired(void) {
     ESP_LOGI(TAG, "TCP paired, updating UI");
+    activity_touch();
     lvgl_lock();
     ui_screen_buddy_set_connected(true);
     lvgl_unlock();
@@ -343,7 +373,7 @@ static void service_task(void *arg) {
             last_buddy_tick = now;
         }
 
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 }
 
@@ -357,6 +387,20 @@ static void ui_update_task(void *arg) {
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
         ui_screen_id_t current_screen = ui_get_current_screen();
+
+        // Idle sleep check
+        if (!is_sleeping && sleep_minutes[sleep_timeout_idx] != 0) {
+            int64_t idle_ms = (esp_timer_get_time() - s_last_activity_us) / 1000;
+            int val = sleep_minutes[sleep_timeout_idx];
+            int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
+            if (idle_ms >= threshold_ms) {
+                is_sleeping = true;
+                s_saved_brightness = backlight_get_brightness();
+                backlight_set_brightness(1);
+                if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
+                ESP_LOGI(TAG, "Sleep (idle %llds)", idle_ms / 1000);
+            }
+        }
 
         // Pomodoro tick every 1 second
         if (now - last_pomodoro_tick >= 1000) {
@@ -484,7 +528,7 @@ static void ui_update_task(void *arg) {
             last_mem_tick = now;
         }
 
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
@@ -512,6 +556,28 @@ void app_main(void) {
         backlight_set_brightness((uint8_t)bl_level);
         ESP_LOGI(TAG, "LCD backlight level=%d", bl_level);
     }
+
+    // 2.5. Power management: DFS auto-lowers CPU when idle
+    {
+        esp_pm_config_t pm_config = {
+            .max_freq_mhz = 160,
+            .min_freq_mhz = 40,
+        };
+        esp_pm_configure(&pm_config);
+        esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "activity", &s_pm_lock);
+        esp_pm_lock_acquire(s_pm_lock);
+        ESP_LOGI(TAG, "PM: DFS enabled 160/40 MHz");
+    }
+
+    // 2.6. Load sleep timeout setting
+    {
+        int32_t val;
+        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SLEEP_TIMEOUT, &val) && val >= 0 && val < SLEEP_OPTIONS_COUNT) {
+            sleep_timeout_idx = (int)val;
+        }
+        ESP_LOGI(TAG, "Sleep timeout: %d min", sleep_minutes[sleep_timeout_idx]);
+    }
+    s_last_activity_us = esp_timer_get_time();
 
     st7789_lcd_init();
     aht20_init();

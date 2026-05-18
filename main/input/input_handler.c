@@ -144,7 +144,10 @@ void input_handler_task(void *arg)
     input_event_t event;
 
     while (1) {
-        while (xQueueReceive(g_event_queue, &event, 0) == pdTRUE) {
+        if (xQueueReceive(g_event_queue, &event, portMAX_DELAY) == pdTRUE) {
+            extern void activity_touch(void);
+            activity_touch();
+
             lvgl_lock();
             switch (event) {
                 case INPUT_EVENT_ENCODER_CW:
@@ -173,8 +176,6 @@ void input_handler_task(void *arg)
             }
             lvgl_unlock();
         }
-
-        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
