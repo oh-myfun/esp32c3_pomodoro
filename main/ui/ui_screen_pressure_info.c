@@ -8,47 +8,23 @@
 static const char *TAG = "UI_PRESSURE_INFO";
 
 static lv_obj_t *screen = NULL;
-static lv_obj_t *content_label = NULL;
-static int scroll_offset = 0;
-static int content_height = 0;
-#define VIEWPORT_HEIGHT 200
-#define SCROLL_STEP 20
+static lv_obj_t *content = NULL;
 
-static void update_scroll(void)
+static void go_back(void)
 {
-    if (!content_label) return;
-    int max_scroll = content_height - VIEWPORT_HEIGHT;
-    if (max_scroll < 0) max_scroll = 0;
-    if (scroll_offset < 0) scroll_offset = 0;
-    if (scroll_offset > max_scroll) scroll_offset = max_scroll;
-    lv_obj_set_y(content_label, 30 - scroll_offset);
+    ui_go_back();
 }
+
+#define SCROLL_STEP 24
 
 static void on_encoder_cw(void)
 {
-    scroll_offset += SCROLL_STEP;
-    update_scroll();
+    if (content) lv_obj_scroll_by(content, 0, -SCROLL_STEP, LV_ANIM_OFF);
 }
 
 static void on_encoder_ccw(void)
 {
-    scroll_offset -= SCROLL_STEP;
-    update_scroll();
-}
-
-static void on_encoder_press(void)
-{
-    ui_go_back();
-}
-
-static void on_settings_press(void)
-{
-    ui_go_back();
-}
-
-static void on_encoder_long_press(void)
-{
-    ui_go_back();
+    if (content) lv_obj_scroll_by(content, 0, SCROLL_STEP, LV_ANIM_OFF);
 }
 
 lv_obj_t *ui_screen_pressure_info_create(void)
@@ -58,7 +34,6 @@ lv_obj_t *ui_screen_pressure_info_create(void)
         lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
         lv_obj_set_size(screen, 240, 240);
     }
-    scroll_offset = 0;
 
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_PRESSURE_INFO));
@@ -66,42 +41,52 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     lv_obj_set_style_text_font(title, &custom_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
-    /* Scrollable content area */
-    lv_obj_t *viewport = lv_obj_create(screen);
-    lv_obj_remove_style_all(viewport);
-    lv_obj_set_size(viewport, 230, VIEWPORT_HEIGHT);
-    lv_obj_align(viewport, LV_ALIGN_TOP_MID, 0, 30);
-    lv_obj_add_flag(viewport, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
-    lv_obj_clear_flag(viewport, LV_OBJ_FLAG_SCROLLABLE);
+    /* Scrollable container: clip children, encoder scrolls this */
+    content = lv_obj_create(screen);
+    lv_obj_remove_style_all(content);
+    lv_obj_set_size(content, 230, 192);
+    lv_obj_set_pos(content, 5, 30);
+    lv_obj_set_style_bg_opa(content, 0, 0);
+    lv_obj_set_style_clip_corner(content, true, 0);
+    lv_obj_add_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLL_ELASTIC);
+    lv_obj_set_scrollbar_mode(content, LV_SCROLLBAR_MODE_ACTIVE);
+    lv_obj_set_style_bg_color(content, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_scroll_dir(content, LV_DIR_VER);
 
-    content_label = lv_label_create(viewport);
-    lv_obj_set_style_text_color(content_label, lv_color_hex(0xFFCC00), 0);
-    lv_obj_set_style_text_font(content_label, &custom_font_14, 0);
-    lv_obj_set_width(content_label, 226);
-    lv_label_set_text(content_label,
-        "1013.25hPa = sea level\n"
+    /* Table content — drawn inside a label with box characters */
+    lv_obj_t *table = lv_label_create(content);
+    lv_obj_set_style_text_color(table, lv_color_hex(0xFFCC00), 0);
+    lv_obj_set_style_text_font(table, &custom_font_14, 0);
+    lv_obj_set_width(table, 226);
+    lv_label_set_text(table,
+        "Std: 1013.25hPa\n"
         "\n"
-        "Daily variation\n"
-        "  1~4hPa = 8~33m\n"
+        "\xe2\x95\x94\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x97\n"
+        "\xe2\x95\x91 Weather   \xe2\x95\x91 \xe2\x86\x93hPa  \xe2\x95\x91  \xe2\x86\x91m   \xe2\x95\x91\n"
+        "\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\xa3\n"
+        "\xe2\x95\x91 Daily     \xe2\x95\x91  1~4  \xe2\x95\x91  8~33  \xe2\x95\x91\n"
+        "\xe2\x95\x91 Rain      \xe2\x95\x91  5~15 \xe2\x95\x91 42~126 \xe2\x95\x91\n"
+        "\xe2\x95\x91 Storm     \xe2\x95\x91 15~30 \xe2\x95\x91 126~253\xe2\x95\x91\n"
+        "\xe2\x95\x91 Typhoon   \xe2\x95\x91 100+  \xe2\x95\x91  868+  \xe2\x95\x91\n"
+        "\xe2\x95\x9a\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90"
+        "\xe2\x95\x9d\n"
         "\n"
-        "Before rain\n"
-        "  -5~15hPa = 42~126m\n"
-        "\n"
-        "Before storm\n"
-        "  -15~30hPa = 126~253m\n"
-        "\n"
-        "Typhoon\n"
-        "  -100+hPa = 868+m\n"
-        "\n"
-        "Lower pressure = higher\n"
-        "altitude reading.\n"
-        "Weather changes cause\n"
+        "Lower pressure =\n"
+        "higher altitude.\n"
+        "Weather can cause\n"
         "~100m altitude drift."
     );
 
-    lv_obj_set_pos(content_label, 2, 0);
-    content_height = lv_obj_get_height(content_label);
-    update_scroll();
+    lv_obj_set_pos(table, 2, 0);
 
     lv_obj_t *hint = lv_label_create(screen);
     lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
@@ -112,9 +97,9 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = on_encoder_cw,
         .on_encoder_ccw = on_encoder_ccw,
-        .on_encoder_press = on_encoder_press,
-        .on_encoder_long_press = on_encoder_long_press,
-        .on_settings_press = on_settings_press,
+        .on_encoder_press = go_back,
+        .on_encoder_long_press = go_back,
+        .on_settings_press = go_back,
     };
     ui_register_input_callbacks(UI_SCREEN_PRESSURE_INFO, &cbs);
 
