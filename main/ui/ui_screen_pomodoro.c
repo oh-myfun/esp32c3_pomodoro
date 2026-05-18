@@ -66,7 +66,6 @@ static lv_obj_t *phase_label = NULL;
 static lv_obj_t *completed_label = NULL;
 static lv_obj_t *hint_label = NULL;
 static lv_obj_t *cycle_label = NULL;
-static lv_obj_t *total_time_label = NULL;
 
 static uint32_t total_seconds = 25 * 60;
 
@@ -80,12 +79,6 @@ static void update_settings_display(void)
         char buf[16];
         snprintf(buf, sizeof(buf), "%02d:00", settings.work_minutes);
         lv_label_set_text(timer_label, buf);
-    }
-
-    if (total_time_label) {
-        char buf[20];
-        snprintf(buf, sizeof(buf), "/ %02d:00", settings.work_minutes);
-        lv_label_set_text(total_time_label, buf);
     }
 
     if (cycle_label) {
@@ -121,7 +114,7 @@ lv_obj_t* ui_screen_pomodoro_create(void)
 
     completed_label = lv_label_create(screen);
     lv_obj_set_style_text_color(completed_label, lv_color_hex(0x00FF00), 0);
-    lv_label_set_text(completed_label, "0");
+    lv_label_set_text(completed_label, "🍅x0");
     lv_obj_set_style_text_font(completed_label, &custom_font_16, 0);
     lv_obj_align(completed_label, LV_ALIGN_TOP_RIGHT, -10, 8);
 
@@ -144,12 +137,6 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_label_set_text(timer_label, "25:00");
     lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_40, 0);
     lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 0);
-
-    total_time_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(total_time_label, lv_color_hex(0x888888), 0);
-    lv_label_set_text(total_time_label, "/ 25:00");
-    lv_obj_set_style_text_font(total_time_label, &custom_font_16, 0);
-    lv_obj_align(total_time_label, LV_ALIGN_CENTER, 0, 24);
 
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
@@ -186,20 +173,13 @@ static void update_time(uint32_t remaining_seconds)
         if (progress > 360) progress = 360;
         lv_arc_set_value(progress_arc, progress);
     }
-    
-    if (total_time_label) {
-        uint32_t total_min = total_seconds / 60;
-        char total_buf[20];
-        snprintf(total_buf, sizeof(total_buf), "/ %02lu:00", (unsigned long)total_min);
-        lv_label_set_text(total_time_label, total_buf);
-    }
 }
 
 static void update_completed(uint32_t count)
 {
     if (completed_label == NULL) return;
     char buf[16];
-    snprintf(buf, sizeof(buf), "%u", (unsigned int)count);
+    snprintf(buf, sizeof(buf), "🍅x%u", (unsigned int)count);
     lv_label_set_text(completed_label, buf);
 }
 
@@ -227,6 +207,8 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
         case 4:
             color = 0xFFFF00;
             phase_text = i18n(STR_PHASE_PAUSED);
+            total_seconds = 1;  /* force full arc */
+            remaining_seconds = 1;
             break;
         default:
             color = 0xAAAAAA;
