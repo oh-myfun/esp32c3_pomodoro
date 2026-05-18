@@ -19,6 +19,7 @@ typedef enum {
     UI_SCREEN_BRIDGE_SCAN,
     UI_SCREEN_SENSOR,
     UI_SCREEN_SETTINGS_SENSOR,
+    UI_SCREEN_PRESSURE_INFO,
     UI_SCREEN_COUNT
 } ui_screen_id_t;
 

@@ -205,6 +205,10 @@ typedef enum {
     STR_DEMO_PAUSED,
     STR_DEMO_SAD,
 
+    /* Pressure info */
+    STR_PRESSURE_INFO,
+    STR_PRESSURE_TIP,
+
     STR_COUNT
 } str_id_t;
 

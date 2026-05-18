@@ -15,6 +15,7 @@
 #include "ui_screen_bridge_scan.h"
 #include "ui_screen_sensor.h"
 #include "ui_screen_settings_sensor.h"
+#include "ui_screen_pressure_info.h"
 #include "ui_screen_settings.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
@@ -49,7 +50,8 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_SYSTEM ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
            id == UI_SCREEN_BRIDGE_SCAN ||
-           id == UI_SCREEN_SETTINGS_SENSOR;
+           id == UI_SCREEN_SETTINGS_SENSOR ||
+           id == UI_SCREEN_PRESSURE_INFO;
 }
 
 static void log_mem(const char *label)
@@ -109,6 +111,7 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_BRIDGE_SCAN] = ui_screen_bridge_scan_create;
     lazy_creators[UI_SCREEN_SENSOR] = ui_screen_sensor_create;
     lazy_creators[UI_SCREEN_SETTINGS_SENSOR] = ui_screen_settings_sensor_create;
+    lazy_creators[UI_SCREEN_PRESSURE_INFO] = ui_screen_pressure_info_create;
 
     lvgl_lock();
     lv_scr_load(screens[UI_SCREEN_MAIN]);

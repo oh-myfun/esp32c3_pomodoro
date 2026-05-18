@@ -9,8 +9,8 @@
 
 static const char *TAG = "UI_SETTINGS_SENSOR";
 
-#define SENSOR_ITEM_COUNT 9
-/* 0: interval, 1: temp_source, 2: temp_min, 3: temp_max, 4: press_min, 5: press_max, 6: alt_min, 7: alt_max, 8: reset */
+#define SENSOR_ITEM_COUNT 10
+/* 0: interval, 1: temp_source, 2: temp_min, 3: temp_max, 4: press_min, 5: press_max, 6: alt_min, 7: alt_max, 8: reset, 9: pressure_info */
 
 typedef enum {
     SENSOR_MODE_NAV = 0,
@@ -29,8 +29,8 @@ static char item_keys[SENSOR_ITEM_COUNT][20];
 static char item_values[SENSOR_ITEM_COUNT][12];
 static ui_list_item_t items[SENSOR_ITEM_COUNT];
 
-/* Step values for each item (0 = non-numeric: interval, temp_source, reset) */
-static const int steps[SENSOR_ITEM_COUNT] = {1, 0, 5, 5, 10, 10, 50, 50, 0};
+/* Step values for each item (0 = non-numeric: interval, temp_source, reset, pressure_info) */
+static const int steps[SENSOR_ITEM_COUNT] = {1, 0, 5, 5, 10, 10, 50, 50, 0, 0};
 
 static const str_id_t temp_src_names[TEMP_SRC_COUNT] = {
     STR_SRC_AHT20, STR_SRC_BMP280, STR_SRC_AVG
@@ -66,6 +66,9 @@ static void update_display(void)
 
     snprintf(item_keys[8], sizeof(item_keys[8]), "%s", i18n(STR_RESET));
     snprintf(item_values[8], sizeof(item_values[8]), ">>");
+
+    snprintf(item_keys[9], sizeof(item_keys[9]), "%s", i18n(STR_PRESSURE_INFO));
+    snprintf(item_values[9], sizeof(item_values[9]), ">>");
 
     for (int i = 0; i < SENSOR_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -114,7 +117,7 @@ static void adjust_value(int direction)
         update_display();
         return;
     }
-    if (selected_item == 8) return; /* reset item */
+    if (selected_item == 8 || selected_item == 9) return; /* reset & info items */
     int32_t *vals[] = {NULL, NULL, &settings.temp_min, &settings.temp_max,
                        &settings.press_min, &settings.press_max,
                        &settings.alt_min, &settings.alt_max};
@@ -161,6 +164,9 @@ static void sensor_set_on_settings_press(void)
             sensor_service_reset_settings();
             sensor_service_get_settings(&settings);
             update_display();
+        } else if (selected_item == 9) {
+            /* Pressure info */
+            ui_push_screen(UI_SCREEN_PRESSURE_INFO);
         } else {
             edit_mode = SENSOR_MODE_ADJUST;
             update_display();

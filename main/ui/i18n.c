@@ -208,6 +208,10 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DEMO_LONG_BREAK] = {"LongBreak",   "长休息"},
     [STR_DEMO_PAUSED]     = {"Paused",      "暂停"},
     [STR_DEMO_SAD]        = {"Sad",         "悲伤"},
+
+    /* Pressure info */
+    [STR_PRESSURE_INFO] = {"\xf0\x9f\x92\xa1" "Pressure Info", "\xf0\x9f\x92\xa1" "\xe6\xb0\x94\xe5\x8e\x8b\xe5\xb0\x8f\xe7\x9f\xa5\xe8\xaf\x86"},
+    [STR_PRESSURE_TIP]   = {"Any key:back|Enc:scroll", "\xe4\xbb\xbb\xe6\x84\x8f\xe9\x94\xae:\xe8\xbf\x94\xe5\x9b\x9e|\xe7\xbc\x96\xe7\xa0\x81\xe5\x99\xa8:\xe6\xbb\x9a\xe5\x8a\xa8"},
 };
 
 void i18n_init(void)

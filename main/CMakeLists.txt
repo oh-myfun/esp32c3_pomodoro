@@ -24,6 +24,7 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_bridge_scan.c
                           ui/ui_screen_sensor.c
                           ui/ui_screen_settings_sensor.c
+                          ui/ui_screen_pressure_info.c
                           ui/custom_font_14.c
                           ui/custom_font_16.c
                           ui/i18n.c
