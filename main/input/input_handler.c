@@ -145,8 +145,8 @@ void input_handler_task(void *arg)
 
     while (1) {
         if (xQueueReceive(g_event_queue, &event, portMAX_DELAY) == pdTRUE) {
-            extern void activity_touch(void);
-            activity_touch();
+            extern bool activity_touch(void);
+            if (activity_touch()) continue;  /* consume wake event */
 
             lvgl_lock();
             switch (event) {

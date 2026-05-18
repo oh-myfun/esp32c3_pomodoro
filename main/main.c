@@ -59,7 +59,7 @@ static int64_t s_last_activity_us = 0;
 static uint8_t s_saved_brightness = 10;
 static esp_pm_lock_handle_t s_pm_lock = NULL;
 
-void activity_touch(void)
+bool activity_touch(void)
 {
     s_last_activity_us = esp_timer_get_time();
     if (is_sleeping) {
@@ -67,7 +67,9 @@ void activity_touch(void)
         backlight_set_brightness(s_saved_brightness);
         if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
         ESP_LOGI(TAG, "Wake up");
+        return true;
     }
+    return false;
 }
 
 int get_sleep_timeout_minutes(void)
