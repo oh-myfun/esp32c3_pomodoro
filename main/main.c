@@ -51,9 +51,10 @@ static const char *TAG = "MAIN";
 static lv_display_t *display = NULL;
 
 /* ---- Idle / Sleep ---- */
-#define SLEEP_OPTIONS_COUNT  5
-static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, 1, 2, 5, 10};
-int sleep_timeout_idx = 1;   /* default: 1 min, accessed by settings UI */
+#define SLEEP_OPTIONS_COUNT  7
+/* negative = seconds, positive = minutes */
+static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
+int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
 static bool is_sleeping = false;
 static int64_t s_last_activity_us = 0;
 static uint8_t s_saved_brightness = 10;
@@ -577,7 +578,7 @@ void app_main(void) {
         if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SLEEP_TIMEOUT, &val) && val >= 0 && val < SLEEP_OPTIONS_COUNT) {
             sleep_timeout_idx = (int)val;
         }
-        ESP_LOGI(TAG, "Sleep timeout: %d min", sleep_minutes[sleep_timeout_idx]);
+        ESP_LOGI(TAG, "Sleep timeout: %d", sleep_minutes[sleep_timeout_idx]);
     }
     s_last_activity_us = esp_timer_get_time();
 
