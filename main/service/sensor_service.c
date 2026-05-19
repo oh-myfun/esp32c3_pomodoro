@@ -34,6 +34,11 @@ static int min_pos = 0, min_count = 0;
 static int hour_pos = 0, hour_count = 0;
 static int day_pos = 0, day_count = 0;
 
+/* Track last aggregated position per level to avoid re-processing */
+static int sec_agg_pos = 0;   /* seconds already aggregated into minutes */
+static int min_agg_pos = 0;   /* minutes already aggregated into hours */
+static int hour_agg_pos = 0;  /* hours already aggregated into days */
+
 static sensor_sample_t current_sample;
 static sensor_settings_t settings;
 static SemaphoreHandle_t mutex = NULL;
@@ -196,26 +201,42 @@ static sensor_sample_t avg_samples(const sensor_sample_t *buf, int count)
 
 static void aggregate_minute(const struct tm *t)
 {
-    if (sec_count == 0) return;
-    int count = sec_count < SEC_COUNT ? sec_count : SEC_COUNT;
-    minutes_buf[min_pos % MIN_COUNT] = avg_samples(seconds_buf, count);
+    /* Only aggregate samples since last aggregation */
+    int new_count = sec_pos - sec_agg_pos;
+    if (new_count <= 0) return;
+    if (new_count > SEC_COUNT) new_count = SEC_COUNT;
+
+    /* Collect the new samples from the ring buffer */
+    sensor_sample_t tmp[SEC_COUNT];
+    for (int i = 0; i < new_count; i++) {
+        int idx = (sec_agg_pos + i) % SEC_COUNT;
+        tmp[i] = seconds_buf[idx];
+    }
+
+    minutes_buf[min_pos % MIN_COUNT] = avg_samples(tmp, new_count);
     time_to_sensor_time(t, &minutes_time[min_pos % MIN_COUNT]);
     min_pos++;
     if (min_count < MIN_COUNT) min_count++;
-    sec_count = 0;
-    sec_pos = 0;
+    sec_agg_pos = sec_pos;
 }
 
 static void aggregate_hour(const struct tm *t)
 {
-    if (min_count == 0) return;
-    int count = min_count < MIN_COUNT ? min_count : MIN_COUNT;
-    hours_buf[hour_pos % HOUR_COUNT] = avg_samples(minutes_buf, count);
+    int new_count = min_pos - min_agg_pos;
+    if (new_count <= 0) return;
+    if (new_count > MIN_COUNT) new_count = MIN_COUNT;
+
+    sensor_sample_t tmp[MIN_COUNT];
+    for (int i = 0; i < new_count; i++) {
+        int idx = (min_agg_pos + i) % MIN_COUNT;
+        tmp[i] = minutes_buf[idx];
+    }
+
+    hours_buf[hour_pos % HOUR_COUNT] = avg_samples(tmp, new_count);
     time_to_sensor_time(t, &hours_time[hour_pos % HOUR_COUNT]);
     hour_pos++;
     if (hour_count < HOUR_COUNT) hour_count++;
-    min_count = 0;
-    min_pos = 0;
+    min_agg_pos = min_pos;
 }
 
 static void aggregate_day(const struct tm *t)
