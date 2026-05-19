@@ -202,6 +202,8 @@ static void aggregate_minute(const struct tm *t)
     time_to_sensor_time(t, &minutes_time[min_pos % MIN_COUNT]);
     min_pos++;
     if (min_count < MIN_COUNT) min_count++;
+    sec_count = 0;
+    sec_pos = 0;
 }
 
 static void aggregate_hour(const struct tm *t)
@@ -212,6 +214,8 @@ static void aggregate_hour(const struct tm *t)
     time_to_sensor_time(t, &hours_time[hour_pos % HOUR_COUNT]);
     hour_pos++;
     if (hour_count < HOUR_COUNT) hour_count++;
+    min_count = 0;
+    min_pos = 0;
 }
 
 static void aggregate_day(const struct tm *t)
@@ -252,7 +256,7 @@ static void aggregate_day(const struct tm *t)
 static void sensor_task(void *arg)
 {
     ESP_LOGI(TAG, "Sensor task started");
-    int last_sec = -1, last_min = -1, last_hour = -1;
+    int last_min = -1, last_hour = -1, last_day = -1;
 
     while (running) {
         /* Read sensors — only from connected ones */
@@ -317,21 +321,31 @@ static void sensor_task(void *arg)
         sec_pos++;
         if (sec_count < SEC_COUNT) sec_count++;
 
-        /* Aggregation at time boundaries */
-        if (t.tm_sec == 0 && t.tm_sec != last_sec) {
-            aggregate_minute(&t);
+        /* Aggregation: detect boundary crossing instead of exact match.
+         * Order matters: day before hour, so hours_buf is still intact. */
+        int cur_min = t.tm_min + t.tm_hour * 60;
+        int cur_hour = t.tm_hour;
+        int cur_day = t.tm_yday;
+
+        /* Day boundary crossed — aggregate previous day's hours first */
+        if (last_day >= 0 && cur_day != last_day) {
+            time_t yesterday = now - 86400;
+            struct tm yt;
+            localtime_r(&yesterday, &yt);
+            aggregate_day(&yt);
         }
-        if (t.tm_sec == 0 && t.tm_min == 0 && (t.tm_sec != last_sec || t.tm_min != last_min)) {
+        /* Hour boundary crossed */
+        if (last_hour >= 0 && cur_hour != last_hour) {
             aggregate_hour(&t);
         }
-        if (t.tm_sec == 0 && t.tm_min == 0 && t.tm_hour == 0 &&
-            (t.tm_sec != last_sec || t.tm_min != last_min || t.tm_hour != last_hour)) {
-            aggregate_day(&t);
+        /* Minute boundary crossed */
+        if (last_min >= 0 && cur_min != last_min) {
+            aggregate_minute(&t);
         }
 
-        last_sec = t.tm_sec;
-        last_min = t.tm_min;
-        last_hour = t.tm_hour;
+        last_min = cur_min;
+        last_hour = cur_hour;
+        last_day = cur_day;
 
         xSemaphoreGive(mutex);
 
