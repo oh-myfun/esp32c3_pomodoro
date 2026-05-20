@@ -241,7 +241,15 @@ static void aggregate_hour(const struct tm *t)
 
 static void aggregate_day(const struct tm *t)
 {
-    if (hour_count == 0) return;
+    int new_count = hour_pos - hour_agg_pos;
+    if (new_count <= 0) return;
+    if (new_count > HOUR_COUNT) new_count = HOUR_COUNT;
+
+    sensor_sample_t tmp[HOUR_COUNT];
+    for (int i = 0; i < new_count; i++) {
+        int idx = (hour_agg_pos + i) % HOUR_COUNT;
+        tmp[i] = hours_buf[idx];
+    }
 
     int target_year = t->tm_year + 1900;
     int target_mon = t->tm_mon + 1;
@@ -252,25 +260,24 @@ static void aggregate_day(const struct tm *t)
         if (days_time[i].year == target_year &&
             days_time[i].month == target_mon &&
             days_time[i].day == target_day) {
-            /* Update existing entry with new average */
-            int count = hour_count < HOUR_COUNT ? hour_count : HOUR_COUNT;
-            days_buf[i] = avg_samples(hours_buf, count);
+            days_buf[i] = avg_samples(tmp, new_count);
             days_time[i] = (sensor_time_t){
                 .year = target_year, .month = target_mon, .day = target_day,
                 .hour = 0, .minute = 0, .second = 0
             };
             save_day_data();
+            hour_agg_pos = hour_pos;
             ESP_LOGI(TAG, "Updated existing day entry: %04d-%02d-%02d", target_year, target_mon, target_day);
             return;
         }
     }
 
     /* New day: append */
-    int count = hour_count < HOUR_COUNT ? hour_count : HOUR_COUNT;
-    days_buf[day_pos % DAY_COUNT] = avg_samples(hours_buf, count);
+    days_buf[day_pos % DAY_COUNT] = avg_samples(tmp, new_count);
     time_to_sensor_time(t, &days_time[day_pos % DAY_COUNT]);
     day_pos++;
     if (day_count < DAY_COUNT) day_count++;
+    hour_agg_pos = hour_pos;
     save_day_data();
 }
 

@@ -348,6 +348,7 @@ void buddy_trigger_random(void)
     buddy_state_t pick = picks[esp_random() % 3];
     if (pick == BUDDY_HEART && s_heart_level < 5) {
         s_heart_level++;
+        s_last_heart_decay = esp_timer_get_time();
         buddy_save_stats();
     }
     set_state_locked(pick);
