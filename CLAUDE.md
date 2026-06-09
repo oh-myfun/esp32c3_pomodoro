@@ -120,6 +120,10 @@ LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()
 
 | GPIO | 功能 | 定义位置 |
 |------|------|----------|
+| GPIO0 | I2C 时钟 (SCL) | `aht20.c` / `bmp280.c` |
+| GPIO1 | I2C 数据 (SDA) | `aht20.c` / `bmp280.c` |
+| GPIO2 | 蜂鸣器 (PWM/LEDC) | `buzzer.c` |
+| GPIO3 | LCD 复位 (RST) | `st7789_lcd.c` |
 | GPIO4 | 编码器 A 相 | `input_handler.c` |
 | GPIO5 | 编码器 B 相 | `input_handler.c` |
 | GPIO6 | LCD SPI 时钟 (SCK) | `st7789_lcd.c` |
@@ -127,7 +131,7 @@ LVGL 任务之外的所有 LVGL API 调用必须用 `lvgl_lock()`/`lvgl_unlock()
 | GPIO8 | WS2812 数据 (DIN) | `ws2812.h` |
 | GPIO9 | 顶键 (低电平有效) | `input_handler.c` |
 | GPIO10 | LCD 数据/命令选择 (RS/DC) | `st7789_lcd.c` |
-| GPIO20 | 蜂鸣器 (PWM/LEDC) | `buzzer.c` |
+| GPIO20 | 背光 PWM | `backlight.c` |
 | GPIO21 | 编码器按键 (低电平有效) | `input_handler.c` |
 
 ## Kconfig 默认值
