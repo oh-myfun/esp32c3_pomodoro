@@ -52,6 +52,7 @@ typedef enum {
     STR_DEFAULT,
     STR_RESET,
     STR_FMT_MIN,       /* "%d min" / "%d分钟" */
+    STR_FMT_HOUR,      /* "%dh" / "%d小时" */
     STR_FMT_SEC,       /* "%ds" / "%d秒" */
     STR_FMT_DONE,      /* "%lu done" / "%lu次" */
 
@@ -61,6 +62,8 @@ typedef enum {
     STR_PHASE_LONG_BREAK,
     STR_PHASE_PAUSED,
     STR_PHASE_IDLE,
+    STR_PHASE_TIMER,       /* "⏱Timer" / "⏱计时器" */
+    STR_PHASE_ALARM,       /* "🔔Alarm" / "🔔闹铃" */
 
     /* Light settings */
     STR_LIGHT,

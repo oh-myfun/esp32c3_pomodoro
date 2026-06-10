@@ -442,6 +442,7 @@ static void ui_update_task(void *arg) {
 
             lvgl_lock();
             ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count, state.current_cycle);
+            ui_screen_pomodoro_timer_tick();
             lvgl_unlock();
             last_pomodoro_tick = now;
         }

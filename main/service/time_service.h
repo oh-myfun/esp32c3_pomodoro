@@ -7,6 +7,10 @@
 #define TIME_SERVICE_DEFAULT_TIMEZONE "CST-8"
 #define TIME_SERVICE_DEFAULT_SYNC_INTERVAL_MIN 10
 
+#define TIME_SERVICE_INTERVAL_COUNT 8
+uint16_t time_service_get_interval_option(int index);
+int time_service_get_interval_index(void);
+
 void time_service_init(void);
 bool time_service_is_synced(void);
 

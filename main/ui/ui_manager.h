@@ -29,6 +29,7 @@ typedef struct {
     void (*on_encoder_press)(void);
     void (*on_encoder_long_press)(void);
     void (*on_settings_press)(void);
+    void (*on_settings_long_press)(void);
 } ui_input_callbacks_t;
 
 void ui_init(void);
@@ -41,6 +42,7 @@ void ui_dispatch_encoder_ccw(void);
 void ui_dispatch_encoder_press(void);
 void ui_dispatch_encoder_long_press(void);
 void ui_dispatch_settings_press(void);
+void ui_dispatch_settings_long_press(void);
 void ui_go_back(void);
 void ui_push_screen(ui_screen_id_t screen_id);
 void lvgl_lock(void);

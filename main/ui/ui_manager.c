@@ -247,6 +247,13 @@ void ui_dispatch_settings_press(void)
     }
 }
 
+void ui_dispatch_settings_long_press(void)
+{
+    if (input_callbacks[current_screen].on_settings_long_press) {
+        input_callbacks[current_screen].on_settings_long_press();
+    }
+}
+
 void ui_go_back(void)
 {
     if (nav_depth <= 0) return;

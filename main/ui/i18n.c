@@ -50,6 +50,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DEFAULT]      = {"📌Default",     "📌默认值"},
     [STR_RESET]        = {"🔄Reset",       "🔄重置"},
     [STR_FMT_MIN]      = {"%d min",      "%d分钟"},
+    [STR_FMT_HOUR]     = {"%dh",         "%d小时"},
     [STR_FMT_SEC]      = {"%ds",         "%d秒"},
     [STR_FMT_DONE]     = {"%lu done",    "%lu次"},
 
@@ -59,6 +60,8 @@ static const char *strings[STR_COUNT][2] = {
     [STR_PHASE_LONG_BREAK]  = {"🏖LONG BREAK", "🏖长休息"},
     [STR_PHASE_PAUSED]      = {"⏸PAUSED",     "⏸已暂停"},
     [STR_PHASE_IDLE]        = {"⏹IDLE",       "⏹就绪"},
+    [STR_PHASE_TIMER]       = {"⏱Timer",     "⏱计时器"},
+    [STR_PHASE_ALARM]       = {"🔔Alarm!",   "🔔闹铃!"},
 
     /* Light settings */
     [STR_LIGHT]       = {"💡Light",       "💡灯光"},

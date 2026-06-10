@@ -76,8 +76,20 @@ static void settings_btn_cb(void *arg, void *data)
 {
     (void)arg;
     (void)data;
-    input_event_t e = INPUT_EVENT_SETTINGS_PRESS;
-    if (g_event_queue) {
+    button_handle_t btn = (button_handle_t)arg;
+    button_event_t event = iot_button_get_event(btn);
+    input_event_t e = INPUT_EVENT_NONE;
+    switch (event) {
+    case BUTTON_SINGLE_CLICK:
+        e = INPUT_EVENT_SETTINGS_PRESS;
+        break;
+    case BUTTON_LONG_PRESS_UP:
+        e = INPUT_EVENT_SETTINGS_LONG_PRESS;
+        break;
+    default:
+        break;
+    }
+    if (e != INPUT_EVENT_NONE && g_event_queue) {
         xQueueSendFromISR(g_event_queue, &e, NULL);
     }
 }
@@ -129,7 +141,8 @@ void input_handler_init(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create settings button: %s", esp_err_to_name(ret));
     } else {
-        iot_button_register_cb(g_settings_btn, BUTTON_SINGLE_CLICK, NULL, settings_btn_cb, NULL);
+        iot_button_register_cb(g_settings_btn, BUTTON_SINGLE_CLICK, NULL, settings_btn_cb, g_settings_btn);
+        iot_button_register_cb(g_settings_btn, BUTTON_LONG_PRESS_UP, NULL, settings_btn_cb, g_settings_btn);
     }
 
     // Load encoder direction from NVS
@@ -170,6 +183,10 @@ void input_handler_task(void *arg)
                 case INPUT_EVENT_SETTINGS_PRESS:
                     sound_service_play(SOUND_KEY_CLICK);
                     ui_dispatch_settings_press();
+                    break;
+                case INPUT_EVENT_SETTINGS_LONG_PRESS:
+                    sound_service_play(SOUND_KEY_CLICK);
+                    ui_dispatch_settings_long_press();
                     break;
                 default:
                     break;

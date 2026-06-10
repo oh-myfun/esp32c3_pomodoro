@@ -39,6 +39,10 @@ static uint16_t sync_interval = TIME_SERVICE_DEFAULT_SYNC_INTERVAL_MIN;
 static bool auto_sync = true;
 static time_t last_sync_time = 0;
 
+static const uint16_t interval_options[TIME_SERVICE_INTERVAL_COUNT] = {
+    5, 10, 30, 60, 120, 240, 480, 1440
+};
+
 static void time_sync_notification(struct timeval *tv)
 {
     ESP_LOGI(TAG, "Time synchronized");
@@ -108,6 +112,7 @@ bool time_service_is_synced(void)
 void time_service_set_sync_interval(uint16_t minutes)
 {
     sync_interval = minutes;
+    last_sync_time = 0; /* reset so next aligned boundary triggers promptly */
     storage_save_int(STORAGE_NAMESPACE_SETTINGS, "ntp_interval", minutes);
     ESP_LOGI(TAG, "Sync interval set to %d minutes", minutes);
 }
@@ -115,6 +120,20 @@ void time_service_set_sync_interval(uint16_t minutes)
 uint16_t time_service_get_sync_interval(void)
 {
     return sync_interval;
+}
+
+uint16_t time_service_get_interval_option(int index)
+{
+    if (index < 0 || index >= TIME_SERVICE_INTERVAL_COUNT) return interval_options[0];
+    return interval_options[index];
+}
+
+int time_service_get_interval_index(void)
+{
+    for (int i = 0; i < TIME_SERVICE_INTERVAL_COUNT; i++) {
+        if (interval_options[i] == sync_interval) return i;
+    }
+    return 1; /* default 10 min */
 }
 
 void time_service_request_sync(void)
@@ -126,9 +145,7 @@ void time_service_request_sync(void)
 
 void time_service_tick(void)
 {
-    if (!auto_sync || sync_interval == 0) {
-        return;
-    }
+    if (!auto_sync || sync_interval == 0) return;
 
     time_t now = time(NULL);
     if (last_sync_time == 0) {
@@ -136,13 +153,23 @@ void time_service_tick(void)
         return;
     }
 
+    /* Align sync to exact minute boundaries:
+     * Check if current minute is a multiple of sync_interval */
+    struct tm t;
+    localtime_r(&now, &t);
+    int total_min = t.tm_hour * 60 + t.tm_min;
+
+    if (t.tm_sec != 0) return;                         /* only check at second 0 */
+    if (total_min % sync_interval != 0) return;        /* not aligned */
+
+    /* Avoid re-triggering within the same aligned minute */
     double elapsed = difftime(now, last_sync_time);
-    if (elapsed >= (double)sync_interval * 60.0) {
-        ESP_LOGI(TAG, "Auto re-sync triggered (interval=%d min, elapsed=%.0f s)",
-                 sync_interval, elapsed);
-        last_sync_time = now;
-        time_service_request_sync();
-    }
+    if (elapsed < (double)sync_interval * 60.0 - 30.0) return;
+
+    ESP_LOGI(TAG, "Aligned re-sync at %02d:%02d (interval=%d min)",
+             t.tm_hour, t.tm_min, sync_interval);
+    last_sync_time = now;
+    time_service_request_sync();
 }
 
 void time_service_set_timezone_offset(int hours)

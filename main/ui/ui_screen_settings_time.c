@@ -19,7 +19,7 @@ typedef enum {
 
 static time_edit_mode_t time_mode = TIME_MODE_NAV;
 static int time_selected_item = 0;
-static int time_values[TIME_ITEM_COUNT] = {8, 0, 10};
+static int time_values[TIME_ITEM_COUNT] = {8, 0, 1};
 
 static lv_obj_t *screen = NULL;
 static lv_obj_t *time_list = NULL;
@@ -39,10 +39,13 @@ static void update_display(void)
              time_service_get_ntp_server_name(time_values[1]));
 
     snprintf(item_keys[2], sizeof(item_keys[2]), "%s", i18n(STR_NTP_INTERVAL));
-    if (time_values[2] == 0) {
-        snprintf(item_values[2], sizeof(item_values[2]), "%s", i18n(STR_OFF_VAL));
-    } else {
-        snprintf(item_values[2], sizeof(item_values[2]), i18n(STR_FMT_MIN), time_values[2]);
+    {
+        uint16_t mins = time_service_get_interval_option(time_values[2]);
+        if (mins >= 60) {
+            snprintf(item_values[2], sizeof(item_values[2]), i18n(STR_FMT_HOUR), mins / 60);
+        } else {
+            snprintf(item_values[2], sizeof(item_values[2]), i18n(STR_FMT_MIN), mins);
+        }
     }
 
     for (int i = 0; i < TIME_ITEM_COUNT; i++) {
@@ -85,7 +88,7 @@ static void time_on_encoder_cw(void)
                 time_values[1] = (time_values[1] + 1) % TIME_SERVICE_NTP_SERVER_COUNT;
                 break;
             case 2:
-                if (time_values[2] < 120) time_values[2]++;
+                time_values[2] = (time_values[2] + 1) % TIME_SERVICE_INTERVAL_COUNT;
                 break;
         }
         update_display();
@@ -106,7 +109,7 @@ static void time_on_encoder_ccw(void)
                 time_values[1] = (time_values[1] - 1 + TIME_SERVICE_NTP_SERVER_COUNT) % TIME_SERVICE_NTP_SERVER_COUNT;
                 break;
             case 2:
-                if (time_values[2] > 0) time_values[2]--;
+                time_values[2] = (time_values[2] - 1 + TIME_SERVICE_INTERVAL_COUNT) % TIME_SERVICE_INTERVAL_COUNT;
                 break;
         }
         update_display();
@@ -118,7 +121,7 @@ static void time_on_encoder_press(void)
     if (time_mode == TIME_MODE_ADJUST) {
         time_values[0] = time_service_get_timezone_offset();
         time_values[1] = time_service_get_ntp_server_index();
-        time_values[2] = (int)time_service_get_sync_interval();
+        time_values[2] = time_service_get_interval_index();
         time_mode = TIME_MODE_NAV;
         update_display();
     } else {
@@ -134,7 +137,7 @@ static void time_on_settings_press(void)
     } else {
         time_service_set_timezone_offset(time_values[0]);
         time_service_set_ntp_server_index(time_values[1]);
-        time_service_set_sync_interval((uint16_t)time_values[2]);
+        time_service_set_sync_interval(time_service_get_interval_option(time_values[2]));
         time_mode = TIME_MODE_NAV;
         update_display();
     }
@@ -145,7 +148,7 @@ static void time_on_encoder_long_press(void)
     if (time_mode == TIME_MODE_ADJUST) {
         time_values[0] = time_service_get_timezone_offset();
         time_values[1] = time_service_get_ntp_server_index();
-        time_values[2] = (int)time_service_get_sync_interval();
+        time_values[2] = time_service_get_interval_index();
         time_mode = TIME_MODE_NAV;
         update_display();
     } else {
@@ -173,7 +176,7 @@ lv_obj_t* ui_screen_settings_time_create(void)
 
     time_values[0] = time_service_get_timezone_offset();
     time_values[1] = time_service_get_ntp_server_index();
-    time_values[2] = (int)time_service_get_sync_interval();
+    time_values[2] = time_service_get_interval_index();
 
     time_mode = TIME_MODE_NAV;
     time_selected_item = 0;
