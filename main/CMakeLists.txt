@@ -14,6 +14,7 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_wifi.c
                           ui/ui_screen_buddy.c
                           ui/ui_screen_settings_pomodoro.c
+                          ui/ui_screen_settings_alarm.c
                           ui/ui_screen_settings_light.c
                           ui/ui_screen_settings_buddy.c
                           ui/ui_screen_settings_time.c

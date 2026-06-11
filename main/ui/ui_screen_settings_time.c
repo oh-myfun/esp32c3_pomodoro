@@ -80,9 +80,10 @@ static void time_on_encoder_cw(void)
         time_selected_item = (time_selected_item + 1) % TIME_ITEM_COUNT;
         update_display();
     } else {
+        int step = ui_get_encoder_step();
         switch (time_selected_item) {
             case 0:
-                if (time_values[0] < 14) time_values[0]++;
+                if (time_values[0] + step <= 14) time_values[0] += step;
                 break;
             case 1:
                 time_values[1] = (time_values[1] + 1) % TIME_SERVICE_NTP_SERVER_COUNT;
@@ -101,9 +102,10 @@ static void time_on_encoder_ccw(void)
         time_selected_item = (time_selected_item - 1 + TIME_ITEM_COUNT) % TIME_ITEM_COUNT;
         update_display();
     } else {
+        int step = ui_get_encoder_step();
         switch (time_selected_item) {
             case 0:
-                if (time_values[0] > -12) time_values[0]--;
+                if (time_values[0] - step >= -12) time_values[0] -= step;
                 break;
             case 1:
                 time_values[1] = (time_values[1] - 1 + TIME_SERVICE_NTP_SERVER_COUNT) % TIME_SERVICE_NTP_SERVER_COUNT;

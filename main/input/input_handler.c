@@ -2,6 +2,7 @@
 #include "driver/gpio.h"
 #include "driver/st7789_lcd.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -17,6 +18,11 @@
 #define ENCODER_K_GPIO  GPIO_NUM_21
 #define SETTINGS_GPIO   GPIO_NUM_9
 
+/* Acceleration: strict conditions, fast consecutive scrolling only */
+#define ACCEL_FAST_US      100000LL  /* <100ms between ticks = fast */
+#define ACCEL_RAMP         3         /* consecutive fast ticks before accel */
+#define ACCEL_MAX_STEP     10
+
 static const char *TAG = "INPUT";
 
 static QueueHandle_t g_event_queue = NULL;
@@ -25,6 +31,31 @@ static knob_handle_t g_knob = NULL;
 static button_handle_t g_encoder_btn = NULL;
 static button_handle_t g_settings_btn = NULL;
 static bool g_reverse_encoder = false;
+
+static volatile int64_t s_last_enc_time = 0;
+static volatile int s_enc_phys_dir = 0;    /* 1=right, -1=left, 0=none */
+static volatile int s_enc_fast_count = 0;
+
+static int calc_encoder_step(int phys_dir)
+{
+    int64_t now = esp_timer_get_time();
+    int64_t dt = now - s_last_enc_time;
+
+    int step = 1;
+    if (phys_dir == s_enc_phys_dir && dt < ACCEL_FAST_US) {
+        s_enc_fast_count++;
+        if (s_enc_fast_count > ACCEL_RAMP) {
+            step = 1 + (s_enc_fast_count - ACCEL_RAMP);
+            if (step > ACCEL_MAX_STEP) step = ACCEL_MAX_STEP;
+        }
+    } else {
+        s_enc_fast_count = 0;
+    }
+
+    s_enc_phys_dir = phys_dir;
+    s_last_enc_time = now;
+    return step;
+}
 
 static void knob_cb(void *arg, void *data)
 {
@@ -35,18 +66,18 @@ static void knob_cb(void *arg, void *data)
     if ((count & 1) == 0) {
         return;
     }
-    input_event_t e = INPUT_EVENT_NONE;
+
+    input_event_t e = { .type = INPUT_EVENT_NONE, .step = 1 };
+    int phys_dir = 0;
     switch (event) {
-    case KNOB_RIGHT:
-        e = INPUT_EVENT_ENCODER_CW;
-        break;
-    case KNOB_LEFT:
-        e = INPUT_EVENT_ENCODER_CCW;
-        break;
-    default:
-        break;
+    case KNOB_RIGHT: phys_dir = 1;  e.type = INPUT_EVENT_ENCODER_CW;  break;
+    case KNOB_LEFT:  phys_dir = -1; e.type = INPUT_EVENT_ENCODER_CCW; break;
+    default: return;
     }
-    if (e != INPUT_EVENT_NONE && g_event_queue) {
+
+    e.step = (uint8_t)calc_encoder_step(phys_dir);
+
+    if (g_event_queue) {
         xQueueSendFromISR(g_event_queue, &e, NULL);
     }
 }
@@ -56,18 +87,18 @@ static void encoder_btn_cb(void *arg, void *data)
     (void)data;
     button_handle_t btn = (button_handle_t)arg;
     button_event_t event = iot_button_get_event(btn);
-    input_event_t e = INPUT_EVENT_NONE;
+    input_event_t e = { .type = INPUT_EVENT_NONE, .step = 1 };
     switch (event) {
     case BUTTON_SINGLE_CLICK:
-        e = INPUT_EVENT_ENCODER_PRESS;
+        e.type = INPUT_EVENT_ENCODER_PRESS;
         break;
     case BUTTON_LONG_PRESS_UP:
-        e = INPUT_EVENT_ENCODER_LONG_PRESS;
+        e.type = INPUT_EVENT_ENCODER_LONG_PRESS;
         break;
     default:
         break;
     }
-    if (e != INPUT_EVENT_NONE && g_event_queue) {
+    if (e.type != INPUT_EVENT_NONE && g_event_queue) {
         xQueueSendFromISR(g_event_queue, &e, NULL);
     }
 }
@@ -78,18 +109,18 @@ static void settings_btn_cb(void *arg, void *data)
     (void)data;
     button_handle_t btn = (button_handle_t)arg;
     button_event_t event = iot_button_get_event(btn);
-    input_event_t e = INPUT_EVENT_NONE;
+    input_event_t e = { .type = INPUT_EVENT_NONE, .step = 1 };
     switch (event) {
     case BUTTON_SINGLE_CLICK:
-        e = INPUT_EVENT_SETTINGS_PRESS;
+        e.type = INPUT_EVENT_SETTINGS_PRESS;
         break;
     case BUTTON_LONG_PRESS_UP:
-        e = INPUT_EVENT_SETTINGS_LONG_PRESS;
+        e.type = INPUT_EVENT_SETTINGS_LONG_PRESS;
         break;
     default:
         break;
     }
-    if (e != INPUT_EVENT_NONE && g_event_queue) {
+    if (e.type != INPUT_EVENT_NONE && g_event_queue) {
         xQueueSendFromISR(g_event_queue, &e, NULL);
     }
 }
@@ -145,7 +176,6 @@ void input_handler_init(void)
         iot_button_register_cb(g_settings_btn, BUTTON_LONG_PRESS_UP, NULL, settings_btn_cb, g_settings_btn);
     }
 
-    // Load encoder direction from NVS
     int32_t enc_dir = 0;
     storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_ENC_DIR, &enc_dir);
     g_reverse_encoder = (enc_dir != 0);
@@ -159,15 +189,17 @@ void input_handler_task(void *arg)
     while (1) {
         if (xQueueReceive(g_event_queue, &event, portMAX_DELAY) == pdTRUE) {
             extern bool activity_touch(void);
-            if (activity_touch()) continue;  /* consume wake event */
+            if (activity_touch()) continue;
 
             lvgl_lock();
-            switch (event) {
+            switch (event.type) {
                 case INPUT_EVENT_ENCODER_CW:
+                    ui_set_encoder_step(event.step);
                     if (g_reverse_encoder) ui_dispatch_encoder_ccw();
                     else ui_dispatch_encoder_cw();
                     break;
                 case INPUT_EVENT_ENCODER_CCW:
+                    ui_set_encoder_step(event.step);
                     if (g_reverse_encoder) ui_dispatch_encoder_cw();
                     else ui_dispatch_encoder_ccw();
                     break;

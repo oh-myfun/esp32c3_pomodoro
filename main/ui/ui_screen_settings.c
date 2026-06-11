@@ -8,7 +8,7 @@
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 7
+#define SETTINGS_ITEM_COUNT 4
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
@@ -22,7 +22,7 @@ static char item_values[SETTINGS_ITEM_COUNT][4];
 static ui_list_item_t items[SETTINGS_ITEM_COUNT];
 
 static const str_id_t settings_name_ids[SETTINGS_ITEM_COUNT] = {
-    STR_M_POMODORO, STR_M_BUDDY, STR_M_LIGHT, STR_M_WIFI, STR_M_TIME, STR_M_SYSTEM, STR_M_DEBUG
+    STR_M_LIGHT, STR_M_WIFI, STR_M_TIME, STR_M_SYSTEM
 };
 
 static void update_display(void)
@@ -95,13 +95,10 @@ static void navigate_to_subpage(void)
     update_display();
 
     switch (current_settings_item) {
-        case 0: ui_switch_screen(UI_SCREEN_SETTINGS_POMODORO); break;
-        case 1: ui_switch_screen(UI_SCREEN_SETTINGS_BUDDY);    break;
-        case 2: ui_switch_screen(UI_SCREEN_SETTINGS_LIGHT);    break;
-        case 3: ui_switch_screen(UI_SCREEN_WIFI_SAVED);        break;
-        case 4: ui_switch_screen(UI_SCREEN_SETTINGS_TIME);     break;
-        case 5: ui_switch_screen(UI_SCREEN_SETTINGS_SYSTEM);   break;
-        case 6: ui_switch_screen(UI_SCREEN_SETTINGS_DEBUG);    break;
+        case 0: ui_switch_screen(UI_SCREEN_SETTINGS_LIGHT);  break;
+        case 1: ui_switch_screen(UI_SCREEN_WIFI_SAVED);      break;
+        case 2: ui_switch_screen(UI_SCREEN_SETTINGS_TIME);   break;
+        case 3: ui_switch_screen(UI_SCREEN_SETTINGS_SYSTEM); break;
     }
 }
 

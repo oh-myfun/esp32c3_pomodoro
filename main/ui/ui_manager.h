@@ -8,6 +8,7 @@ typedef enum {
     UI_SCREEN_BUDDY,
     UI_SCREEN_SETTINGS,
     UI_SCREEN_SETTINGS_POMODORO,
+    UI_SCREEN_SETTINGS_ALARM,
     UI_SCREEN_WIFI_LIST,
     UI_SCREEN_TEXT_INPUT,
     UI_SCREEN_WIFI_SAVED,
@@ -39,6 +40,8 @@ void ui_register_input_callbacks(ui_screen_id_t screen, const ui_input_callbacks
 void ui_unregister_input_callbacks(ui_screen_id_t screen);
 void ui_dispatch_encoder_cw(void);
 void ui_dispatch_encoder_ccw(void);
+void ui_set_encoder_step(int step);
+int  ui_get_encoder_step(void);
 void ui_dispatch_encoder_press(void);
 void ui_dispatch_encoder_long_press(void);
 void ui_dispatch_settings_press(void);

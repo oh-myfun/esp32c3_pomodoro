@@ -45,10 +45,11 @@ static void light_on_encoder_cw(void)
         light_selected_item = (light_selected_item + 1) % LIGHT_ITEM_COUNT;
         update_display();
     } else if (light_mode == LIGHT_MODE_ADJUST) {
+        int step = ui_get_encoder_step();
         switch (light_selected_item) {
             case 0: // Backlight brightness
-                if (light_values[0] < 10) {
-                    light_values[0]++;
+                if (light_values[0] + step <= 10) {
+                    light_values[0] += step;
                     backlight_set_brightness(light_values[0]);
                 }
                 break;
@@ -57,8 +58,8 @@ static void light_on_encoder_cw(void)
                 led_service_set_enabled(light_values[1]);
                 break;
             case 2: // Brightness
-                if (light_values[2] < 9) {
-                    light_values[2]++;
+                if (light_values[2] + step <= 9) {
+                    light_values[2] += step;
                     led_service_set_brightness(light_values[2]);
                 }
                 break;
@@ -91,10 +92,11 @@ static void light_on_encoder_ccw(void)
         light_selected_item = (light_selected_item - 1 + LIGHT_ITEM_COUNT) % LIGHT_ITEM_COUNT;
         update_display();
     } else if (light_mode == LIGHT_MODE_ADJUST) {
+        int step = ui_get_encoder_step();
         switch (light_selected_item) {
             case 0: // Backlight brightness
-                if (light_values[0] > 1) {
-                    light_values[0]--;
+                if (light_values[0] - step >= 1) {
+                    light_values[0] -= step;
                     backlight_set_brightness(light_values[0]);
                 }
                 break;
@@ -103,8 +105,8 @@ static void light_on_encoder_ccw(void)
                 led_service_set_enabled(light_values[1]);
                 break;
             case 2: // Brightness
-                if (light_values[2] > 1) {
-                    light_values[2]--;
+                if (light_values[2] - step >= 1) {
+                    light_values[2] -= step;
                     led_service_set_brightness(light_values[2]);
                 }
                 break;

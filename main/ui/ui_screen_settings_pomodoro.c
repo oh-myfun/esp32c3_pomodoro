@@ -29,26 +29,27 @@ static void pomo_set_on_encoder_cw(void)
         pomo_selected_item = (pomo_selected_item + 1) % POMO_ITEM_COUNT;
         update_display();
     } else if (pomo_mode == POMO_MODE_ADJUST) {
+        int step = ui_get_encoder_step();
         pomodoro_settings_t settings = pomodoro_engine_get_settings();
         switch (pomo_selected_item) {
             case 0: /* Work minutes */
-                if (settings.work_minutes < 120) {
-                    pomodoro_engine_set_work_minutes(settings.work_minutes + 1);
+                if (settings.work_minutes + step <= 120) {
+                    pomodoro_engine_set_work_minutes(settings.work_minutes + step);
                 }
                 break;
             case 1: /* Break minutes */
-                if (settings.break_minutes < 60) {
-                    pomodoro_engine_set_break_minutes(settings.break_minutes + 1);
+                if (settings.break_minutes + step <= 60) {
+                    pomodoro_engine_set_break_minutes(settings.break_minutes + step);
                 }
                 break;
             case 2: /* Long break minutes */
-                if (settings.long_break_minutes < 60) {
-                    pomodoro_engine_set_long_break_minutes(settings.long_break_minutes + 1);
+                if (settings.long_break_minutes + step <= 60) {
+                    pomodoro_engine_set_long_break_minutes(settings.long_break_minutes + step);
                 }
                 break;
             case 3: /* Cycles until long break */
-                if (settings.cycles_until_long_break < 10) {
-                    pomodoro_engine_set_cycles(settings.cycles_until_long_break + 1);
+                if (settings.cycles_until_long_break + step <= 10) {
+                    pomodoro_engine_set_cycles(settings.cycles_until_long_break + step);
                 }
                 break;
             case 4: /* Mode */
@@ -66,26 +67,27 @@ static void pomo_set_on_encoder_ccw(void)
         pomo_selected_item = (pomo_selected_item - 1 + POMO_ITEM_COUNT) % POMO_ITEM_COUNT;
         update_display();
     } else if (pomo_mode == POMO_MODE_ADJUST) {
+        int step = ui_get_encoder_step();
         pomodoro_settings_t settings = pomodoro_engine_get_settings();
         switch (pomo_selected_item) {
             case 0: /* Work minutes */
-                if (settings.work_minutes > 1) {
-                    pomodoro_engine_set_work_minutes(settings.work_minutes - 1);
+                if (settings.work_minutes - step >= 1) {
+                    pomodoro_engine_set_work_minutes(settings.work_minutes - step);
                 }
                 break;
             case 1: /* Break minutes */
-                if (settings.break_minutes > 1) {
-                    pomodoro_engine_set_break_minutes(settings.break_minutes - 1);
+                if (settings.break_minutes - step >= 1) {
+                    pomodoro_engine_set_break_minutes(settings.break_minutes - step);
                 }
                 break;
             case 2: /* Long break minutes */
-                if (settings.long_break_minutes > 1) {
-                    pomodoro_engine_set_long_break_minutes(settings.long_break_minutes - 1);
+                if (settings.long_break_minutes - step >= 1) {
+                    pomodoro_engine_set_long_break_minutes(settings.long_break_minutes - step);
                 }
                 break;
             case 3: /* Cycles until long break */
-                if (settings.cycles_until_long_break > 1) {
-                    pomodoro_engine_set_cycles(settings.cycles_until_long_break - 1);
+                if (settings.cycles_until_long_break - step >= 1) {
+                    pomodoro_engine_set_cycles(settings.cycles_until_long_break - step);
                 }
                 break;
             case 4: /* Mode */

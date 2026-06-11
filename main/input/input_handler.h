@@ -3,16 +3,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// 输入事件类型
-typedef enum {
-    INPUT_EVENT_NONE = 0,
-    INPUT_EVENT_ENCODER_CW,      // 编码器顺时针
-    INPUT_EVENT_ENCODER_CCW,     // 编码器逆时针
-    INPUT_EVENT_ENCODER_PRESS,   // 编码器按键短按（松手确认）
-    INPUT_EVENT_ENCODER_LONG_PRESS, // 编码器按键长按
-    INPUT_EVENT_SETTINGS_PRESS,   // 独立设置键短按（松手确认）
-    INPUT_EVENT_SETTINGS_LONG_PRESS // 独立设置键长按
+typedef struct {
+    uint8_t type;
+    uint8_t step;  /* encoder acceleration step (1 for non-encoder events) */
 } input_event_t;
+
+#define INPUT_EVENT_NONE                0
+#define INPUT_EVENT_ENCODER_CW          1
+#define INPUT_EVENT_ENCODER_CCW         2
+#define INPUT_EVENT_ENCODER_PRESS       3
+#define INPUT_EVENT_ENCODER_LONG_PRESS  4
+#define INPUT_EVENT_SETTINGS_PRESS      5
+#define INPUT_EVENT_SETTINGS_LONG_PRESS 6
 
 void input_handler_init(void);
 void input_handler_task(void *arg);

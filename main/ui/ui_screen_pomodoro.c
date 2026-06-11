@@ -7,7 +7,6 @@
 #include "service/led_service.h"
 #include "service/storage_service.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include <stdio.h>
 
 static const char *TAG = "UI_POMODORO";
@@ -44,11 +43,9 @@ static bool s_timer_mode = false;
 static timer_state_t s_timer_state = TIMER_IDLE;
 static uint32_t s_timer_total = 5 * 60;
 static uint32_t s_timer_remaining = 0;
-static int64_t s_last_encoder_tick = 0;
 
 #define TIMER_MIN_SECONDS  (1 * 60)    /* 1 min */
 #define TIMER_MAX_SECONDS  (360 * 60)  /* 360 min */
-#define FAST_SCROLL_US     (200000LL)  /* <200ms between ticks = fast scroll */
 
 #define KEY_TIMER_TOTAL "timer_total"
 
@@ -189,58 +186,35 @@ static void update_pomo_display(void)
 
 /* ---- Input callbacks ---- */
 
-static int timer_encoder_step(void)
-{
-    int64_t now = esp_timer_get_time();
-    int step = (now - s_last_encoder_tick < FAST_SCROLL_US) ? 5 : 1;
-    s_last_encoder_tick = now;
-    return step * 60;
-}
-
 static void pomo_on_encoder_cw(void)
 {
-    if (s_timer_mode) {
-        if (s_timer_state == TIMER_IDLE) {
-            timer_set_total(s_timer_total + timer_encoder_step());
-            timer_save_total();
-            update_timer_display();
-        }
-    } else {
-        ui_switch_screen(UI_SCREEN_BUDDY);
-    }
+    ui_switch_screen(UI_SCREEN_BUDDY);
 }
 
 static void pomo_on_encoder_ccw(void)
 {
-    if (s_timer_mode) {
-        if (s_timer_state == TIMER_IDLE) {
-            timer_set_total(s_timer_total - timer_encoder_step());
-            timer_save_total();
-            update_timer_display();
-        }
-    } else {
-        ui_switch_screen(UI_SCREEN_SENSOR);
-    }
+    ui_switch_screen(UI_SCREEN_SENSOR);
 }
 
 static void pomo_on_encoder_press(void)
 {
     if (s_timer_mode) {
-        /* Side key: cancel timer, back to idle */
-        if (s_timer_state == TIMER_RUNNING || s_timer_state == TIMER_PAUSED) {
-            s_timer_state = TIMER_IDLE;
-            s_timer_remaining = s_timer_total;
-            led_service_wait_done(LED_WAIT_POMODORO);
-            update_timer_display();
-        } else if (s_timer_state == TIMER_ALARM) {
+        if (s_timer_state == TIMER_IDLE) {
+            ui_push_screen(UI_SCREEN_SETTINGS_ALARM);
+        } else {
             s_timer_state = TIMER_IDLE;
             s_timer_remaining = s_timer_total;
             led_service_wait_done(LED_WAIT_POMODORO);
             update_timer_display();
         }
     } else {
-        pomodoro_engine_stop();
-        led_service_wait_done(LED_WAIT_POMODORO);
+        pomodoro_state_t state = pomodoro_engine_get_state();
+        if (state.phase == POMODORO_PHASE_IDLE) {
+            ui_push_screen(UI_SCREEN_SETTINGS_POMODORO);
+        } else {
+            pomodoro_engine_stop();
+            led_service_wait_done(LED_WAIT_POMODORO);
+        }
     }
 }
 
@@ -482,6 +456,7 @@ void ui_screen_pomodoro_timer_tick(void)
 
 void ui_screen_pomodoro_refresh(void)
 {
+    timer_load_total();
     if (s_timer_mode) {
         update_timer_display();
     } else {

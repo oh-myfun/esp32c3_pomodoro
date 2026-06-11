@@ -65,6 +65,10 @@ typedef enum {
     STR_PHASE_TIMER,       /* "⏱Timer" / "⏱计时器" */
     STR_PHASE_ALARM,       /* "🔔Alarm" / "🔔闹铃" */
 
+    /* Alarm settings */
+    STR_T_ALARM,           /* "⏱Alarm" / "⏱闹钟" */
+    STR_ALARM_DURATION,    /* "Duration" / "时长" */
+
     /* Light settings */
     STR_LIGHT,
     STR_BACKLIGHT,

@@ -5,6 +5,7 @@
 #include "ui_screen_wifi.h"
 #include "ui_text_input.h"
 #include "ui_screen_settings_pomodoro.h"
+#include "ui_screen_settings_alarm.h"
 #include "ui_screen_buddy.h"
 #include "ui_screen_wifi_saved.h"
 #include "ui_screen_settings_light.h"
@@ -103,6 +104,7 @@ void ui_init(void)
 
     // Sub-setting screens: lazy load on first navigation
     lazy_creators[UI_SCREEN_SETTINGS_POMODORO] = ui_screen_settings_pomodoro_create;
+    lazy_creators[UI_SCREEN_SETTINGS_ALARM] = ui_screen_settings_alarm_create;
     lazy_creators[UI_SCREEN_SETTINGS_LIGHT] = ui_screen_settings_light_create;
     lazy_creators[UI_SCREEN_SETTINGS_BUDDY] = ui_screen_settings_buddy_create;
     lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
@@ -173,6 +175,9 @@ static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
     if (screen_id == UI_SCREEN_SETTINGS) {
         ui_screen_settings_refresh();
     }
+    if (screen_id == UI_SCREEN_POMODORO) {
+        ui_screen_pomodoro_refresh();
+    }
 
     // Clean old disposable screen: remove children to free memory
     if (screen_is_disposable(old_screen) && screens[old_screen]) {
@@ -210,6 +215,18 @@ void ui_unregister_input_callbacks(ui_screen_id_t screen)
 {
     if (screen >= UI_SCREEN_COUNT) return;
     memset(&input_callbacks[screen], 0, sizeof(ui_input_callbacks_t));
+}
+
+static int s_encoder_step = 1;
+
+void ui_set_encoder_step(int step)
+{
+    s_encoder_step = step;
+}
+
+int ui_get_encoder_step(void)
+{
+    return s_encoder_step;
 }
 
 void ui_dispatch_encoder_cw(void)

@@ -29,8 +29,8 @@ static char item_keys[SENSOR_ITEM_COUNT][20];
 static char item_values[SENSOR_ITEM_COUNT][12];
 static ui_list_item_t items[SENSOR_ITEM_COUNT];
 
-/* Step values for each item (0 = non-numeric: interval, temp_source, reset, pressure_info) */
-static const int steps[SENSOR_ITEM_COUNT] = {1, 0, 5, 5, 10, 10, 50, 50, 0, 0};
+/* Base step values for each item (0 = non-numeric: temp_source, reset, pressure_info) */
+static const int base_steps[SENSOR_ITEM_COUNT] = {1, 0, 5, 5, 10, 10, 50, 50, 0, 0};
 
 static const str_id_t temp_src_names[TEMP_SRC_COUNT] = {
     STR_SRC_AHT20, STR_SRC_BMP280, STR_SRC_AVG
@@ -103,9 +103,10 @@ static void save_current_item(void)
 
 static void adjust_value(int direction)
 {
+    int step = ui_get_encoder_step();
     if (selected_item == 0) {
-        /* Sample interval: 1-60 seconds, step 1 */
-        settings.sample_interval += direction;
+        /* Sample interval: 1-60 seconds */
+        settings.sample_interval += step * direction;
         if (settings.sample_interval < 1) settings.sample_interval = 1;
         if (settings.sample_interval > 60) settings.sample_interval = 60;
         update_display();
@@ -121,7 +122,7 @@ static void adjust_value(int direction)
     int32_t *vals[] = {NULL, NULL, &settings.temp_min, &settings.temp_max,
                        &settings.press_min, &settings.press_max,
                        &settings.alt_min, &settings.alt_max};
-    *vals[selected_item] += (int32_t)steps[selected_item] * direction;
+    *vals[selected_item] += (int32_t)base_steps[selected_item] * step * direction;
     update_display();
 }
 
