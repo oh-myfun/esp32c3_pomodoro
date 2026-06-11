@@ -53,6 +53,7 @@ typedef enum {
     STR_RESET,
     STR_FMT_MIN,       /* "%d min" / "%d分钟" */
     STR_FMT_HOUR,      /* "%dh" / "%d小时" */
+    STR_FMT_HOUR_MIN,  /* "%dh%dmin" / "%d小时%d分钟" */
     STR_FMT_SEC,       /* "%ds" / "%d秒" */
     STR_FMT_DONE,      /* "%lu done" / "%lu次" */
 

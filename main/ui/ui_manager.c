@@ -307,6 +307,9 @@ void ui_go_back(void)
     if (prev == UI_SCREEN_SETTINGS) {
         ui_screen_settings_refresh();
     }
+    if (prev == UI_SCREEN_POMODORO) {
+        ui_screen_pomodoro_refresh();
+    }
 
     /* Clean old disposable screen */
     if (screen_is_disposable(old_screen) && screens[old_screen]) {

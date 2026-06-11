@@ -33,10 +33,16 @@ static ui_list_item_t items[ALARM_ITEM_COUNT];
 static void update_display(void)
 {
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_ALARM_DURATION));
-    if (alarm_duration_min >= 60) {
-        snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_HOUR), alarm_duration_min / 60);
-    } else {
-        snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_MIN), alarm_duration_min);
+    {
+        int h = alarm_duration_min / 60;
+        int m = alarm_duration_min % 60;
+        if (h > 0 && m > 0) {
+            snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_HOUR_MIN), h, m);
+        } else if (h > 0) {
+            snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_HOUR), h);
+        } else {
+            snprintf(item_values[0], sizeof(item_values[0]), i18n(STR_FMT_MIN), m);
+        }
     }
     items[0].key = item_keys[0];
     items[0].value = item_values[0];
