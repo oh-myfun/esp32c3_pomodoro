@@ -26,8 +26,32 @@ typedef enum {
     SOUND_COUNT
 } sound_id_t;
 
+typedef enum {
+    SND_CAT_KEY = 0,
+    SND_CAT_UI,
+    SND_CAT_NET,
+    SND_CAT_POMO,
+    SND_CAT_BUDDY,
+    SND_CAT_HOUR_CHIME,
+    SND_CAT_HALF_CHIME,
+    SND_CAT_COUNT
+} sound_category_t;
+
 void sound_service_init(void);
 void sound_service_play(sound_id_t id);
 
 bool sound_service_is_enabled(void);
 void sound_service_set_enabled(bool enabled);
+
+/* 分类开关 */
+bool sound_service_is_category_enabled(sound_category_t cat);
+void sound_service_set_category_enabled(sound_category_t cat, bool on);
+
+/* 报时（参数化触发，内部走总开关 + 分类开关） */
+void sound_service_play_hour_chime(int hour12);   /* hour12: 1..12 */
+void sound_service_play_half_chime(void);
+
+/* 静默时段（start/end 取值 0..23；start==end 表示无静默） */
+bool sound_service_is_quiet_hour(int hour);
+void sound_service_set_quiet_range(int start, int end);
+void sound_service_get_quiet_range(int *start, int *end);

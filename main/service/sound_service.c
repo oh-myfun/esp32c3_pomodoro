@@ -5,7 +5,7 @@
 
 static const char *TAG = "SOUND";
 
-// Note frequencies (Hz)
+/* ---- Note frequencies (Hz) ---- */
 #define NOTE_C4   262
 #define NOTE_EB4  311
 #define NOTE_G4   392
@@ -23,7 +23,7 @@ static const char *TAG = "SOUND";
 #define NOTE_C7   2093
 #define REST      0
 
-// Melody data (compile-time constants)
+/* ---- Existing melodies (unchanged) ---- */
 static const buzzer_note_t mel_key_click[] = {
     {NOTE_C6, 30},
 };
@@ -82,6 +82,18 @@ static const buzzer_note_t mel_buddy_sad[] = {
     {NOTE_E5, 150}, {NOTE_C5, 200},
 };
 
+/* Hour chime: 每组 3 响成起伏 */
+static const buzzer_note_t mel_hour_group3[] = {
+    {NOTE_C6, 150}, {NOTE_E6, 150}, {NOTE_G6, 200},
+};
+static const buzzer_note_t mel_hour_rest[] = {
+    {REST, 400},
+};
+/* Half chime: 单响低音 */
+static const buzzer_note_t mel_half[] = {
+    {NOTE_A5, 200},
+};
+
 typedef struct {
     const buzzer_note_t *notes;
     uint8_t count;
@@ -109,21 +121,73 @@ static const buzzer_melody_t melodies[SOUND_COUNT] = {
     [SOUND_BUDDY_SAD]        = {mel_buddy_sad,         2},
 };
 
+/* ---- Category mapping ---- */
+static const sound_category_t cat_map[SOUND_COUNT] = {
+    [SOUND_KEY_CLICK]        = SND_CAT_KEY,
+    [SOUND_CONFIRM]          = SND_CAT_UI,
+    [SOUND_CANCEL]           = SND_CAT_UI,
+    [SOUND_SUCCESS]          = SND_CAT_UI,
+    [SOUND_FAIL]             = SND_CAT_UI,
+    [SOUND_WIFI_CONNECT]     = SND_CAT_NET,
+    [SOUND_WIFI_CONNECTED]   = SND_CAT_NET,
+    [SOUND_WIFI_FAILED]      = SND_CAT_NET,
+    [SOUND_SYNC_START]       = SND_CAT_NET,
+    [SOUND_SYNC_DONE]        = SND_CAT_NET,
+    [SOUND_POMO_START]       = SND_CAT_POMO,
+    [SOUND_POMO_WORK_START]  = SND_CAT_POMO,
+    [SOUND_POMO_BREAK_START] = SND_CAT_POMO,
+    [SOUND_POMO_WORK_DONE]   = SND_CAT_POMO,
+    [SOUND_POMO_BREAK_DONE]  = SND_CAT_POMO,
+    [SOUND_POMO_LONG_BREAK]  = SND_CAT_POMO,
+    [SOUND_BUDDY_ATTENTION]  = SND_CAT_BUDDY,
+    [SOUND_BUDDY_HAPPY]      = SND_CAT_BUDDY,
+    [SOUND_BUDDY_SAD]        = SND_CAT_BUDDY,
+};
+
+/* ---- NVS keys / defaults per category ---- */
+static const char *cat_keys[SND_CAT_COUNT] = {
+    KEY_SND_CAT_KEY, KEY_SND_CAT_UI, KEY_SND_CAT_NET, KEY_SND_CAT_POMO,
+    KEY_SND_CAT_BUDDY, KEY_SND_CAT_HOUR, KEY_SND_CAT_HALF,
+};
+static const bool cat_defaults[SND_CAT_COUNT] = {
+    true, true, true, true, true, false, false,
+};
+
+/* ---- State ---- */
 static bool sound_enabled = true;
+static bool cat_enabled[SND_CAT_COUNT];
+static int quiet_start = 22;
+static int quiet_end   = 7;
 
 void sound_service_init(void)
 {
-    int32_t val = 1;
-    storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SOUND, &val);
-    sound_enabled = (val != 0);
-    ESP_LOGI(TAG, "Sound service initialized, enabled=%d", sound_enabled);
+    int32_t v;
+    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SOUND, &v)) {
+        sound_enabled = (v != 0);
+    }
+    for (int i = 0; i < SND_CAT_COUNT; i++) {
+        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, cat_keys[i], &v)) {
+            cat_enabled[i] = (v != 0);
+        } else {
+            cat_enabled[i] = cat_defaults[i];
+        }
+    }
+    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_QUIET_START, &v) && v >= 0 && v <= 23) {
+        quiet_start = (int)v;
+    }
+    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_QUIET_END, &v) && v >= 0 && v <= 23) {
+        quiet_end = (int)v;
+    }
+    ESP_LOGI(TAG, "Sound init enabled=%d quiet=%d-%d",
+             sound_enabled, quiet_start, quiet_end);
 }
 
 void sound_service_play(sound_id_t id)
 {
     if (!sound_enabled) return;
     if (id < 0 || id >= SOUND_COUNT) return;
-
+    sound_category_t cat = cat_map[id];
+    if (!cat_enabled[cat]) return;
     const buzzer_melody_t *m = &melodies[id];
     buzzer_play_melody(m->notes, m->count);
 }
@@ -141,4 +205,72 @@ void sound_service_set_enabled(bool enabled)
         buzzer_stop();
     }
     ESP_LOGI(TAG, "Sound %s", enabled ? "enabled" : "disabled");
+}
+
+bool sound_service_is_category_enabled(sound_category_t cat)
+{
+    if (cat < 0 || cat >= SND_CAT_COUNT) return false;
+    return cat_enabled[cat];
+}
+
+void sound_service_set_category_enabled(sound_category_t cat, bool on)
+{
+    if (cat < 0 || cat >= SND_CAT_COUNT) return;
+    cat_enabled[cat] = on;
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, cat_keys[cat], on ? 1 : 0);
+    ESP_LOGI(TAG, "Category %d = %d", cat, on);
+}
+
+void sound_service_play_hour_chime(int hour12)
+{
+    if (!sound_enabled) return;
+    if (!cat_enabled[SND_CAT_HOUR_CHIME]) return;
+    if (hour12 < 1 || hour12 > 12) return;
+
+    /* 动态拼装：每 3 响为一组，组间插入 rest */
+    buzzer_note_t buf[16];
+    int n = 0;
+    int full_groups = hour12 / 3;
+    int remainder   = hour12 % 3;
+    for (int g = 0; g < full_groups; g++) {
+        if (g > 0) buf[n++] = mel_hour_rest[0];
+        for (int i = 0; i < 3; i++) buf[n++] = mel_hour_group3[i];
+    }
+    if (remainder > 0) {
+        if (full_groups > 0) buf[n++] = mel_hour_rest[0];
+        for (int i = 0; i < remainder; i++) buf[n++] = mel_hour_group3[i];
+    }
+    buzzer_play_melody(buf, (uint8_t)n);
+}
+
+void sound_service_play_half_chime(void)
+{
+    if (!sound_enabled) return;
+    if (!cat_enabled[SND_CAT_HALF_CHIME]) return;
+    buzzer_play_melody(mel_half, 1);
+}
+
+bool sound_service_is_quiet_hour(int hour)
+{
+    int s = quiet_start, e = quiet_end;
+    if (s == e) return false;
+    return (s < e) ? (hour >= s && hour < e)
+                   : (hour >= s || hour < e);
+}
+
+void sound_service_set_quiet_range(int start, int end)
+{
+    if (start < 0 || start > 23) return;
+    if (end < 0 || end > 23) return;
+    quiet_start = start;
+    quiet_end = end;
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_QUIET_START, start);
+    storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_QUIET_END, end);
+    ESP_LOGI(TAG, "Quiet range set: %d-%d", start, end);
+}
+
+void sound_service_get_quiet_range(int *start, int *end)
+{
+    if (start) *start = quiet_start;
+    if (end)   *end   = quiet_end;
 }
