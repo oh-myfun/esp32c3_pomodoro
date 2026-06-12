@@ -6,6 +6,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "BUZZER";
 
@@ -19,6 +20,11 @@ static const char *TAG = "BUZZER";
 static bool buzzer_initialized = false;
 static uint32_t current_freq = BUZZER_DEFAULT_FREQ;
 static uint8_t current_volume = 50;
+
+/* Serializes melody playback across multiple tasks (input/service/tcp/SNTP/ui_update).
+ * esp_timer_delete blocks until the running callback returns, so the callback
+ * itself never races with a caller that holds this mutex. */
+static SemaphoreHandle_t s_play_mutex = NULL;
 
 void buzzer_init(void)
 {
@@ -45,6 +51,9 @@ void buzzer_init(void)
         .clk_cfg = LEDC_AUTO_CLK
     };
     ESP_ERROR_CHECK(ledc_timer_config(&timer_config));
+
+    s_play_mutex = xSemaphoreCreateRecursiveMutex();
+    assert(s_play_mutex);
 
     buzzer_initialized = true;
     ESP_LOGI(TAG, "Buzzer initialized on GPIO%d, freq=%dHz", BUZZER_GPIO, current_freq);
@@ -127,6 +136,8 @@ void buzzer_play_melody(const buzzer_note_t *notes, uint8_t count)
 {
     if (!buzzer_initialized || count == 0 || !notes) return;
 
+    xSemaphoreTakeRecursive(s_play_mutex, portMAX_DELAY);
+
     // Stop current playback
     if (play_timer) {
         esp_timer_stop(play_timer);
@@ -152,10 +163,15 @@ void buzzer_play_melody(const buzzer_note_t *notes, uint8_t count)
         buzzer_on();
     }
     esp_timer_start_once(play_timer, note->duration_ms * 1000);
+
+    xSemaphoreGiveRecursive(s_play_mutex);
 }
 
 void buzzer_stop(void)
 {
+    if (!buzzer_initialized) return;
+
+    xSemaphoreTakeRecursive(s_play_mutex, portMAX_DELAY);
     if (play_timer) {
         esp_timer_stop(play_timer);
         esp_timer_delete(play_timer);
@@ -163,6 +179,7 @@ void buzzer_stop(void)
     }
     buzzer_off();
     playing = false;
+    xSemaphoreGiveRecursive(s_play_mutex);
 }
 
 bool buzzer_is_playing(void)
