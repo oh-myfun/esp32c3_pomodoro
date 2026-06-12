@@ -16,6 +16,7 @@ typedef enum {
     UI_SCREEN_SETTINGS_BUDDY,
     UI_SCREEN_SETTINGS_TIME,
     UI_SCREEN_SETTINGS_SYSTEM,
+    UI_SCREEN_SETTINGS_SOUND,
     UI_SCREEN_SETTINGS_DEBUG,
     UI_SCREEN_BRIDGE_SCAN,
     UI_SCREEN_SENSOR,
@@ -31,6 +32,7 @@ typedef struct {
     void (*on_encoder_long_press)(void);
     void (*on_settings_press)(void);
     void (*on_settings_long_press)(void);
+    const char *(*on_long_press_hint)(bool top_key);  /* returns action text or NULL */
 } ui_input_callbacks_t;
 
 void ui_init(void);
@@ -50,3 +52,6 @@ void ui_go_back(void);
 void ui_push_screen(ui_screen_id_t screen_id);
 void lvgl_lock(void);
 void lvgl_unlock(void);
+const char *ui_get_long_press_action(bool top_key);
+void ui_show_long_press_hint(const char *name);
+void ui_hide_long_press_hint(void);

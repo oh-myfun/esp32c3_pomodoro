@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "custom_font.h"
 #include "ui_screen_main.h"
 #include "ui_screen_pomodoro.h"
 #include "ui_screen_settings.h"
@@ -12,6 +13,7 @@
 #include "ui_screen_settings_buddy.h"
 #include "ui_screen_settings_time.h"
 #include "ui_screen_settings_system.h"
+#include "ui_screen_settings_sound.h"
 #include "ui_screen_settings_debug.h"
 #include "ui_screen_bridge_scan.h"
 #include "ui_screen_sensor.h"
@@ -49,6 +51,7 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_BUDDY ||
            id == UI_SCREEN_SETTINGS_TIME ||
            id == UI_SCREEN_SETTINGS_SYSTEM ||
+           id == UI_SCREEN_SETTINGS_SOUND  ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
            id == UI_SCREEN_BRIDGE_SCAN ||
            id == UI_SCREEN_SETTINGS_SENSOR ||
@@ -109,6 +112,7 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_SETTINGS_BUDDY] = ui_screen_settings_buddy_create;
     lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
     lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
+    lazy_creators[UI_SCREEN_SETTINGS_SOUND]  = ui_screen_settings_sound_create;
     lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
     lazy_creators[UI_SCREEN_BRIDGE_SCAN] = ui_screen_bridge_scan_create;
     lazy_creators[UI_SCREEN_SENSOR] = ui_screen_sensor_create;
@@ -271,6 +275,14 @@ void ui_dispatch_settings_long_press(void)
     }
 }
 
+const char *ui_get_long_press_action(bool top_key)
+{
+    if (input_callbacks[current_screen].on_long_press_hint) {
+        return input_callbacks[current_screen].on_long_press_hint(top_key);
+    }
+    return NULL;
+}
+
 void ui_go_back(void)
 {
     if (nav_depth <= 0) return;
@@ -319,4 +331,85 @@ void ui_go_back(void)
     }
 
     lvgl_unlock();
+}
+
+/* --- Long press progress bar overlay --- */
+
+static lv_obj_t *lp_bg = NULL;
+static lv_obj_t *lp_fill = NULL;
+static lv_obj_t *lp_label = NULL;
+static bool lp_visible = false;
+
+#define LP_HEIGHT 18
+#define LP_WIDTH  240
+
+static void lp_fill_anim_cb(void *var, int32_t v)
+{
+    lv_obj_set_width((lv_obj_t *)var, v);
+}
+
+static void lp_create(void)
+{
+    if (lp_bg) return;
+
+    lv_obj_t *layer = lv_layer_top();
+
+    lp_bg = lv_obj_create(layer);
+    lv_obj_remove_style_all(lp_bg);
+    lv_obj_set_size(lp_bg, LP_WIDTH, LP_HEIGHT);
+    lv_obj_align(lp_bg, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_bg_color(lp_bg, lv_color_hex(0x0d0d0d), 0);
+    lv_obj_set_style_bg_opa(lp_bg, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(lp_bg, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(lp_bg, LV_OBJ_FLAG_HIDDEN);
+
+    lp_fill = lv_obj_create(lp_bg);
+    lv_obj_remove_style_all(lp_fill);
+    lv_obj_set_pos(lp_fill, 0, 0);
+    lv_obj_set_size(lp_fill, 0, LP_HEIGHT);
+    lv_obj_set_style_bg_color(lp_fill, lv_color_hex(0x00AA00), 0);
+    lv_obj_set_style_bg_opa(lp_fill, LV_OPA_70, 0);
+    lv_obj_clear_flag(lp_fill, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+    lp_label = lv_label_create(lp_bg);
+    lv_label_set_text(lp_label, "");
+    lv_obj_set_style_text_color(lp_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lp_label, &custom_font_14, 0);
+    lv_obj_align(lp_label, LV_ALIGN_CENTER, 0, 0);
+}
+
+void ui_show_long_press_hint(const char *name)
+{
+    lp_create();
+
+    lv_label_set_text(lp_label, name);
+
+    if (lp_visible) {
+        return;
+    }
+
+    lv_obj_set_width(lp_fill, 0);
+    lv_obj_clear_flag(lp_bg, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(lp_bg);
+
+    lv_anim_del(lp_fill, NULL);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, lp_fill);
+    lv_anim_set_exec_cb(&a, lp_fill_anim_cb);
+    lv_anim_set_values(&a, 0, LP_WIDTH);
+    lv_anim_set_time(&a, 500);
+    lv_anim_start(&a);
+
+    lp_visible = true;
+}
+
+void ui_hide_long_press_hint(void)
+{
+    if (!lp_visible || !lp_bg) return;
+
+    lv_anim_del(lp_fill, NULL);
+    lv_obj_add_flag(lp_bg, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_width(lp_fill, 0);
+    lp_visible = false;
 }
