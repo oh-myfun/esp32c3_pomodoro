@@ -146,7 +146,7 @@ lv_obj_t* ui_screen_settings_create(void)
 
     update_display();
 
-    ESP_LOGI(TAG, "Settings screen created (6 categories)");
+    ESP_LOGI(TAG, "Settings screen created (5 categories)");
     return screen;
 }
 
