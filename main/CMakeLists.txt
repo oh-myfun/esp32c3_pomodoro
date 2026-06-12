@@ -33,6 +33,7 @@ idf_component_register(SRCS main.c
                           pomodoro/pomodoro_engine.c
                           service/storage_service.c
                           service/sound_service.c
+                          service/chime_service.c
                           service/led_service.c
                           service/time_service.c
                           service/tcp_service.c
