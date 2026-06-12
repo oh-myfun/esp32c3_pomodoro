@@ -226,6 +226,26 @@ static const char *strings[STR_COUNT][2] = {
     [STR_PI_STORM]       = {"Storm    15~30  126~253","\xe6\x9a\xb4\xe9\xa3\x8e\xe9\x9b\xa8   15~30  126~253"},
     [STR_PI_TYPHOON]     = {"Typhoon   100+   868+", "\xe5\x8f\xb0\xe9\xa3\x8e      100+   868+"},
     [STR_PI_NOTE]        = {"Lower pressure =\nhigher altitude.", "\xe6\xb0\x94\xe5\x8e\x8b\xe8\xb6\x8a\xe4\xbd\x8e\n\xe6\xb5\xb7\xe6\x8b\x94\xe8\xb6\x8a\xe9\xab\x98"},
+
+    /* Long press hint */
+    [STR_KEY_DUAL]       = {"BOTH", "\xe5\x8f\x8c\xe9\x94\xae"},
+    [STR_ACT_SWITCH_PET] = {"Switch Pet", "\xe5\x88\x87\xe6\x8d\xa2\xe5\xae\xa0\xe7\x89\xa9"},
+    [STR_ACT_DELETE]     = {"Delete",     "\xe5\x88\xa0\xe9\x99\xa4"},
+    [STR_ACT_SWITCH_MODE]= {"Switch Mode","\xe5\x88\x87\xe6\x8d\xa2\xe6\xa8\xa1\xe5\xbc\x8f"},
+    [STR_ACT_RESET]      = {"Screen Reset","\xe5\xb1\x8f\xe5\xb9\x95\xe9\x87\x8d\xe7\xbd\xae"},
+
+    /* Sound settings */
+    [STR_T_SOUND]      = {"🔊Sound",      "🔊声音"},
+    [STR_M_SOUND]      = {"🔊Sound",      "🔊声音"},
+    [STR_SND_KEY]      = {"🔑Key",        "🔑按键"},
+    [STR_SND_UI]       = {"✅UI",         "✅操作"},
+    [STR_SND_NET]      = {"📶Net",        "📶网络"},
+    [STR_SND_POMO]     = {"🍅Pomo",       "🍅番茄"},
+    [STR_SND_BUDDY]    = {"🐱Buddy",      "🐱宠物"},
+    [STR_SND_HOUR]     = {"🔔Hour",       "🔔整点"},
+    [STR_SND_HALF]     = {"🔎Half",       "🔎半点"},
+    [STR_QUIET_START]  = {"🌙Q.Start",    "🌙静默起"},
+    [STR_QUIET_END]    = {"🌙Q.End",      "🌙静默止"},
 };
 
 void i18n_init(void)

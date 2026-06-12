@@ -223,6 +223,26 @@ typedef enum {
     STR_PI_TYPHOON,
     STR_PI_NOTE,        /* bottom note */
 
+    /* Long press hint */
+    STR_KEY_DUAL,       /* "BOTH" / "双键" */
+    STR_ACT_SWITCH_PET, /* "Switch Pet" / "切换宠物" */
+    STR_ACT_DELETE,     /* "Delete" / "删除" */
+    STR_ACT_SWITCH_MODE,/* "Switch Mode" / "切换模式" */
+    STR_ACT_RESET,      /* "Screen Reset" / "屏幕重置" */
+
+    /* Sound settings */
+    STR_T_SOUND,            /* "🔊Sound" / "🔊声音" */
+    STR_M_SOUND,            /* "🔊Sound" / "🔊声音" */
+    STR_SND_KEY,            /* "🔑Key" / "🔑按键" */
+    STR_SND_UI,             /* "✅UI" / "✅操作" */
+    STR_SND_NET,            /* "📶Net" / "📶网络" */
+    STR_SND_POMO,           /* "🍅Pomo" / "🍅番茄" */
+    STR_SND_BUDDY,          /* "🐱Buddy" / "🐱宠物" */
+    STR_SND_HOUR,           /* "🔔Hour" / "🔔整点" */
+    STR_SND_HALF,           /* "🔎Half" / "🔎半点" */
+    STR_QUIET_START,        /* "🌙Q.Start" / "🌙静默起" */
+    STR_QUIET_END,          /* "🌙Q.End" / "🌙静默止" */
+
     STR_COUNT
 } str_id_t;
 
