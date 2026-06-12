@@ -8,7 +8,7 @@
 
 static const char *TAG = "UI_SETTINGS";
 
-#define SETTINGS_ITEM_COUNT 4
+#define SETTINGS_ITEM_COUNT 5
 
 static lv_obj_t *settings_title = NULL;
 static lv_obj_t *settings_list = NULL;
@@ -22,7 +22,7 @@ static char item_values[SETTINGS_ITEM_COUNT][4];
 static ui_list_item_t items[SETTINGS_ITEM_COUNT];
 
 static const str_id_t settings_name_ids[SETTINGS_ITEM_COUNT] = {
-    STR_M_LIGHT, STR_M_WIFI, STR_M_TIME, STR_M_SYSTEM
+    STR_M_LIGHT, STR_M_SOUND, STR_M_WIFI, STR_M_TIME, STR_M_SYSTEM
 };
 
 static void update_display(void)
@@ -96,9 +96,10 @@ static void navigate_to_subpage(void)
 
     switch (current_settings_item) {
         case 0: ui_switch_screen(UI_SCREEN_SETTINGS_LIGHT);  break;
-        case 1: ui_switch_screen(UI_SCREEN_WIFI_SAVED);      break;
-        case 2: ui_switch_screen(UI_SCREEN_SETTINGS_TIME);   break;
-        case 3: ui_switch_screen(UI_SCREEN_SETTINGS_SYSTEM); break;
+        case 1: ui_switch_screen(UI_SCREEN_SETTINGS_SOUND);  break;
+        case 2: ui_switch_screen(UI_SCREEN_WIFI_SAVED);      break;
+        case 3: ui_switch_screen(UI_SCREEN_SETTINGS_TIME);   break;
+        case 4: ui_switch_screen(UI_SCREEN_SETTINGS_SYSTEM); break;
     }
 }
 
@@ -110,16 +111,6 @@ static void settings_on_settings_press(void)
         update_display();
     } else if (settings_mode == SETTINGS_MODE_SELECT) {
         navigate_to_subpage();
-    }
-}
-
-static void settings_on_encoder_long_press(void)
-{
-    if (settings_mode == SETTINGS_MODE_SELECT) {
-        settings_mode = SETTINGS_MODE_IDLE;
-        update_display();
-    } else {
-        ui_switch_screen(UI_SCREEN_MAIN);
     }
 }
 
@@ -148,7 +139,7 @@ lv_obj_t* ui_screen_settings_create(void)
         .on_encoder_cw = settings_on_encoder_cw,
         .on_encoder_ccw = settings_on_encoder_ccw,
         .on_encoder_press = settings_on_encoder_press,
-        .on_encoder_long_press = settings_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = settings_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS, &cbs);
