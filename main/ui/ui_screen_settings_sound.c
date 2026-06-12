@@ -10,12 +10,13 @@
 
 static const char *TAG = "UI_SETTINGS_SOUND";
 
-#define SOUND_ITEM_COUNT 10
+#define SOUND_ITEM_COUNT 11
 
 /* 索引含义：
  *   0..7  开关项（总开关 + 7 分类）
  *   8     Quiet Start
  *   9     Quiet End
+ *   10    Demo (push to demo sub-screen)
  */
 typedef enum { MODE_NAV, MODE_ADJUST } sound_mode_t;
 
@@ -71,6 +72,8 @@ static void update_display(void)
     snprintf(item_values[8], sizeof(item_values[8]), i18n(STR_FMT_HOUR), quiet_vals[0]);
     snprintf(item_keys[9], sizeof(item_keys[9]), "%s", i18n(STR_QUIET_END));
     snprintf(item_values[9], sizeof(item_values[9]), i18n(STR_FMT_HOUR), quiet_vals[1]);
+    snprintf(item_keys[10], sizeof(item_keys[10]), "%s", i18n(STR_SND_DEMO));
+    snprintf(item_values[10], sizeof(item_values[10]), "\xe2\x87\xa8");
 
     for (int i = 0; i < SOUND_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -151,9 +154,12 @@ static void sound_on_settings_press(void)
         /* 分类开关 */
         bool_vals[selected_item] = !bool_vals[selected_item];
         sound_service_set_category_enabled(cat_for_item[selected_item], bool_vals[selected_item]);
-    } else {
+    } else if (selected_item == 8 || selected_item == 9) {
         /* 8 / 9 = 进入 ADJUST */
         sound_mode = MODE_ADJUST;
+    } else if (selected_item == 10) {
+        /* Demo = 进入演示子界面 */
+        ui_push_screen(UI_SCREEN_SETTINGS_SOUND_DEMO);
     }
     update_display();
 }

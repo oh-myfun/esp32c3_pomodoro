@@ -192,6 +192,13 @@ void sound_service_play(sound_id_t id)
     buzzer_play_melody(m->notes, m->count);
 }
 
+void sound_service_play_raw(sound_id_t id)
+{
+    if (id < 0 || id >= SOUND_COUNT) return;
+    const buzzer_melody_t *m = &melodies[id];
+    buzzer_play_melody(m->notes, m->count);
+}
+
 bool sound_service_is_enabled(void)
 {
     return sound_enabled;
@@ -221,10 +228,8 @@ void sound_service_set_category_enabled(sound_category_t cat, bool on)
     ESP_LOGI(TAG, "Category %d = %d", cat, on);
 }
 
-void sound_service_play_hour_chime(int hour12)
+static void play_hour_chime_impl(int hour12)
 {
-    if (!sound_enabled) return;
-    if (!cat_enabled[SND_CAT_HOUR_CHIME]) return;
     if (hour12 < 1 || hour12 > 12) return;
 
     /* 动态拼装：每 3 响为一组，组间插入 rest */
@@ -243,11 +248,33 @@ void sound_service_play_hour_chime(int hour12)
     buzzer_play_melody(buf, (uint8_t)n);
 }
 
+static void play_half_chime_impl(void)
+{
+    buzzer_play_melody(mel_half, 1);
+}
+
+void sound_service_play_hour_chime(int hour12)
+{
+    if (!sound_enabled) return;
+    if (!cat_enabled[SND_CAT_HOUR_CHIME]) return;
+    play_hour_chime_impl(hour12);
+}
+
 void sound_service_play_half_chime(void)
 {
     if (!sound_enabled) return;
     if (!cat_enabled[SND_CAT_HALF_CHIME]) return;
-    buzzer_play_melody(mel_half, 1);
+    play_half_chime_impl();
+}
+
+void sound_service_play_hour_chime_raw(int hour12)
+{
+    play_hour_chime_impl(hour12);
+}
+
+void sound_service_play_half_chime_raw(void)
+{
+    play_half_chime_impl();
 }
 
 bool sound_service_is_quiet_hour(int hour)

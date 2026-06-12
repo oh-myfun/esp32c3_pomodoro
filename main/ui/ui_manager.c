@@ -14,6 +14,8 @@
 #include "ui_screen_settings_time.h"
 #include "ui_screen_settings_system.h"
 #include "ui_screen_settings_sound.h"
+#include "ui_screen_settings_light_demo.h"
+#include "ui_screen_settings_sound_demo.h"
 #include "ui_screen_settings_debug.h"
 #include "ui_screen_bridge_scan.h"
 #include "ui_screen_sensor.h"
@@ -52,6 +54,8 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_TIME ||
            id == UI_SCREEN_SETTINGS_SYSTEM ||
            id == UI_SCREEN_SETTINGS_SOUND  ||
+           id == UI_SCREEN_SETTINGS_LIGHT_DEMO ||
+           id == UI_SCREEN_SETTINGS_SOUND_DEMO ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
            id == UI_SCREEN_BRIDGE_SCAN ||
            id == UI_SCREEN_SETTINGS_SENSOR ||
@@ -113,6 +117,8 @@ void ui_init(void)
     lazy_creators[UI_SCREEN_SETTINGS_TIME] = ui_screen_settings_time_create;
     lazy_creators[UI_SCREEN_SETTINGS_SYSTEM] = ui_screen_settings_system_create;
     lazy_creators[UI_SCREEN_SETTINGS_SOUND]  = ui_screen_settings_sound_create;
+    lazy_creators[UI_SCREEN_SETTINGS_LIGHT_DEMO] = ui_screen_settings_light_demo_create;
+    lazy_creators[UI_SCREEN_SETTINGS_SOUND_DEMO] = ui_screen_settings_sound_demo_create;
     lazy_creators[UI_SCREEN_SETTINGS_DEBUG] = ui_screen_settings_debug_create;
     lazy_creators[UI_SCREEN_BRIDGE_SCAN] = ui_screen_bridge_scan_create;
     lazy_creators[UI_SCREEN_SENSOR] = ui_screen_sensor_create;
@@ -398,7 +404,7 @@ void ui_show_long_press_hint(const char *name)
     lv_anim_set_var(&a, lp_fill);
     lv_anim_set_exec_cb(&a, lp_fill_anim_cb);
     lv_anim_set_values(&a, 0, LP_WIDTH);
-    lv_anim_set_time(&a, 500);
+    lv_anim_set_time(&a, 1500);
     lv_anim_start(&a);
 
     lp_visible = true;

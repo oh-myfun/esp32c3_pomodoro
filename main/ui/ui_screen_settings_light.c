@@ -75,12 +75,6 @@ static void light_on_encoder_cw(void)
                 light_values[5] = (light_values[5] + 1) % 3;
                 led_service_set_animation((led_anim_t)light_values[5]);
                 break;
-            case 6: // Demo color
-                light_values[6] = (light_values[6] + 1) % LED_DEMO_COLOR_COUNT;
-                if (led_service_is_demo_active()) {
-                    led_service_demo_change_color(led_demo_colors[light_values[6]]);
-                }
-                break;
         }
         update_display();
     }
@@ -122,12 +116,6 @@ static void light_on_encoder_ccw(void)
                 light_values[5] = (light_values[5] - 1 + 3) % 3;
                 led_service_set_animation((led_anim_t)light_values[5]);
                 break;
-            case 6: // Demo color
-                light_values[6] = (light_values[6] - 1 + LED_DEMO_COLOR_COUNT) % LED_DEMO_COLOR_COUNT;
-                if (led_service_is_demo_active()) {
-                    led_service_demo_change_color(led_demo_colors[light_values[6]]);
-                }
-                break;
         }
         update_display();
     }
@@ -137,9 +125,6 @@ static void light_on_encoder_press(void)
 {
     if (light_mode == LIGHT_MODE_ADJUST) {
         if (light_selected_item == 0) save_backlight();
-        if (light_selected_item == 6 && led_service_is_demo_active()) {
-            led_service_demo_stop();
-        }
         light_mode = LIGHT_MODE_NAV;
         update_display();
     } else {
@@ -151,19 +136,13 @@ static void light_on_settings_press(void)
 {
     if (light_mode == LIGHT_MODE_NAV) {
         if (light_selected_item == 6) {
-            // Demo: start demo with selected color
-            light_mode = LIGHT_MODE_ADJUST;
-            led_service_demo_start(led_demo_colors[light_values[6]]);
-            update_display();
+            ui_push_screen(UI_SCREEN_SETTINGS_LIGHT_DEMO);
         } else {
             light_mode = LIGHT_MODE_ADJUST;
             update_display();
         }
     } else {
         if (light_selected_item == 0) save_backlight();
-        if (light_selected_item == 6 && led_service_is_demo_active()) {
-            led_service_demo_stop();
-        }
         light_mode = LIGHT_MODE_NAV;
         update_display();
     }
@@ -174,7 +153,6 @@ static void update_display(void)
     const char *speed_opts[] = {i18n(STR_SLOW), i18n(STR_MED), i18n(STR_FAST)};
     const char *style_opts[] = {i18n(STR_PURE), i18n(STR_COLOR)};
     const char *anim_opts[] = {i18n(STR_BREATH), i18n(STR_SCAN), i18n(STR_GRADIENT)};
-    const char *demo_opts[] = {i18n(STR_DEMO_WORK), i18n(STR_DEMO_BREAK), i18n(STR_DEMO_LONG_BREAK), i18n(STR_DEMO_PAUSED), i18n(STR_DEMO_SAD)};
 
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_BACKLIGHT));
     snprintf(item_values[0], sizeof(item_values[0]), "%d", light_values[0]);
@@ -195,7 +173,7 @@ static void update_display(void)
     snprintf(item_values[5], sizeof(item_values[5]), "%s", anim_opts[light_values[5] % 3]);
 
     snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_DEMO));
-    snprintf(item_values[6], sizeof(item_values[6]), "%s", demo_opts[light_values[6] % LED_DEMO_COLOR_COUNT]);
+    snprintf(item_values[6], sizeof(item_values[6]), "\xe2\x87\xa8");
 
     for (int i = 0; i < LIGHT_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -216,11 +194,7 @@ static void update_display(void)
 
     if (hint_label) {
         if (light_mode == LIGHT_MODE_ADJUST) {
-            if (light_selected_item == 6 && led_service_is_demo_active()) {
-                lv_label_set_text(hint_label, i18n(STR_H_SET_PRESS_STOP_DEMO));
-            } else {
-                lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
-            }
+            lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
         } else {
             lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
         }

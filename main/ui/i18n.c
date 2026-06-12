@@ -69,13 +69,13 @@ static const char *strings[STR_COUNT][2] = {
     [STR_ALARM_DURATION]    = {"Duration",   "时长"},
 
     /* Light settings */
-    [STR_LIGHT]       = {"💡Light",       "💡灯光"},
+    [STR_LIGHT]       = {"💡Effect",      "💡灯效"},
     [STR_BACKLIGHT]   = {"🔆Backlight",  "🔆背光"},
     [STR_BRIGHT]      = {"☀Bright",      "☀亮度"},
     [STR_SPEED]       = {"⏩Speed",       "⏩速度"},
     [STR_STYLE]       = {"🎨Style",       "🎨样式"},
     [STR_ANIM]        = {"✨Anim",        "✨动画"},
-    [STR_DEMO]        = {"Demo",        "演示"},
+    [STR_DEMO]        = {"🎬Demo",       "🎬演示"},
     [STR_SLOW]        = {"Slow",        "慢"},
     [STR_MED]         = {"Med",         "中"},
     [STR_FAST]        = {"Fast",        "快"},
@@ -246,6 +246,33 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SND_HALF]     = {"🔎Half",       "🔎半点"},
     [STR_QUIET_START]  = {"🌙Q.Start",    "🌙静默起"},
     [STR_QUIET_END]    = {"🌙Q.End",      "🌙静默止"},
+
+    /* Demo + sound names */
+    [STR_SND_DEMO]     = {"🎬Demo",       "🎬演示"},
+
+    [STR_SOUND_KEY_CLICK]        = {"KeyClick",   "按键音"},
+    [STR_SOUND_CONFIRM]          = {"Confirm",    "确认"},
+    [STR_SOUND_CANCEL]           = {"Cancel",     "取消"},
+    [STR_SOUND_SUCCESS]          = {"Success",    "成功"},
+    [STR_SOUND_FAIL]             = {"Fail",       "失败"},
+    [STR_SOUND_WIFI_CONNECT]     = {"WiFi...",    "WiFi连接"},
+    [STR_SOUND_WIFI_CONNECTED]   = {"WiFi OK",    "WiFi已连"},
+    [STR_SOUND_WIFI_FAILED]      = {"WiFi Fail",  "WiFi失败"},
+    [STR_SOUND_SYNC_START]       = {"Sync...",    "同步中"},
+    [STR_SOUND_SYNC_DONE]        = {"SyncDone",   "同步完成"},
+    [STR_SOUND_POMO_START]       = {"PomoStart",  "番茄开始"},
+    [STR_SOUND_POMO_WORK_START]  = {"WorkStart",  "工作开始"},
+    [STR_SOUND_POMO_BREAK_START] = {"BreakStart", "休息开始"},
+    [STR_SOUND_POMO_WORK_DONE]   = {"WorkDone",   "工作完成"},
+    [STR_SOUND_POMO_BREAK_DONE]  = {"BreakDone",  "休息完成"},
+    [STR_SOUND_POMO_LONG_BREAK]  = {"LongBreak",  "长休息"},
+    [STR_SOUND_BUDDY_ATTENTION]  = {"Attn",       "注意"},
+    [STR_SOUND_BUDDY_HAPPY]      = {"Happy",      "开心"},
+    [STR_SOUND_BUDDY_SAD]        = {"Sad",        "伤心"},
+
+    [STR_DEMO_HOUR_CHIME] = {"HourChime", "整点报时"},
+    [STR_DEMO_HALF_CHIME] = {"HalfChime", "半点报时"},
+    [STR_FMT_CHIME_COUNT] = {"%dHits",    "%d响"},
 };
 
 void i18n_init(void)

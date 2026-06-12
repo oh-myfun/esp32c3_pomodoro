@@ -20,6 +20,8 @@ idf_component_register(SRCS main.c
                           ui/ui_screen_settings_time.c
                           ui/ui_screen_settings_system.c
                           ui/ui_screen_settings_sound.c
+                          ui/ui_screen_settings_light_demo.c
+                          ui/ui_screen_settings_sound_demo.c
                           ui/ui_screen_settings_debug.c
                           ui/ui_screen_wifi_saved.c
                           ui/ui_text_input.c

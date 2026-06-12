@@ -92,6 +92,9 @@ static void knob_cb(void *arg, void *data)
 /* Track button held state for simultaneous long press detection */
 static volatile bool s_encoder_held = false;
 static volatile bool s_settings_held = false;
+/* One-shot flag: set when DUAL_LONG_PRESS fires, so the second key's
+ * LONG_PRESS_UP doesn't re-trigger DUAL. Cleared on next PRESS_DOWN. */
+static volatile bool s_dual_triggered = false;
 
 static void send_event(input_event_t *e)
 {
@@ -128,6 +131,7 @@ static void encoder_btn_cb(void *arg, void *data)
     switch (event) {
     case BUTTON_PRESS_DOWN:
         s_encoder_held = true;
+        s_dual_triggered = false;
         if (s_enc_hold_timer) {
             esp_timer_stop(s_enc_hold_timer);
             esp_timer_start_once(s_enc_hold_timer, HOLD_HINT_DELAY_US);
@@ -143,7 +147,10 @@ static void encoder_btn_cb(void *arg, void *data)
     case BUTTON_LONG_PRESS_UP:
         s_encoder_held = false;
         if (s_enc_hold_timer) esp_timer_stop(s_enc_hold_timer);
-        if (s_settings_held) {
+        if (s_dual_triggered) {
+            /* Other key already fired DUAL — suppress duplicate event */
+        } else if (s_settings_held) {
+            s_dual_triggered = true;
             e.type = INPUT_EVENT_DUAL_LONG_PRESS;
         } else {
             e.type = INPUT_EVENT_ENCODER_LONG_PRESS;
@@ -166,6 +173,7 @@ static void settings_btn_cb(void *arg, void *data)
     switch (event) {
     case BUTTON_PRESS_DOWN:
         s_settings_held = true;
+        s_dual_triggered = false;
         if (s_set_hold_timer) {
             esp_timer_stop(s_set_hold_timer);
             esp_timer_start_once(s_set_hold_timer, HOLD_HINT_DELAY_US);
@@ -181,7 +189,10 @@ static void settings_btn_cb(void *arg, void *data)
     case BUTTON_LONG_PRESS_UP:
         s_settings_held = false;
         if (s_set_hold_timer) esp_timer_stop(s_set_hold_timer);
-        if (s_encoder_held) {
+        if (s_dual_triggered) {
+            /* Other key already fired DUAL — suppress duplicate event */
+        } else if (s_encoder_held) {
+            s_dual_triggered = true;
             e.type = INPUT_EVENT_DUAL_LONG_PRESS;
         } else {
             e.type = INPUT_EVENT_SETTINGS_LONG_PRESS;
@@ -224,7 +235,7 @@ void input_handler_init(void)
     }
 
     button_config_t btn_cfg = {
-        .long_press_time = 1000,
+        .long_press_time = 2000,
         .short_press_time = 50,
     };
     button_gpio_config_t gpio_cfg = {

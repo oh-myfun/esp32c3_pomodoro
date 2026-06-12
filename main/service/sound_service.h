@@ -51,6 +51,11 @@ void sound_service_set_category_enabled(sound_category_t cat, bool on);
 void sound_service_play_hour_chime(int hour12);   /* hour12: 1..12 */
 void sound_service_play_half_chime(void);
 
+/* _raw 变体：绕过总开关 / 分类开关，用于演示界面 */
+void sound_service_play_raw(sound_id_t id);
+void sound_service_play_hour_chime_raw(int hour12);
+void sound_service_play_half_chime_raw(void);
+
 /* 静默时段（start/end 取值 0..23；start==end 表示无静默） */
 bool sound_service_is_quiet_hour(int hour);
 void sound_service_set_quiet_range(int start, int end);
