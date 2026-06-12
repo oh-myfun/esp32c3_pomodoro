@@ -31,6 +31,7 @@
 #include "pomodoro/pomodoro_engine.h"
 #include "buddy/buddy.h"
 #include "service/sound_service.h"
+#include "service/chime_service.h"
 #include "service/led_service.h"
 #include "ui/ui_screen_settings_debug.h"
 #include "ui/ui_screen_settings_buddy.h"
@@ -386,6 +387,7 @@ static void ui_update_task(void *arg) {
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
     int64_t last_debug_tick = 0;
+    int64_t last_chime_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -522,6 +524,12 @@ static void ui_update_task(void *arg) {
             last_chart_tick = now;
         }
 
+        // Chime service: check hour/half-hour boundary every 1 second
+        if (now - last_chime_tick >= 1000) {
+            chime_service_tick();
+            last_chime_tick = now;
+        }
+
         // Memory monitor every 30 seconds
         if (now - last_mem_tick >= 30000) {
             multi_heap_info_t info;
@@ -637,6 +645,7 @@ void app_main(void) {
     buddy_register_callbacks(&buddy_cbs);
 
     sound_service_init();
+    chime_service_init();
 
     // 9. Create tasks
     xTaskCreate(lvgl_port_task, "LVGL",    8192, NULL, 5, NULL);
