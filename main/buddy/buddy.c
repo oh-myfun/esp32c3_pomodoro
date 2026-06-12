@@ -235,18 +235,35 @@ void buddy_on_status(const char *state, const char *message)
         set_state_locked(BUDDY_BUSY);
     } else if (strcmp(state, "idle") == 0) {
         ESP_LOGI(TAG, "Status '%s' buddy_state=%d is_temp=%d", state, s_state, is_temporary_state(s_state));
-        if (is_temporary_state(s_state)) {
-            /* Queue for apply after temporary state ends */
+        if (s_state == BUDDY_ATTENTION || is_temporary_state(s_state)) {
+            /* Queue for apply after ATTENTION/temp ends — preserve current behavior */
             strncpy(s_pending_status, state, sizeof(s_pending_status) - 1);
             s_pending_status[sizeof(s_pending_status) - 1] = '\0';
-            ESP_LOGI(TAG, "Status queued during temp state: '%s'", state);
+            ESP_LOGI(TAG, "Status queued: '%s'", state);
+        } else if (s_state == BUDDY_BUSY) {
+            /* Task finished (Claude Stop) → celebrate then return to idle */
+            s_pre_random = s_state;
+            strncpy(s_pending_status, "idle", sizeof(s_pending_status) - 1);
+            s_pending_status[sizeof(s_pending_status) - 1] = '\0';
+            set_state_locked(BUDDY_CELEBRATE);
+            sound_service_play(SOUND_BUDDY_HAPPY);
         } else {
             set_state_locked(BUDDY_IDLE);
         }
     } else if (strcmp(state, "error") == 0) {
-        s_pre_random = is_temporary_state(s_state) ? s_pre_random : s_state;
-        ESP_LOGI(TAG, "Status '%s' -> DIZZY", state);
-        set_state_locked(BUDDY_DIZZY);
+        if (s_state == BUDDY_ATTENTION || is_temporary_state(s_state)) {
+            /* Queue for apply after ATTENTION/temp ends */
+            strncpy(s_pending_status, state, sizeof(s_pending_status) - 1);
+            s_pending_status[sizeof(s_pending_status) - 1] = '\0';
+            ESP_LOGI(TAG, "Status queued: '%s'", state);
+        } else {
+            /* Task failed (Claude StopFailure) → dizzy then return to idle */
+            s_pre_random = s_state;
+            strncpy(s_pending_status, "idle", sizeof(s_pending_status) - 1);
+            s_pending_status[sizeof(s_pending_status) - 1] = '\0';
+            set_state_locked(BUDDY_DIZZY);
+            sound_service_play(SOUND_BUDDY_SAD);
+        }
     } else {
         ESP_LOGW(TAG, "Unknown status: '%s'", state);
     }
