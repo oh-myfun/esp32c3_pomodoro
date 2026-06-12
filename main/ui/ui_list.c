@@ -102,11 +102,15 @@ static void update_display(lv_obj_t *list)
             const char *new_val = data->items[idx].value;
             bool text_changed = false;
 
-            if (strcmp(lv_label_get_text(data->key_labels[i]), new_key) != 0) {
+            /* lv_label_set_text can leave text NULL if lv_malloc failed (heap pressure).
+             * Treat NULL as "always different" so we re-attempt set_text. */
+            const char *cur_key = lv_label_get_text(data->key_labels[i]);
+            if (cur_key == NULL || strcmp(cur_key, new_key) != 0) {
                 lv_label_set_text(data->key_labels[i], new_key);
                 text_changed = true;
             }
-            if (strcmp(lv_label_get_text(data->value_labels[i]), new_val) != 0) {
+            const char *cur_val = lv_label_get_text(data->value_labels[i]);
+            if (cur_val == NULL || strcmp(cur_val, new_val) != 0) {
                 lv_label_set_text(data->value_labels[i], new_val);
                 text_changed = true;
             }

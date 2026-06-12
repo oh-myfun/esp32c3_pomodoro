@@ -53,10 +53,6 @@ static void light_on_encoder_cw(void)
                     backlight_set_brightness(light_values[0]);
                 }
                 break;
-            case 1: // On/Off
-                light_values[1] = !light_values[1];
-                led_service_set_enabled(light_values[1]);
-                break;
             case 2: // Brightness
                 if (light_values[2] + step <= 9) {
                     light_values[2] += step;
@@ -66,10 +62,6 @@ static void light_on_encoder_cw(void)
             case 3: // Speed
                 light_values[3] = (light_values[3] + 1) % 3;
                 led_service_set_speed((led_speed_t)light_values[3]);
-                break;
-            case 4: // Style
-                light_values[4] = (light_values[4] + 1) % 2;
-                led_service_set_style((led_style_t)light_values[4]);
                 break;
             case 5: // Animation
                 light_values[5] = (light_values[5] + 1) % 3;
@@ -94,10 +86,6 @@ static void light_on_encoder_ccw(void)
                     backlight_set_brightness(light_values[0]);
                 }
                 break;
-            case 1: // On/Off
-                light_values[1] = !light_values[1];
-                led_service_set_enabled(light_values[1]);
-                break;
             case 2: // Brightness
                 if (light_values[2] - step >= 1) {
                     light_values[2] -= step;
@@ -107,10 +95,6 @@ static void light_on_encoder_ccw(void)
             case 3: // Speed
                 light_values[3] = (light_values[3] - 1 + 3) % 3;
                 led_service_set_speed((led_speed_t)light_values[3]);
-                break;
-            case 4: // Style
-                light_values[4] = (light_values[4] + 1) % 2;
-                led_service_set_style((led_style_t)light_values[4]);
                 break;
             case 5: // Animation
                 light_values[5] = (light_values[5] - 1 + 3) % 3;
@@ -135,11 +119,24 @@ static void light_on_encoder_press(void)
 static void light_on_settings_press(void)
 {
     if (light_mode == LIGHT_MODE_NAV) {
-        if (light_selected_item == 6) {
-            ui_push_screen(UI_SCREEN_SETTINGS_LIGHT_DEMO);
-        } else {
-            light_mode = LIGHT_MODE_ADJUST;
-            update_display();
+        switch (light_selected_item) {
+            case 1:  /* 灯效 On/Off：双值，顶键直接切换 */
+                light_values[1] = !light_values[1];
+                led_service_set_enabled(light_values[1]);
+                update_display();
+                break;
+            case 4:  /* Style Pure/Color：双值，顶键直接切换 */
+                light_values[4] = (light_values[4] + 1) % 2;
+                led_service_set_style((led_style_t)light_values[4]);
+                update_display();
+                break;
+            case 6:  /* Demo：push 子界面 */
+                ui_push_screen(UI_SCREEN_SETTINGS_LIGHT_DEMO);
+                break;
+            default:  /* 0 Backlight, 2 Brightness, 3 Speed, 5 Animation：多值，进入 ADJUST */
+                light_mode = LIGHT_MODE_ADJUST;
+                update_display();
+                break;
         }
     } else {
         if (light_selected_item == 0) save_backlight();

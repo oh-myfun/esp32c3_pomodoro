@@ -16,7 +16,7 @@ static const char *TAG = "UI_SETTINGS_SOUND";
  *   0..7  开关项（总开关 + 7 分类）
  *   8     Quiet Start
  *   9     Quiet End
- *   10    Demo (push to demo sub-screen)
+ *   10    Demo (push 到演示子界面，当前为空列表用于排查)
  */
 typedef enum { MODE_NAV, MODE_ADJUST } sound_mode_t;
 
@@ -158,8 +158,12 @@ static void sound_on_settings_press(void)
         /* 8 / 9 = 进入 ADJUST */
         sound_mode = MODE_ADJUST;
     } else if (selected_item == 10) {
-        /* Demo = 进入演示子界面 */
+        /* Demo = 进入演示子界面。
+         * push 后不要调用 update_display：ui_push_screen 会 pre-clean 当前
+         * SETTINGS_SOUND 屏幕（删除 sound_list 等子对象），此时 sound_list
+         * 已是悬垂指针，再调 update_display 会解引用已释放内存导致崩溃。 */
         ui_push_screen(UI_SCREEN_SETTINGS_SOUND_DEMO);
+        return;
     }
     update_display();
 }

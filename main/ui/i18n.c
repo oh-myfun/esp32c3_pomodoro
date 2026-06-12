@@ -237,7 +237,7 @@ static const char *strings[STR_COUNT][2] = {
     /* Sound settings */
     [STR_T_SOUND]      = {"🔊Sound",      "🔊声音"},
     [STR_M_SOUND]      = {"🔊Sound",      "🔊声音"},
-    [STR_SND_KEY]      = {"🔑Key",        "🔑按键"},
+    [STR_SND_KEY]      = {"🔘Key",        "🔘按键"},
     [STR_SND_UI]       = {"✅UI",         "✅操作"},
     [STR_SND_NET]      = {"📶Net",        "📶网络"},
     [STR_SND_POMO]     = {"🍅Pomo",       "🍅番茄"},

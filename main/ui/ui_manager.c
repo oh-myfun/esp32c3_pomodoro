@@ -49,6 +49,7 @@ static bool needs_rebuild[UI_SCREEN_COUNT];
 static bool screen_is_disposable(ui_screen_id_t id)
 {
     return id == UI_SCREEN_SETTINGS_POMODORO ||
+           id == UI_SCREEN_SETTINGS_ALARM ||
            id == UI_SCREEN_SETTINGS_LIGHT ||
            id == UI_SCREEN_SETTINGS_BUDDY ||
            id == UI_SCREEN_SETTINGS_TIME ||
@@ -58,6 +59,7 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_SOUND_DEMO ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
            id == UI_SCREEN_BRIDGE_SCAN ||
+           id == UI_SCREEN_SENSOR ||
            id == UI_SCREEN_SETTINGS_SENSOR ||
            id == UI_SCREEN_PRESSURE_INFO;
 }
@@ -146,6 +148,7 @@ static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
     if (screen_id == current_screen) return;
 
     ui_screen_id_t old_screen = current_screen;
+    ESP_LOGI(TAG, "switch %d -> %d (push=%d, depth=%d)", old_screen, screen_id, force_push, nav_depth);
 
     /* Push current onto nav stack */
     if (force_push || !(is_top_level(old_screen) && is_top_level(screen_id))) {
@@ -155,6 +158,16 @@ static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
     }
 
     lvgl_lock();
+
+    /* Clean old disposable screen BEFORE creating new one to reduce peak heap
+     * (old + new simultaneously can exhaust heap on ESP32-C3). Visual transition
+     * is still atomic because we hold lvgl_lock through the whole switch. */
+    if (old_screen != screen_id && screen_is_disposable(old_screen) && screens[old_screen]) {
+        lv_obj_clean(screens[old_screen]);
+        ui_unregister_input_callbacks(old_screen);
+        needs_rebuild[old_screen] = true;
+        log_mem("after pre-clean");
+    }
 
     // Rebuild cleaned disposable screen (children removed, container kept)
     if (screens[screen_id] && needs_rebuild[screen_id] && lazy_creators[screen_id]) {
@@ -187,14 +200,6 @@ static void do_switch_screen(ui_screen_id_t screen_id, bool force_push)
     }
     if (screen_id == UI_SCREEN_POMODORO) {
         ui_screen_pomodoro_refresh();
-    }
-
-    // Clean old disposable screen: remove children to free memory
-    if (screen_is_disposable(old_screen) && screens[old_screen]) {
-        lv_obj_clean(screens[old_screen]);
-        ui_unregister_input_callbacks(old_screen);
-        needs_rebuild[old_screen] = true;
-        log_mem("after clean");
     }
 
     lvgl_unlock();
@@ -296,6 +301,16 @@ void ui_go_back(void)
 
     lvgl_lock();
 
+    ui_screen_id_t old_screen = current_screen;
+
+    /* Clean current disposable screen BEFORE rebuilding/creating target to reduce peak heap */
+    if (old_screen != prev && screen_is_disposable(old_screen) && screens[old_screen]) {
+        lv_obj_clean(screens[old_screen]);
+        ui_unregister_input_callbacks(old_screen);
+        needs_rebuild[old_screen] = true;
+        log_mem("after go_back pre-clean");
+    }
+
     /* Lazy create if needed */
     if (!screens[prev] && lazy_creators[prev]) {
         ESP_LOGI(TAG, "Lazy creating screen %d for go_back", prev);
@@ -314,7 +329,6 @@ void ui_go_back(void)
         needs_rebuild[prev] = false;
     }
 
-    ui_screen_id_t old_screen = current_screen;
     lv_scr_load(screens[prev]);
     current_screen = prev;
 
@@ -327,13 +341,6 @@ void ui_go_back(void)
     }
     if (prev == UI_SCREEN_POMODORO) {
         ui_screen_pomodoro_refresh();
-    }
-
-    /* Clean old disposable screen */
-    if (screen_is_disposable(old_screen) && screens[old_screen]) {
-        lv_obj_clean(screens[old_screen]);
-        ui_unregister_input_callbacks(old_screen);
-        needs_rebuild[old_screen] = true;
     }
 
     lvgl_unlock();

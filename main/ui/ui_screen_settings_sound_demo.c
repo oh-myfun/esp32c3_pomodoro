@@ -9,9 +9,9 @@
 
 static const char *TAG = "UI_SOUND_DEMO";
 
-#define SOUND_DEMO_COUNT   21   /* 19 音效 + 整点 + 半点 */
-#define HOUR_CHIME_IDX     19
-#define HALF_CHIME_IDX     20
+#define SOUND_DEMO_COUNT   (SOUND_COUNT + 2)   /* 19 普通音效 + 整点 + 半点 */
+#define HOUR_CHIME_IDX     SOUND_COUNT          /* 19 */
+#define HALF_CHIME_IDX     (SOUND_COUNT + 1)    /* 20 */
 
 typedef enum { MODE_NAV, MODE_ADJUST } sound_demo_mode_t;
 
@@ -23,11 +23,11 @@ static sound_demo_mode_t mode = MODE_NAV;
 static int selected = 0;
 static int hour12_val = 3;   /* 整点响数 (1..12)，ADJUST 模式可调 */
 
-static char item_keys[SOUND_DEMO_COUNT][24];
+static char item_keys[SOUND_DEMO_COUNT][20];
 static char item_values[SOUND_DEMO_COUNT][12];
 static ui_list_item_t items[SOUND_DEMO_COUNT];
 
-/* 索引 0..18 与 sound_id_t 对应；names 顺序与 sound_id_t 一致 */
+/* 索引 0..SOUND_COUNT-1 与 sound_id_t 一一对应 */
 static const str_id_t sound_name_ids[SOUND_COUNT] = {
     STR_SOUND_KEY_CLICK, STR_SOUND_CONFIRM, STR_SOUND_CANCEL,
     STR_SOUND_SUCCESS,   STR_SOUND_FAIL,    STR_SOUND_WIFI_CONNECT,
@@ -44,11 +44,14 @@ static void update_display(void)
         snprintf(item_keys[i], sizeof(item_keys[i]), "%s", i18n(sound_name_ids[i]));
         snprintf(item_values[i], sizeof(item_values[i]), " ");
     }
-    snprintf(item_keys[HOUR_CHIME_IDX], sizeof(item_keys[HOUR_CHIME_IDX]), "%s", i18n(STR_DEMO_HOUR_CHIME));
+
+    snprintf(item_keys[HOUR_CHIME_IDX], sizeof(item_keys[HOUR_CHIME_IDX]),
+             "%s", i18n(STR_DEMO_HOUR_CHIME));
     snprintf(item_values[HOUR_CHIME_IDX], sizeof(item_values[HOUR_CHIME_IDX]),
              i18n(STR_FMT_CHIME_COUNT), hour12_val);
 
-    snprintf(item_keys[HALF_CHIME_IDX], sizeof(item_keys[HALF_CHIME_IDX]), "%s", i18n(STR_DEMO_HALF_CHIME));
+    snprintf(item_keys[HALF_CHIME_IDX], sizeof(item_keys[HALF_CHIME_IDX]),
+             "%s", i18n(STR_DEMO_HALF_CHIME));
     snprintf(item_values[HALF_CHIME_IDX], sizeof(item_values[HALF_CHIME_IDX]), " ");
 
     for (int i = 0; i < SOUND_DEMO_COUNT; i++) {
@@ -110,19 +113,22 @@ static void demo_on_encoder_press(void)
 static void demo_on_settings_press(void)
 {
     if (mode == MODE_ADJUST) {
-        /* 播放并退出 ADJUST */
+        /* 播放整点响 hour12 次并退出 ADJUST */
         sound_service_play_hour_chime_raw(hour12_val);
         mode = MODE_NAV;
         update_display();
         return;
     }
 
-    if (selected < HOUR_CHIME_IDX) {
+    if (selected < SOUND_COUNT) {
+        /* 普通音效：立即播放（绕过开关） */
         sound_service_play_raw((sound_id_t)selected);
     } else if (selected == HOUR_CHIME_IDX) {
+        /* 整点：进入 ADJUST 调响数 */
         mode = MODE_ADJUST;
         update_display();
-    } else {
+    } else if (selected == HALF_CHIME_IDX) {
+        /* 半点：立即播放（绕过开关） */
         sound_service_play_half_chime_raw();
     }
 }
@@ -164,6 +170,6 @@ lv_obj_t *ui_screen_settings_sound_demo_create(void)
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_SOUND_DEMO, &cbs);
 
-    ESP_LOGI(TAG, "Sound demo screen created");
+    ESP_LOGI(TAG, "Sound demo screen created (%d items)", SOUND_DEMO_COUNT);
     return screen;
 }
