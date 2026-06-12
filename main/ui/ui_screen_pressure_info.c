@@ -70,7 +70,7 @@ lv_obj_t *ui_screen_pressure_info_create(void)
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_press = go_back,
-        .on_encoder_long_press = go_back,
+        .on_encoder_long_press = NULL,
         .on_settings_press = go_back,
     };
     ui_register_input_callbacks(UI_SCREEN_PRESSURE_INFO, &cbs);

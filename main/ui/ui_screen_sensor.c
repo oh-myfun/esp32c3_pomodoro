@@ -294,11 +294,6 @@ static void sensor_on_settings_press(void)
     }
 }
 
-static void sensor_on_encoder_long_press(void)
-{
-    ui_switch_screen(UI_SCREEN_MAIN);
-}
-
 /*
  * Layout (240x240):
  *   y=6:   title  "🌡温湿度气压"  (custom_font_16, centered)
@@ -476,7 +471,7 @@ lv_obj_t* ui_screen_sensor_create(void)
         .on_encoder_ccw = sensor_on_encoder_ccw,
         .on_encoder_press = sensor_on_encoder_press,
         .on_settings_press = sensor_on_settings_press,
-        .on_encoder_long_press = sensor_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
     };
     ui_register_input_callbacks(UI_SCREEN_SENSOR, &cbs);
 

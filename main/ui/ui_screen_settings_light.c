@@ -169,20 +169,6 @@ static void light_on_settings_press(void)
     }
 }
 
-static void light_on_encoder_long_press(void)
-{
-    if (light_mode == LIGHT_MODE_ADJUST) {
-        if (light_selected_item == 0) save_backlight();
-        if (light_selected_item == 6 && led_service_is_demo_active()) {
-            led_service_demo_stop();
-        }
-        light_mode = LIGHT_MODE_NAV;
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 static void update_display(void)
 {
     const char *speed_opts[] = {i18n(STR_SLOW), i18n(STR_MED), i18n(STR_FAST)};
@@ -282,7 +268,7 @@ lv_obj_t* ui_screen_settings_light_create(void)
         .on_encoder_cw = light_on_encoder_cw,
         .on_encoder_ccw = light_on_encoder_ccw,
         .on_encoder_press = light_on_encoder_press,
-        .on_encoder_long_press = light_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = light_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_LIGHT, &cbs);

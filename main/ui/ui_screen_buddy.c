@@ -162,6 +162,13 @@ static void buddy_on_encoder_press(void)
     }
 }
 
+static const char *buddy_on_long_press_hint(bool top_key)
+{
+    if (top_key || display_mode != MODE_NORMAL) return NULL;
+    if (buddy_get_species_count() <= 1) return NULL;
+    return i18n(STR_ACT_SWITCH_PET);
+}
+
 static void buddy_on_encoder_long_press(void)
 {
     if (display_mode != MODE_NORMAL) return;
@@ -581,6 +588,7 @@ lv_obj_t* ui_screen_buddy_create(void)
         .on_encoder_press      = buddy_on_encoder_press,
         .on_encoder_long_press = buddy_on_encoder_long_press,
         .on_settings_press     = buddy_on_settings_press,
+        .on_long_press_hint    = buddy_on_long_press_hint,
     };
     ui_register_input_callbacks(UI_SCREEN_BUDDY, &cbs);
 

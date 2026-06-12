@@ -15,6 +15,9 @@ typedef struct {
 #define INPUT_EVENT_ENCODER_LONG_PRESS  4
 #define INPUT_EVENT_SETTINGS_PRESS      5
 #define INPUT_EVENT_SETTINGS_LONG_PRESS 6
+#define INPUT_EVENT_DUAL_LONG_PRESS     7
+#define INPUT_EVENT_ENCODER_HOLD        8
+#define INPUT_EVENT_SETTINGS_HOLD       9
 
 void input_handler_init(void);
 void input_handler_task(void *arg);

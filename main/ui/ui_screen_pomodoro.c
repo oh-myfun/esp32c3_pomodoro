@@ -280,6 +280,12 @@ static void pomo_on_settings_press(void)
     }
 }
 
+static const char *pomo_on_long_press_hint(bool top_key)
+{
+    if (!top_key) return NULL;
+    return i18n(STR_ACT_SWITCH_MODE);
+}
+
 static void pomo_on_settings_long_press(void)
 {
     /* Toggle between pomodoro and timer mode */
@@ -365,6 +371,7 @@ lv_obj_t* ui_screen_pomodoro_create(void)
         .on_encoder_press = pomo_on_encoder_press,
         .on_settings_press = pomo_on_settings_press,
         .on_settings_long_press = pomo_on_settings_long_press,
+        .on_long_press_hint = pomo_on_long_press_hint,
     };
     ui_register_input_callbacks(UI_SCREEN_POMODORO, &cbs);
 

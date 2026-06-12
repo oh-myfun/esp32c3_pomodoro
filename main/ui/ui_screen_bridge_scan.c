@@ -169,11 +169,6 @@ static void scan_on_encoder_press(void)
     ui_go_back();
 }
 
-static void scan_on_encoder_long_press(void)
-{
-    ui_go_back();
-}
-
 static void scan_on_settings_press(void)
 {
     /* If a session is selected, confirm and go back */
@@ -256,7 +251,7 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
         .on_encoder_cw = scan_on_encoder_cw,
         .on_encoder_ccw = scan_on_encoder_ccw,
         .on_encoder_press = scan_on_encoder_press,
-        .on_encoder_long_press = scan_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = scan_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_BRIDGE_SCAN, &cbs);

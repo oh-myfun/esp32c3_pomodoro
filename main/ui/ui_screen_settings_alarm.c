@@ -111,19 +111,6 @@ static void alarm_on_settings_press(void)
     }
 }
 
-static void alarm_on_encoder_long_press(void)
-{
-    if (alarm_mode == ALARM_MODE_ADJUST) {
-        int32_t val = 0;
-        storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_TIMER_TOTAL, &val);
-        alarm_duration_min = (val >= 1 && val <= TIMER_MAX_MIN) ? (int)val : 5;
-        alarm_mode = ALARM_MODE_NAV;
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 lv_obj_t* ui_screen_settings_alarm_create(void)
 {
     if (!screen) {
@@ -160,7 +147,7 @@ lv_obj_t* ui_screen_settings_alarm_create(void)
         .on_encoder_cw = alarm_on_encoder_cw,
         .on_encoder_ccw = alarm_on_encoder_ccw,
         .on_encoder_press = alarm_on_encoder_press,
-        .on_encoder_long_press = alarm_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = alarm_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_ALARM, &cbs);

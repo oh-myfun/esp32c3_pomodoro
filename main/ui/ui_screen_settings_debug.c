@@ -290,7 +290,6 @@ static void debug_exit(void)
 }
 
 static void debug_on_encoder_press(void) { debug_exit(); }
-static void debug_on_encoder_long_press(void) { debug_exit(); }
 
 static void debug_on_settings_press(void)
 {
@@ -355,7 +354,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
         .on_encoder_cw = debug_on_encoder_cw,
         .on_encoder_ccw = debug_on_encoder_ccw,
         .on_encoder_press = debug_on_encoder_press,
-        .on_encoder_long_press = debug_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = debug_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_DEBUG, &cbs);

@@ -179,17 +179,6 @@ static void sensor_set_on_settings_press(void)
     }
 }
 
-static void sensor_set_on_encoder_long_press(void)
-{
-    if (edit_mode == SENSOR_MODE_ADJUST) {
-        sensor_service_get_settings(&settings);
-        edit_mode = SENSOR_MODE_NAV;
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 lv_obj_t* ui_screen_settings_sensor_create(void)
 {
     if (!screen) {
@@ -223,7 +212,7 @@ lv_obj_t* ui_screen_settings_sensor_create(void)
         .on_encoder_cw = sensor_set_on_encoder_cw,
         .on_encoder_ccw = sensor_set_on_encoder_ccw,
         .on_encoder_press = sensor_set_on_encoder_press,
-        .on_encoder_long_press = sensor_set_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = sensor_set_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_SENSOR, &cbs);

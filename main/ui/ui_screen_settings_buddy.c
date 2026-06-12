@@ -176,17 +176,6 @@ static void buddy_on_encoder_press(void)
     }
 }
 
-static void buddy_on_encoder_long_press(void)
-{
-    if (edit_mode == BUDDY_MODE_ADJUST) {
-        edit_mode = BUDDY_MODE_NAV;
-        load_config();
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 static void buddy_on_settings_press(void)
 {
     if (edit_mode == BUDDY_MODE_ADJUST) {
@@ -268,7 +257,7 @@ lv_obj_t *ui_screen_settings_buddy_create(void)
         .on_encoder_cw = buddy_on_encoder_cw,
         .on_encoder_ccw = buddy_on_encoder_ccw,
         .on_encoder_press = buddy_on_encoder_press,
-        .on_encoder_long_press = buddy_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = buddy_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_BUDDY, &cbs);

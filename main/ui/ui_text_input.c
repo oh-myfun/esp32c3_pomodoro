@@ -339,6 +339,12 @@ static void text_input_on_encoder_press(void)
     do_cancel();
 }
 
+static const char *text_input_on_long_press_hint(bool top_key)
+{
+    if (top_key) return NULL;
+    return i18n(STR_ACT_DELETE);
+}
+
 static void text_input_on_encoder_long_press(void)
 {
     if (s_buf_len > 0) {
@@ -548,6 +554,7 @@ lv_obj_t *ui_text_input_create(void)
         .on_encoder_press = text_input_on_encoder_press,
         .on_encoder_long_press = text_input_on_encoder_long_press,
         .on_settings_press = text_input_on_settings_press,
+        .on_long_press_hint = text_input_on_long_press_hint,
     };
     ui_register_input_callbacks(UI_SCREEN_TEXT_INPUT, &cbs);
 

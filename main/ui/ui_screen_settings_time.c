@@ -145,19 +145,6 @@ static void time_on_settings_press(void)
     }
 }
 
-static void time_on_encoder_long_press(void)
-{
-    if (time_mode == TIME_MODE_ADJUST) {
-        time_values[0] = time_service_get_timezone_offset();
-        time_values[1] = time_service_get_ntp_server_index();
-        time_values[2] = time_service_get_interval_index();
-        time_mode = TIME_MODE_NAV;
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 lv_obj_t* ui_screen_settings_time_create(void)
 {
     if (!screen) {
@@ -194,7 +181,7 @@ lv_obj_t* ui_screen_settings_time_create(void)
         .on_encoder_cw = time_on_encoder_cw,
         .on_encoder_ccw = time_on_encoder_ccw,
         .on_encoder_press = time_on_encoder_press,
-        .on_encoder_long_press = time_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = time_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_TIME, &cbs);

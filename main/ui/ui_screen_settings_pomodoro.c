@@ -151,20 +151,6 @@ static void pomo_set_on_settings_press(void)
     }
 }
 
-static void pomo_set_on_encoder_long_press(void)
-{
-    /* Cancel adjust or go back */
-    if (pomo_mode == POMO_MODE_ADJUST) {
-        pomo_mode = POMO_MODE_NAV;
-        /* Reload settings to discard changes */
-        pomodoro_engine_load_state();
-        ESP_LOGI(TAG, "Cancelled pomodoro settings changes");
-        update_display();
-    } else {
-        ui_go_back();
-    }
-}
-
 static lv_obj_t *screen = NULL;
 static lv_obj_t *pomodoro_list = NULL;
 static lv_obj_t *hint_label = NULL;
@@ -267,7 +253,7 @@ lv_obj_t* ui_screen_settings_pomodoro_create(void)
         .on_encoder_cw = pomo_set_on_encoder_cw,
         .on_encoder_ccw = pomo_set_on_encoder_ccw,
         .on_encoder_press = pomo_set_on_encoder_press,
-        .on_encoder_long_press = pomo_set_on_encoder_long_press,
+        .on_encoder_long_press = NULL,
         .on_settings_press = pomo_set_on_settings_press,
     };
     ui_register_input_callbacks(UI_SCREEN_SETTINGS_POMODORO, &cbs);
