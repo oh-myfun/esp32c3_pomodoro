@@ -17,15 +17,12 @@ typedef enum {
 static pomo_edit_mode_t pomo_mode = POMO_MODE_NAV;
 static int pomo_selected_item = 0;
 static const int POMO_ITEM_COUNT = 7;
-static bool reset_confirmed = false;
-static bool default_confirmed = false;
 
 static void update_display(void);
 
 static void pomo_set_on_encoder_cw(void)
 {
     if (pomo_mode == POMO_MODE_NAV) {
-        if (default_confirmed || reset_confirmed) return;
         pomo_selected_item = (pomo_selected_item + 1) % POMO_ITEM_COUNT;
         update_display();
     } else if (pomo_mode == POMO_MODE_ADJUST) {
@@ -63,7 +60,6 @@ static void pomo_set_on_encoder_cw(void)
 static void pomo_set_on_encoder_ccw(void)
 {
     if (pomo_mode == POMO_MODE_NAV) {
-        if (default_confirmed || reset_confirmed) return;
         pomo_selected_item = (pomo_selected_item - 1 + POMO_ITEM_COUNT) % POMO_ITEM_COUNT;
         update_display();
     } else if (pomo_mode == POMO_MODE_ADJUST) {
@@ -104,10 +100,6 @@ static void pomo_set_on_encoder_press(void)
         pomo_mode = POMO_MODE_NAV;
         pomodoro_engine_load_state();
         update_display();
-    } else if (default_confirmed || reset_confirmed) {
-        default_confirmed = false;
-        reset_confirmed = false;
-        update_display();
     } else {
         ui_go_back();
     }
@@ -119,26 +111,16 @@ static void pomo_set_on_settings_press(void)
         if (pomo_selected_item == 4) {  // Mode
             pomodoro_engine_set_manual_mode(!pomodoro_engine_get_manual_mode());
             update_display();
-        } else if (pomo_selected_item == 5) {  // Default
-            if (default_confirmed) {
-                pomodoro_engine_set_work_minutes(25);
-                pomodoro_engine_set_break_minutes(5);
-                pomodoro_engine_set_long_break_minutes(15);
-                pomodoro_engine_set_cycles(4);
-                default_confirmed = false;
-                ESP_LOGI(TAG, "Pomodoro settings restored to defaults");
-            } else {
-                default_confirmed = true;
-            }
+        } else if (pomo_selected_item == 5) {  // Restore defaults
+            pomodoro_engine_set_work_minutes(25);
+            pomodoro_engine_set_break_minutes(5);
+            pomodoro_engine_set_long_break_minutes(15);
+            pomodoro_engine_set_cycles(4);
+            ESP_LOGI(TAG, "Pomodoro settings restored to defaults");
             update_display();
-        } else if (pomo_selected_item == 6) {  // Reset
-            if (reset_confirmed) {
-                pomodoro_engine_reset();
-                reset_confirmed = false;
-                ESP_LOGI(TAG, "Pomodoro statistics reset");
-            } else {
-                reset_confirmed = true;
-            }
+        } else if (pomo_selected_item == 6) {  // Reset count
+            pomodoro_engine_reset();
+            ESP_LOGI(TAG, "Pomodoro statistics reset");
             update_display();
         } else {
             pomo_mode = POMO_MODE_ADJUST;
@@ -191,7 +173,7 @@ static void update_display(void)
     }
 
     if (pomodoro_list) {
-        if (pomo_mode == POMO_MODE_ADJUST || default_confirmed || reset_confirmed) {
+        if (pomo_mode == POMO_MODE_ADJUST) {
             ui_list_set_selected_color(pomodoro_list, lv_color_hex(0xFFFF00));
         } else {
             ui_list_set_selected_color(pomodoro_list, lv_color_hex(0x00FF00));
@@ -201,23 +183,11 @@ static void update_display(void)
     }
 
     if (hint_label) {
-        if (pomo_selected_item == 5 && default_confirmed) {
-            lv_label_set_text(hint_label, i18n(STR_H_SET_CONFIRM_DEFAULT));
-        } else if (pomo_selected_item == 6 && reset_confirmed) {
-            lv_label_set_text(hint_label, i18n(STR_H_SET_CONFIRM_RESET));
-        } else if (pomo_mode == POMO_MODE_ADJUST) {
+        if (pomo_mode == POMO_MODE_ADJUST) {
             lv_label_set_text(hint_label, i18n(STR_H_SET_SAVE_PRESS_CANCEL));
         } else {
             lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
         }
-    }
-
-    /* Confirmation is per-interaction, clear on nav away */
-    if (pomo_selected_item != 5) {
-        default_confirmed = false;
-    }
-    if (pomo_selected_item != 6) {
-        reset_confirmed = false;
     }
 }
 

@@ -148,8 +148,6 @@ static const char *strings[STR_COUNT][2] = {
     [STR_H_SET_TOGGLE_PRESS_BACK]      = {"TOP:toggle|SIDE:back", "顶:切换|侧:返回"},
     [STR_H_SET_SAVE_PRESS_CANCEL]      = {"TOP:save|SIDE:cancel", "顶:保存|侧:取消"},
     [STR_H_SET_EDIT_PRESS_BACK]        = {"TOP:edit|SIDE:back",   "顶:编辑|侧:返回"},
-    [STR_H_SET_CONFIRM_DEFAULT]        = {"TOP:confirm default",   "顶:确认默认"},
-    [STR_H_SET_CONFIRM_RESET]          = {"TOP:confirm reset",     "顶:确认重置"},
     [STR_H_SET_SELECT_PRESS_BACK]      = {"TOP:select|SIDE:back", "顶:选择|侧:返回"},
     [STR_H_SET_INPUT_PRESS_BACK]       = {"TOP:input|SIDE:back",  "顶:输入|侧:返回"},
     [STR_H_SET_START_PAUSE_PRESS_STOP] = {"TOP:start/pause|SIDE:stop", "顶:开始/暂停|侧:停止"},
@@ -274,6 +272,26 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DEMO_HOUR_CHIME] = {"HourChime", "整点报时"},
     [STR_DEMO_HALF_CHIME] = {"HalfChime", "半点报时"},
     [STR_FMT_CHIME_HOUR] = {"%d:00",     "%d点"},
+
+    /* Pet species — 顺序与 buddy_species_table 一致 */
+    [STR_PET_CAPYBARA] = {"Capybara", "水豚"},
+    [STR_PET_DUCK]     = {"Duck",     "鸭子"},
+    [STR_PET_GOOSE]    = {"Goose",    "鹅"},
+    [STR_PET_BLOB]     = {"Blob",     "史莱姆"},
+    [STR_PET_CAT]      = {"Cat",      "猫咪"},
+    [STR_PET_DRAGON]   = {"Dragon",   "小龙"},
+    [STR_PET_OCTOPUS]  = {"Octopus",  "章鱼"},
+    [STR_PET_OWL]      = {"Owl",      "猫头鹰"},
+    [STR_PET_PENGUIN]  = {"Penguin",  "企鹅"},
+    [STR_PET_TURTLE]   = {"Turtle",   "乌龟"},
+    [STR_PET_SNAIL]    = {"Snail",    "蜗牛"},
+    [STR_PET_GHOST]    = {"Ghost",    "幽灵"},
+    [STR_PET_AXOLOTL]  = {"Axolotl",  "六角龙"},
+    [STR_PET_CACTUS]   = {"Cactus",   "仙人掌"},
+    [STR_PET_ROBOT]    = {"Robot",    "机器人"},
+    [STR_PET_RABBIT]   = {"Rabbit",   "兔子"},
+    [STR_PET_MUSHROOM] = {"Mushroom", "蘑菇"},
+    [STR_PET_CHONK]    = {"Chonk",    "胖墩"},
 };
 
 void i18n_init(void)

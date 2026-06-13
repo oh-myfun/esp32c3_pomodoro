@@ -6,6 +6,7 @@
 #include "buddy/buddy_render.h"
 #include "service/tcp_service.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -37,6 +38,11 @@ static lv_obj_t *stats_label   = NULL;
 
 /* Bottom hint */
 static lv_obj_t *nav_hint      = NULL;
+
+/* Switch-pet toast (centered, auto-hide after TOAST_DURATION_MS) */
+static lv_obj_t *toast_label   = NULL;
+static int64_t   toast_deadline_us = 0;
+#define TOAST_DURATION_MS  1500
 
 /* ----------------------------------------------------------------
  * Static LVGL objects — ATTENTION mode overlay
@@ -179,6 +185,14 @@ static void buddy_on_encoder_long_press(void)
     int cur = buddy_get_species_index();
     int next = (cur + 1) % count;
     buddy_set_species(next);
+
+    /* 显示宠物名 toast */
+    if (toast_label) {
+        lv_label_set_text(toast_label, buddy_get_species_name(next));
+        lv_obj_clear_flag(toast_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(toast_label);
+        toast_deadline_us = esp_timer_get_time() + TOAST_DURATION_MS * 1000;
+    }
 }
 
 static void buddy_on_settings_press(void)
@@ -504,6 +518,19 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_font(nav_hint, &custom_font_14, 0);
     lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -4);
 
+    /* ---- Switch-pet toast (centered, hidden by default) ---- */
+    toast_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(toast_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(toast_label, &custom_font_16, 0);
+    lv_obj_set_style_bg_color(toast_label, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(toast_label, LV_OPA_80, 0);
+    lv_obj_set_style_radius(toast_label, 6, 0);
+    lv_obj_set_style_pad_ver(toast_label, 6, 0);
+    lv_obj_set_style_pad_hor(toast_label, 12, 0);
+    lv_obj_align(toast_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_flag(toast_label, LV_OBJ_FLAG_HIDDEN);
+    toast_deadline_us = 0;
+
     /* ============================================================
      * ATTENTION mode overlay (initially hidden)
      * ============================================================
@@ -663,6 +690,13 @@ void ui_screen_buddy_update_state(void)
                  (unsigned long)info.approved_count,
                  (unsigned long)info.denied_count);
         lv_label_set_text(stats_label, buf);
+    }
+
+    /* Switch-pet toast: auto-hide after deadline */
+    if (toast_label && toast_deadline_us > 0 &&
+        esp_timer_get_time() >= toast_deadline_us) {
+        lv_obj_add_flag(toast_label, LV_OBJ_FLAG_HIDDEN);
+        toast_deadline_us = 0;
     }
 
     lvgl_unlock();

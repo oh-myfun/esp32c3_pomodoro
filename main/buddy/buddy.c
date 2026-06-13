@@ -3,6 +3,7 @@
 #include "service/led_service.h"
 #include "service/storage_service.h"
 #include "service/sound_service.h"
+#include "ui/i18n.h"
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
@@ -436,10 +437,19 @@ int buddy_get_species_count(void)
     return buddy_species_count;
 }
 
+/* 宠物名 i18n 字符串 ID，顺序与 buddy_species_table 一致 */
+static const str_id_t species_name_ids[] = {
+    STR_PET_CAPYBARA, STR_PET_DUCK, STR_PET_GOOSE, STR_PET_BLOB,
+    STR_PET_CAT,      STR_PET_DRAGON, STR_PET_OCTOPUS, STR_PET_OWL,
+    STR_PET_PENGUIN,  STR_PET_TURTLE, STR_PET_SNAIL, STR_PET_GHOST,
+    STR_PET_AXOLOTL,  STR_PET_CACTUS, STR_PET_ROBOT, STR_PET_RABBIT,
+    STR_PET_MUSHROOM, STR_PET_CHONK,
+};
+
 const char *buddy_get_species_name(int index)
 {
     if (index < 0 || index >= buddy_species_count) return NULL;
-    return buddy_species_table[index]->name;
+    return i18n(species_name_ids[index]);
 }
 
 /* ---- animation ---- */
