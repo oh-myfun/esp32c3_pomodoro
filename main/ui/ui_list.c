@@ -230,14 +230,20 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     lv_obj_set_style_text_font(data->scroll_up, &custom_font_14, 0);
     lv_obj_set_style_text_color(data->scroll_up, lv_color_hex(0x888888), 0);
     lv_label_set_text(data->scroll_up, "▲");
-    lv_obj_set_pos(data->scroll_up, width - 12, -2);
+    /* 固定宽 11 + 文本居中，让 ▲ label 框中心与 scrollbar 中心对齐
+     * (scrollbar x=list_width-7 宽3 → 中心 list_width-5.5；label x=list_width-11 宽11 → 中心 list_width-5.5) */
+    lv_obj_set_width(data->scroll_up, 11);
+    lv_obj_set_style_text_align(data->scroll_up, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(data->scroll_up, width - 11, -2);
     lv_obj_add_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
 
     data->scroll_down = lv_label_create(list);
     lv_obj_set_style_text_font(data->scroll_down, &custom_font_14, 0);
     lv_obj_set_style_text_color(data->scroll_down, lv_color_hex(0x888888), 0);
     lv_label_set_text(data->scroll_down, "▼");
-    lv_obj_set_pos(data->scroll_down, width - 12, height - 12);
+    lv_obj_set_width(data->scroll_down, 11);
+    lv_obj_set_style_text_align(data->scroll_down, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(data->scroll_down, width - 11, height - 12);
     lv_obj_add_flag(data->scroll_down, LV_OBJ_FLAG_HIDDEN);
     
     lv_obj_add_event_cb(list, (lv_event_cb_t)ui_list_cleanup, LV_EVENT_DELETE, data);

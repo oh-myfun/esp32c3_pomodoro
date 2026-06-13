@@ -18,8 +18,8 @@ enum {
     ITEM_HOST,
     ITEM_PORT,
     ITEM_SESSION,
-    ITEM_SCAN,
     ITEM_CONNECT,
+    ITEM_SCAN,     /* scan 放到最后 */
     ITEM_COUNT   /* = 6 */
 };
 

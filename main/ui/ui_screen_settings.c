@@ -91,7 +91,8 @@ static void settings_on_encoder_press(void)
 
 static void navigate_to_subpage(void)
 {
-    settings_mode = SETTINGS_MODE_IDLE;
+    /* 保留 SETTINGS_MODE_SELECT：从子页面回退时主设置直接处于选中状态，
+     * 用户可继续旋编码器切到下一项或按 SET 再次进入子页面。 */
     update_display();
 
     switch (current_settings_item) {

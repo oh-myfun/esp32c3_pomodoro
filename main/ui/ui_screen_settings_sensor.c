@@ -10,7 +10,7 @@
 static const char *TAG = "UI_SETTINGS_SENSOR";
 
 #define SENSOR_ITEM_COUNT 10
-/* 0: interval, 1: temp_source, 2: temp_min, 3: temp_max, 4: press_min, 5: press_max, 6: alt_min, 7: alt_max, 8: reset, 9: pressure_info */
+/* 0: interval, 1: temp_source, 2: temp_min, 3: temp_max, 4: press_min, 5: press_max, 6: alt_min, 7: alt_max, 8: pressure_info, 9: restore_default */
 
 typedef enum {
     SENSOR_MODE_NAV = 0,
@@ -64,11 +64,11 @@ static void update_display(void)
     snprintf(item_keys[7], sizeof(item_keys[7]), "%s", i18n(STR_ALT_MAX));
     snprintf(item_values[7], sizeof(item_values[7]), "%ldm", (long)settings.alt_max);
 
-    snprintf(item_keys[8], sizeof(item_keys[8]), "%s", i18n(STR_RESET));
+    snprintf(item_keys[8], sizeof(item_keys[8]), "%s", i18n(STR_PRESSURE_INFO));
     snprintf(item_values[8], sizeof(item_values[8]), ">>");
 
-    snprintf(item_keys[9], sizeof(item_keys[9]), "%s", i18n(STR_PRESSURE_INFO));
-    snprintf(item_values[9], sizeof(item_values[9]), ">>");
+    snprintf(item_keys[9], sizeof(item_keys[9]), "%s", i18n(STR_DEFAULT));
+    snprintf(item_values[9], sizeof(item_values[9]), " ");
 
     for (int i = 0; i < SENSOR_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -118,7 +118,7 @@ static void adjust_value(int direction)
         update_display();
         return;
     }
-    if (selected_item == 8 || selected_item == 9) return; /* reset & info items */
+    if (selected_item == 8 || selected_item == 9) return; /* pressure_info & restore_default */
     int32_t *vals[] = {NULL, NULL, &settings.temp_min, &settings.temp_max,
                        &settings.press_min, &settings.press_max,
                        &settings.alt_min, &settings.alt_max};
@@ -161,13 +161,13 @@ static void sensor_set_on_settings_press(void)
 {
     if (edit_mode == SENSOR_MODE_NAV) {
         if (selected_item == 8) {
-            /* Reset */
+            /* Pressure info */
+            ui_push_screen(UI_SCREEN_PRESSURE_INFO);
+        } else if (selected_item == 9) {
+            /* Restore defaults */
             sensor_service_reset_settings();
             sensor_service_get_settings(&settings);
             update_display();
-        } else if (selected_item == 9) {
-            /* Pressure info */
-            ui_push_screen(UI_SCREEN_PRESSURE_INFO);
         } else {
             edit_mode = SENSOR_MODE_ADJUST;
             update_display();

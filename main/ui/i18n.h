@@ -51,6 +51,7 @@ typedef enum {
     STR_AUTO,
     STR_DEFAULT,
     STR_RESET,
+    STR_RESET_COUNT,   /* "Reset Count" / "重置计数" (番茄钟) */
     STR_FMT_MIN,       /* "%d min" / "%d分钟" */
     STR_FMT_HOUR,      /* "%dh" / "%d小时" */
     STR_FMT_HOUR_MIN,  /* "%dh%dmin" / "%d小时%d分钟" */

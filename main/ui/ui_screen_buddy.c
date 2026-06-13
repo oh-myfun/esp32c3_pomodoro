@@ -6,7 +6,6 @@
 #include "buddy/buddy_render.h"
 #include "service/tcp_service.h"
 #include "esp_log.h"
-#include "esp_random.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -176,12 +175,9 @@ static void buddy_on_encoder_long_press(void)
     int count = buddy_get_species_count();
     if (count <= 1) return;
 
+    /* 顺序循环：当前索引 +1，超过总数回到 0 */
     int cur = buddy_get_species_index();
-    int next;
-    do {
-        next = (int)(esp_random() % count);
-    } while (next == cur);
-
+    int next = (cur + 1) % count;
     buddy_set_species(next);
 }
 
