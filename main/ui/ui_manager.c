@@ -59,7 +59,6 @@ static bool screen_is_disposable(ui_screen_id_t id)
            id == UI_SCREEN_SETTINGS_SOUND_DEMO ||
            id == UI_SCREEN_SETTINGS_DEBUG ||
            id == UI_SCREEN_BRIDGE_SCAN ||
-           id == UI_SCREEN_SENSOR ||
            id == UI_SCREEN_SETTINGS_SENSOR ||
            id == UI_SCREEN_PRESSURE_INFO;
 }

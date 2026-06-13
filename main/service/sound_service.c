@@ -82,16 +82,16 @@ static const buzzer_note_t mel_buddy_sad[] = {
     {NOTE_E5, 150}, {NOTE_C5, 200},
 };
 
-/* Hour chime: 每组 3 响成起伏 */
-static const buzzer_note_t mel_hour_group3[] = {
-    {NOTE_C6, 150}, {NOTE_E6, 150}, {NOTE_G6, 200},
-};
-static const buzzer_note_t mel_hour_rest[] = {
-    {REST, 400},
-};
+/* 整点报时：N 点 = (N/3)×音调3 + 余数音调（余1→音调1，余2→音调2，余0→无）
+ *   音调1 = C6（低）   音调2 = E6（中）   音调3 = G6（高）
+ * 例：3点=音调3；4点=音调3+音调1；6点=音调3+音调3；12点=4×音调3 */
+static const buzzer_note_t mel_hour_t1[] = {{NOTE_C6, 100}};
+static const buzzer_note_t mel_hour_t2[] = {{NOTE_E6, 100}};
+static const buzzer_note_t mel_hour_t3[] = {{NOTE_G6, 100}};
+static const buzzer_note_t mel_hour_rest[] = {{REST, 100}};
 /* Half chime: 单响低音 */
 static const buzzer_note_t mel_half[] = {
-    {NOTE_A5, 200},
+    {NOTE_A5, 120},
 };
 
 typedef struct {
@@ -232,18 +232,24 @@ static void play_hour_chime_impl(int hour12)
 {
     if (hour12 < 1 || hour12 > 12) return;
 
-    /* 动态拼装：每 3 响为一组，组间插入 rest */
-    buzzer_note_t buf[16];
+    /* N 点 = (N/3)×音调3 + 余数音调。buf 必须 static：buzzer_play_melody
+     * 只保存指针不复制，esp_timer 后续异步回调读取 play_notes[...]，栈上数组
+     * 会在本函数返回后变成悬垂指针，读到垃圾 freq 导致 ledc_set_freq panic。
+     * buzzer 内部 s_play_mutex 已串行化，不会有并发覆盖。 */
+    static buzzer_note_t buf[16];
     int n = 0;
-    int full_groups = hour12 / 3;
+    int full_threes = hour12 / 3;
     int remainder   = hour12 % 3;
-    for (int g = 0; g < full_groups; g++) {
-        if (g > 0) buf[n++] = mel_hour_rest[0];
-        for (int i = 0; i < 3; i++) buf[n++] = mel_hour_group3[i];
+    for (int i = 0; i < full_threes; i++) {
+        if (n > 0) buf[n++] = mel_hour_rest[0];
+        buf[n++] = mel_hour_t3[0];
     }
-    if (remainder > 0) {
-        if (full_groups > 0) buf[n++] = mel_hour_rest[0];
-        for (int i = 0; i < remainder; i++) buf[n++] = mel_hour_group3[i];
+    if (remainder == 1) {
+        if (n > 0) buf[n++] = mel_hour_rest[0];
+        buf[n++] = mel_hour_t1[0];
+    } else if (remainder == 2) {
+        if (n > 0) buf[n++] = mel_hour_rest[0];
+        buf[n++] = mel_hour_t2[0];
     }
     buzzer_play_melody(buf, (uint8_t)n);
 }

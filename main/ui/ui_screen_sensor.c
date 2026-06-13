@@ -487,14 +487,6 @@ void ui_screen_sensor_update(void)
 {
     if (temp_label == NULL) return;
 
-    /* Detect re-entry: reset to realtime view when screen becomes active again */
-    static int64_t last_update_ms = 0;
-    int64_t now = esp_timer_get_time() / 1000;
-    if (now - last_update_ms > 2000) {
-        set_view_mode(VIEW_REALTIME);
-    }
-    last_update_ms = now;
-
     if (view_mode == VIEW_REALTIME) {
         update_realtime();
     } else {

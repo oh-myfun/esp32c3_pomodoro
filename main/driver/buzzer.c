@@ -7,6 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include <string.h>
 
 static const char *TAG = "BUZZER";
 
@@ -110,6 +111,11 @@ void buzzer_beep(uint32_t freq_hz, uint32_t duration_ms)
 }
 
 static esp_timer_handle_t play_timer = NULL;
+/* Internal copy of the melody. Caller-passed pointer may point to a stack
+ * buffer or const ROM; we copy here so playback stays valid even after the
+ * caller returns. 32 notes is plenty: longest hour-chime (12 hits) uses 15. */
+#define BUZZER_PLAY_MAX 32
+static buzzer_note_t play_buffer[BUZZER_PLAY_MAX];
 static const buzzer_note_t *play_notes = NULL;
 static uint8_t play_count = 0;
 static uint8_t play_index = 0;
@@ -135,6 +141,7 @@ static void play_timer_callback(void *arg)
 void buzzer_play_melody(const buzzer_note_t *notes, uint8_t count)
 {
     if (!buzzer_initialized || count == 0 || !notes) return;
+    if (count > BUZZER_PLAY_MAX) count = BUZZER_PLAY_MAX;
 
     xSemaphoreTakeRecursive(s_play_mutex, portMAX_DELAY);
 
@@ -146,7 +153,9 @@ void buzzer_play_melody(const buzzer_note_t *notes, uint8_t count)
     }
     buzzer_off();
 
-    play_notes = notes;
+    /* Copy into our own buffer so caller's memory lifetime doesn't matter. */
+    memcpy(play_buffer, notes, count * sizeof(buzzer_note_t));
+    play_notes = play_buffer;
     play_count = count;
     play_index = 0;
     playing = true;
