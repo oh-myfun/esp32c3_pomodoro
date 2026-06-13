@@ -73,7 +73,7 @@ static void update_display(void)
     snprintf(item_keys[9], sizeof(item_keys[9]), "%s", i18n(STR_QUIET_END));
     snprintf(item_values[9], sizeof(item_values[9]), i18n(STR_FMT_HOUR), quiet_vals[1]);
     snprintf(item_keys[10], sizeof(item_keys[10]), "%s", i18n(STR_SND_DEMO));
-    snprintf(item_values[10], sizeof(item_values[10]), "\xe2\x87\xa8");
+    snprintf(item_values[10], sizeof(item_values[10]), ">>");
 
     for (int i = 0; i < SOUND_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -188,7 +188,6 @@ lv_obj_t* ui_screen_settings_sound_create(void)
     sound_list = ui_list_create(screen, 220, 196, 10, 30);
 
     load_values();
-    selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

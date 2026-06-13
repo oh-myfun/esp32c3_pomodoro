@@ -135,12 +135,16 @@ static void update_display(lv_obj_t *list)
     }
     
     if (data->scrollbar && data->count > data->visible_count) {
-        int track_height = data->visible_count * ITEM_HEIGHT;
+        /* 经典 button–scrollbar–button 布局：▲ 贴 list 顶、▼ 贴 list 底，
+         * scrollbar 居中活动。▲ label 框 y∈[-2,12]，▼ label 框 y∈[h-12,h+2]，
+         * scrollbar 活动范围 y∈[12, h-12]。 */
+        const int track_top = 12;
+        int track_height = data->list_height - 2 * track_top;
         int scrollbar_height = (data->visible_count * track_height) / data->count;
         if (scrollbar_height < 15) scrollbar_height = 15;
 
         int max_scroll = data->count - data->visible_count;
-        int scrollbar_y = (data->scroll * (track_height - scrollbar_height)) / max_scroll;
+        int scrollbar_y = track_top + (data->scroll * (track_height - scrollbar_height)) / max_scroll;
 
         lv_obj_set_size(data->scrollbar, 3, scrollbar_height);
         lv_obj_set_pos(data->scrollbar, data->list_width - 7, scrollbar_y);
@@ -226,7 +230,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     lv_obj_set_style_text_font(data->scroll_up, &custom_font_14, 0);
     lv_obj_set_style_text_color(data->scroll_up, lv_color_hex(0x888888), 0);
     lv_label_set_text(data->scroll_up, "▲");
-    lv_obj_set_pos(data->scroll_up, width - 12, -4);
+    lv_obj_set_pos(data->scroll_up, width - 12, -2);
     lv_obj_add_flag(data->scroll_up, LV_OBJ_FLAG_HIDDEN);
 
     data->scroll_down = lv_label_create(list);

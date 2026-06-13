@@ -62,7 +62,7 @@ static void update_display(void)
 
     /* Item 0: always "Scan for new..." */
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_SCAN_FOR_NEW));
-    snprintf(item_values[0], sizeof(item_values[0]), "⇨");
+    snprintf(item_values[0], sizeof(item_values[0]), ">>");
     items[0].key = item_keys[0];
     items[0].value = item_values[0];
     item_count = 1;
@@ -236,7 +236,6 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
 
     mode = SAVED_MODE_LIST;
-    selected_item = 0;
     update_display();
 
     static const ui_input_callbacks_t cbs = {

@@ -90,7 +90,6 @@ lv_obj_t *ui_screen_settings_light_demo_create(void)
     }
     demo_list = NULL;
     hint_label = NULL;
-    selected = 0;
     demoed_idx = -1;
 
     lv_obj_t *title = lv_label_create(screen);

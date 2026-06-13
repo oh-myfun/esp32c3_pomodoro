@@ -88,7 +88,7 @@ static const buzzer_note_t mel_buddy_sad[] = {
 static const buzzer_note_t mel_hour_t1[] = {{NOTE_C6, 100}};
 static const buzzer_note_t mel_hour_t2[] = {{NOTE_E6, 100}};
 static const buzzer_note_t mel_hour_t3[] = {{NOTE_G6, 100}};
-static const buzzer_note_t mel_hour_rest[] = {{REST, 100}};
+static const buzzer_note_t mel_hour_rest[] = {{REST, 50}};
 /* Half chime: 单响低音 */
 static const buzzer_note_t mel_half[] = {
     {NOTE_A5, 120},
@@ -197,6 +197,11 @@ void sound_service_play_raw(sound_id_t id)
     if (id < 0 || id >= SOUND_COUNT) return;
     const buzzer_melody_t *m = &melodies[id];
     buzzer_play_melody(m->notes, m->count);
+}
+
+bool sound_service_is_playing(void)
+{
+    return buzzer_is_playing();
 }
 
 bool sound_service_is_enabled(void)

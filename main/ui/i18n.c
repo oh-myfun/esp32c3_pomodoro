@@ -272,7 +272,7 @@ static const char *strings[STR_COUNT][2] = {
 
     [STR_DEMO_HOUR_CHIME] = {"HourChime", "整点报时"},
     [STR_DEMO_HALF_CHIME] = {"HalfChime", "半点报时"},
-    [STR_FMT_CHIME_COUNT] = {"%dHits",    "%d响"},
+    [STR_FMT_CHIME_HOUR] = {"%d:00",     "%d点"},
 };
 
 void i18n_init(void)

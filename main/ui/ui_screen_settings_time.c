@@ -168,7 +168,6 @@ lv_obj_t* ui_screen_settings_time_create(void)
     time_values[2] = time_service_get_interval_index();
 
     time_mode = TIME_MODE_NAV;
-    time_selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

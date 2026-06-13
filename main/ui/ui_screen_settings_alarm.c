@@ -134,7 +134,6 @@ lv_obj_t* ui_screen_settings_alarm_create(void)
         alarm_duration_min = (int)val;
     }
     alarm_mode = ALARM_MODE_NAV;
-    alarm_selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

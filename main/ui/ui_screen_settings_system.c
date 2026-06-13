@@ -177,7 +177,6 @@ lv_obj_t* ui_screen_settings_system_create(void)
         system_values[2] = (int)val;
     }
 
-    system_selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

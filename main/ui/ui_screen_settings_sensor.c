@@ -199,7 +199,6 @@ lv_obj_t* ui_screen_settings_sensor_create(void)
 
     sensor_service_get_settings(&settings);
     edit_mode = SENSOR_MODE_NAV;
-    selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

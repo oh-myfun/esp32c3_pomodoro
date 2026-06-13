@@ -170,7 +170,7 @@ static void update_display(void)
     snprintf(item_values[5], sizeof(item_values[5]), "%s", anim_opts[light_values[5] % 3]);
 
     snprintf(item_keys[6], sizeof(item_keys[6]), "%s", i18n(STR_DEMO));
-    snprintf(item_values[6], sizeof(item_values[6]), "\xe2\x87\xa8");
+    snprintf(item_values[6], sizeof(item_values[6]), ">>");
 
     for (int i = 0; i < LIGHT_ITEM_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -226,7 +226,6 @@ lv_obj_t* ui_screen_settings_light_create(void)
     light_values[6] = 0;
 
     light_mode = LIGHT_MODE_NAV;
-    light_selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

@@ -34,6 +34,7 @@
 #include "service/chime_service.h"
 #include "service/led_service.h"
 #include "ui/ui_screen_settings_debug.h"
+#include "ui/ui_screen_settings_sound_demo.h"
 #include "ui/ui_screen_settings_buddy.h"
 #include "ui/ui_screen_bridge_scan.h"
 #include "ui/ui_screen_sensor.h"
@@ -387,6 +388,9 @@ static void ui_update_task(void *arg) {
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
     int64_t last_debug_tick = 0;
+    /* Track synced state transitions so a NTP sync event triggers an immediate
+     * UI refresh instead of waiting up to 1s for the next wifi_ui tick. */
+    bool prev_main_synced = false;
     int64_t last_chime_tick = 0;
 
     while (1) {
@@ -456,8 +460,15 @@ static void ui_update_task(void *arg) {
             lvgl_unlock();
         }
 
-        // WiFi status: query real state from services, only push UI on main screen
-        if (now - last_wifi_ui_tick >= 1000) {
+        // WiFi status: query real state from services, only push UI on main screen.
+        // NTP sync completion flips synced=false→true; detect the transition and
+        // refresh immediately instead of waiting up to 1s for the next tick.
+        bool cur_main_synced = time_service_is_synced();
+        bool sync_changed_on_main = (current_screen == UI_SCREEN_MAIN &&
+                                     cur_main_synced != prev_main_synced);
+        prev_main_synced = cur_main_synced;
+
+        if (sync_changed_on_main || now - last_wifi_ui_tick >= 1000) {
             if (current_screen == UI_SCREEN_MAIN) {
                 wifi_state_t wifi_state = wifi_service_get_state();
                 lvgl_lock();
@@ -495,6 +506,13 @@ static void ui_update_task(void *arg) {
             ui_screen_settings_debug_refresh();
             lvgl_unlock();
             last_debug_tick = now;
+        }
+
+        // Sound demo: clear ▶ marker when buzzer finishes
+        if (current_screen == UI_SCREEN_SETTINGS_SOUND_DEMO) {
+            lvgl_lock();
+            ui_screen_settings_sound_demo_update_play_state();
+            lvgl_unlock();
         }
 
         // Buddy settings: refresh connect state every 1 second

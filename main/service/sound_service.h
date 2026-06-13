@@ -56,6 +56,9 @@ void sound_service_play_raw(sound_id_t id);
 void sound_service_play_hour_chime_raw(int hour12);
 void sound_service_play_half_chime_raw(void);
 
+/* 当前是否正在播放（用于演示界面更新 ▶ 标记） */
+bool sound_service_is_playing(void);
+
 /* 静默时段（start/end 取值 0..23；start==end 表示无静默） */
 bool sound_service_is_quiet_hour(int hour);
 void sound_service_set_quiet_range(int start, int end);

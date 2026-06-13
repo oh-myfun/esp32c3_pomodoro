@@ -22,6 +22,7 @@ static lv_obj_t *hint_label = NULL;
 static sound_demo_mode_t mode = MODE_NAV;
 static int selected = 0;
 static int hour12_val = 3;   /* 整点响数 (1..12)，ADJUST 模式可调 */
+static int playing_idx = -1;  /* 当前正在播放的项，-1 表示未在播放 */
 
 static char item_keys[SOUND_DEMO_COUNT][20];
 static char item_values[SOUND_DEMO_COUNT][12];
@@ -40,19 +41,28 @@ static const str_id_t sound_name_ids[SOUND_COUNT] = {
 
 static void update_display(void)
 {
+    static const char CHR_PLAY[] = "\xe2\x96\xb6";  /* ▶ */
+
     for (int i = 0; i < SOUND_COUNT; i++) {
         snprintf(item_keys[i], sizeof(item_keys[i]), "%s", i18n(sound_name_ids[i]));
-        snprintf(item_values[i], sizeof(item_values[i]), " ");
+        snprintf(item_values[i], sizeof(item_values[i]), "%s",
+                 (i == playing_idx) ? CHR_PLAY : " ");
     }
 
+    /* HOUR_CHIME_IDX：value 始终保留 hour12_val，播放中则前缀加 ▶ */
     snprintf(item_keys[HOUR_CHIME_IDX], sizeof(item_keys[HOUR_CHIME_IDX]),
              "%s", i18n(STR_DEMO_HOUR_CHIME));
-    snprintf(item_values[HOUR_CHIME_IDX], sizeof(item_values[HOUR_CHIME_IDX]),
-             i18n(STR_FMT_CHIME_COUNT), hour12_val);
+    {
+        char hour_buf[8];
+        snprintf(hour_buf, sizeof(hour_buf), i18n(STR_FMT_CHIME_HOUR), hour12_val);
+        snprintf(item_values[HOUR_CHIME_IDX], sizeof(item_values[HOUR_CHIME_IDX]),
+                 "%s%s", (HOUR_CHIME_IDX == playing_idx) ? CHR_PLAY : "", hour_buf);
+    }
 
     snprintf(item_keys[HALF_CHIME_IDX], sizeof(item_keys[HALF_CHIME_IDX]),
              "%s", i18n(STR_DEMO_HALF_CHIME));
-    snprintf(item_values[HALF_CHIME_IDX], sizeof(item_values[HALF_CHIME_IDX]), " ");
+    snprintf(item_values[HALF_CHIME_IDX], sizeof(item_values[HALF_CHIME_IDX]),
+             "%s", (HALF_CHIME_IDX == playing_idx) ? CHR_PLAY : " ");
 
     for (int i = 0; i < SOUND_DEMO_COUNT; i++) {
         items[i].key = item_keys[i];
@@ -72,6 +82,15 @@ static void update_display(void)
         } else {
             lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
         }
+    }
+}
+
+/* 由 ui_update_task 轮询调用：buzzer 播放结束时清除 ▶ 标记 */
+void ui_screen_settings_sound_demo_update_play_state(void)
+{
+    if (playing_idx >= 0 && !sound_service_is_playing()) {
+        playing_idx = -1;
+        update_display();
     }
 }
 
@@ -115,14 +134,17 @@ static void demo_on_settings_press(void)
     if (mode == MODE_ADJUST) {
         /* 播放整点响 hour12 次并退出 ADJUST */
         sound_service_play_hour_chime_raw(hour12_val);
+        playing_idx = HOUR_CHIME_IDX;
         mode = MODE_NAV;
         update_display();
         return;
     }
 
     if (selected < SOUND_COUNT) {
-        /* 普通音效：立即播放（绕过开关） */
+        /* 普通音效：立即播放（绕过开关）。buzzer 内部会停止前一个并开始新播放 */
         sound_service_play_raw((sound_id_t)selected);
+        playing_idx = selected;
+        update_display();
     } else if (selected == HOUR_CHIME_IDX) {
         /* 整点：进入 ADJUST 调响数 */
         mode = MODE_ADJUST;
@@ -130,6 +152,8 @@ static void demo_on_settings_press(void)
     } else if (selected == HALF_CHIME_IDX) {
         /* 半点：立即播放（绕过开关） */
         sound_service_play_half_chime_raw();
+        playing_idx = HALF_CHIME_IDX;
+        update_display();
     }
 }
 
@@ -143,7 +167,7 @@ lv_obj_t *ui_screen_settings_sound_demo_create(void)
     demo_list = NULL;
     hint_label = NULL;
     mode = MODE_NAV;
-    selected = 0;
+    playing_idx = -1;  /* 切换出去再切回时清除上次的 ▶ 标记 */
 
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_DEMO));

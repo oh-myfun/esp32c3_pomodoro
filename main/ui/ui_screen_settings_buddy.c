@@ -112,7 +112,7 @@ static void update_display(void)
 
     /* Item 4: Scan */
     snprintf(item_keys[ITEM_SCAN], sizeof(item_keys[ITEM_SCAN]), "%s", i18n(STR_SCAN));
-    snprintf(item_values[ITEM_SCAN], sizeof(item_values[ITEM_SCAN]), "%s", "\xe2\x87\xa8");  /* ⇨ */
+    snprintf(item_values[ITEM_SCAN], sizeof(item_values[ITEM_SCAN]), "%s", ">>");
 
     /* Item 5: Connect/Disconnect */
     snprintf(item_keys[ITEM_CONNECT], sizeof(item_keys[ITEM_CONNECT]), "%s", tcp_service_is_connected() ? i18n(STR_DISCONNECT) : i18n(STR_CONNECT_ACTION));
@@ -244,7 +244,6 @@ lv_obj_t *ui_screen_settings_buddy_create(void)
 
     load_config();
     edit_mode = BUDDY_MODE_NAV;
-    selected_item = 0;
     update_display();
 
     hint_label = lv_label_create(screen);

@@ -268,7 +268,7 @@ typedef enum {
 
     STR_DEMO_HOUR_CHIME,    /* "HourChime" / "整点报时" */
     STR_DEMO_HALF_CHIME,    /* "HalfChime" / "半点报时" */
-    STR_FMT_CHIME_COUNT,    /* "%dHits" / "%d响" */
+    STR_FMT_CHIME_HOUR,    /* "%d:00" / "%d点" */
 
     STR_COUNT
 } str_id_t;
