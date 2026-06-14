@@ -16,7 +16,7 @@ static const char *TAG = "UI_DEBUG";
 #define LOG_LINES 24
 #define LOG_LINE_MAX 80
 #define LOG_AREA_Y 36
-#define LOG_AREA_H 184  // 240 - 36(top) - 20(hint)
+#define LOG_AREA_H 180  // 240 - 36(top) - 24(hint with UI_HINT_BOTTOM_OFFSET)
 #define SCROLL_STEP 18
 
 static char log_lines[LOG_LINES][LOG_LINE_MAX];
@@ -240,7 +240,7 @@ static void show_symbol_view(void)
     user_scrolled = false;
 
     if (title_label) {
-        lv_label_set_text(title_label, "Symbol Preview");
+        lv_label_set_text(title_label, i18n(STR_DEBUG_SYMBOLS));
         lv_obj_set_style_text_color(title_label, lv_color_hex(0x00FFFF), 0);
     }
 
@@ -250,7 +250,7 @@ static void show_symbol_view(void)
     }
 
     if (hint_label) {
-        lv_label_set_text(hint_label, "TOP:log|Encoder:scroll|SIDE:back");
+        lv_label_set_text(hint_label, i18n(STR_H_DEBUG_VIEW));
     }
 }
 
@@ -345,7 +345,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, i18n(STR_H_ANY_KEY_BACK_ENCODER_SCROLL));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -2);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     capture_start();
     show_log_view();

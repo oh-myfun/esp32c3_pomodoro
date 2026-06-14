@@ -34,6 +34,7 @@ typedef struct {
     void (*on_disconnected)(void);
     void (*on_request)(const tcp_request_t *req);
     void (*on_session_end)(void);
+    void (*on_request_done)(const char *request_id);  /* "done" 消息：单请求结束，按 id 匹配清除 */
     void (*on_status)(const char *state, const char *message);
     void (*on_paired)(void);
 } tcp_callbacks_t;

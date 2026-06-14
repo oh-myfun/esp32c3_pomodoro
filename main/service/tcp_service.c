@@ -77,6 +77,13 @@ static void invoke_on_session_end(void)
     }
 }
 
+static void invoke_on_request_done(const char *request_id)
+{
+    if (callbacks.on_request_done) {
+        callbacks.on_request_done(request_id);
+    }
+}
+
 static void invoke_on_status(const char *state, const char *message)
 {
     if (callbacks.on_status) {
@@ -393,8 +400,10 @@ static void dispatch_message(const char *type_str, cJSON *root)
     } else if (strcmp(type_str, "request") == 0) {
         parse_request_message(data);
     } else if (strcmp(type_str, "done") == 0) {
-        ESP_LOGI(TAG, "Request done");
-        invoke_on_session_end();
+        cJSON *id_item = data ? cJSON_GetObjectItem(data, "id") : NULL;
+        const char *id_str = (id_item && cJSON_IsString(id_item)) ? id_item->valuestring : NULL;
+        ESP_LOGI(TAG, "Request done: id=%s", id_str ? id_str : "(none)");
+        invoke_on_request_done(id_str);
     } else if (strcmp(type_str, "session_end") == 0) {
         ESP_LOGI(TAG, "Session ended");
         invoke_on_session_end();
@@ -522,12 +531,13 @@ static void do_connect(void)
         return;
     }
 
-    /* TCP keepalive */
+    /* TCP keepalive — 与 claude-code-buddy-bridge (idle=5/int=3) 对齐，
+     * 避免桥梁侧先于固件标记连接为 closed。 */
     int keepalive = 1;
     setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
-    int idle = 30;
+    int idle = 10;
     setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
-    int interval = 10;
+    int interval = 3;
     setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
     int count = 3;
     setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(count));

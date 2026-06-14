@@ -31,6 +31,7 @@ void buddy_on_tcp_connected(void);
 void buddy_on_tcp_disconnected(void);
 void buddy_on_tcp_request(const tcp_request_t *req);
 void buddy_on_tcp_session_end(void);
+void buddy_on_request_done(const char *request_id);  /* "done" 消息：按 id 匹配清除当前请求 */
 void buddy_on_status(const char *state, const char *message);
 
 /* User actions */

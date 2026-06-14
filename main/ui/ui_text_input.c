@@ -545,7 +545,7 @@ lv_obj_t *ui_text_input_create(void)
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, "");
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     /* Register input callbacks */
     static const ui_input_callbacks_t cbs = {

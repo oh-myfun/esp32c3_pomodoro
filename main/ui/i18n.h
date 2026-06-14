@@ -103,7 +103,6 @@ typedef enum {
     STR_APPROVE,
     STR_APPROVE_REMEMBER,
     STR_DENY,
-    STR_NEXT_PET,
     STR_TOOL,
     STR_FMT_STATE,     /* "State: %s" / "状态: %s" */
     STR_FMT_TOOL,      /* "Tool: %s" / "工具: %s" */
@@ -181,7 +180,6 @@ typedef enum {
     STR_OK,              /* "OK" / "OK" */
 
     /* Sensor page */
-    STR_T_SENSOR,          /* "Sensor" / "传感器" */
     STR_T_SENSOR_PAGE,     /* "🌡Temp Hum Press Alt" / "🌡温湿度气压海拔" */
     STR_SENSOR_SETTINGS,   /* "Sensor Settings" / "传感器设置" */
     STR_TEMP_MIN,          /* "Temp Min" / "温度最小" */
@@ -288,6 +286,10 @@ typedef enum {
     STR_PET_RABBIT,     /* "Rabbit"   / "兔子" */
     STR_PET_MUSHROOM,   /* "Mushroom" / "蘑菇" */
     STR_PET_CHONK,      /* "Chonk"    / "胖墩" */
+
+    /* Debug page */
+    STR_DEBUG_SYMBOLS,      /* "Symbol Preview" / "符号预览" */
+    STR_H_DEBUG_VIEW,       /* "TOP:log|Encoder:scroll|SIDE:back" / "顶:日志|编码器:滚动|侧:返回" */
 
     STR_COUNT
 } str_id_t;

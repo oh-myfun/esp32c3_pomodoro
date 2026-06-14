@@ -244,6 +244,11 @@ static void on_tcp_session_end(void) {
     buddy_on_tcp_session_end();
 }
 
+static void on_tcp_request_done(const char *request_id) {
+    ESP_LOGI(TAG, "TCP request done: %s", request_id ? request_id : "(none)");
+    buddy_on_request_done(request_id);
+}
+
 static void on_tcp_status(const char *state, const char *message) {
     ESP_LOGI(TAG, "TCP status: %s", state);
     activity_touch();
@@ -651,6 +656,7 @@ void app_main(void) {
         .on_disconnected = on_tcp_disconnected,
         .on_request = on_tcp_request,
         .on_session_end = on_tcp_session_end,
+        .on_request_done = on_tcp_request_done,
         .on_status = on_tcp_status,
         .on_paired = on_tcp_paired,
     };

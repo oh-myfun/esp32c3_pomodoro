@@ -60,7 +60,7 @@ static void update_display(void)
 
     if (system_list) {
         ui_list_set_selected_color(system_list,
-            sys_mode == MODE_ADJUST ? lv_color_hex(0xFFAA00) : lv_color_hex(0x00FF00));
+            sys_mode == MODE_ADJUST ? lv_color_hex(0xFFFF00) : lv_color_hex(0x00FF00));
         ui_list_set_items(system_list, items, SYSTEM_ITEM_COUNT);
         ui_list_set_selected(system_list, system_selected_item);
     }
@@ -183,7 +183,7 @@ lv_obj_t* ui_screen_settings_system_create(void)
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_TOGGLE_PRESS_BACK));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = system_on_encoder_cw,

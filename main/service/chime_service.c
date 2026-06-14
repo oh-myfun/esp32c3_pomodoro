@@ -1,5 +1,6 @@
 #include "chime_service.h"
 #include "sound_service.h"
+#include "time_service.h"
 #include "esp_log.h"
 #include <time.h>
 #include <sys/time.h>
@@ -18,6 +19,9 @@ void chime_service_init(void)
 
 void chime_service_tick(void)
 {
+    /* NTP 未同步前不响，避免在错误时间报时 */
+    if (!time_service_is_synced()) return;
+
     time_t now;
     time(&now);
     struct tm t;

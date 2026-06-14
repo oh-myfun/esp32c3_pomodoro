@@ -237,11 +237,9 @@ static void play_hour_chime_impl(int hour12)
 {
     if (hour12 < 1 || hour12 > 12) return;
 
-    /* N 点 = (N/3)×音调3 + 余数音调。buf 必须 static：buzzer_play_melody
-     * 只保存指针不复制，esp_timer 后续异步回调读取 play_notes[...]，栈上数组
-     * 会在本函数返回后变成悬垂指针，读到垃圾 freq 导致 ledc_set_freq panic。
-     * buzzer 内部 s_play_mutex 已串行化，不会有并发覆盖。 */
-    static buzzer_note_t buf[16];
+    /* N 点 = (N/3)×音调3 + 余数音调。buzzer_play_melody 内部已 memcpy
+     * 调用方数据，栈上数组生命周期无需延长。 */
+    buzzer_note_t buf[16];
     int n = 0;
     int full_threes = hour12 / 3;
     int remainder   = hour12 % 3;

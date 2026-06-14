@@ -56,6 +56,8 @@ static bool   s_answer_multi = false;
 
 static void set_state_locked(buddy_state_t new_state);
 static void apply_pending_status(void);
+static void celebrate_locked(void);
+static void dizzy_locked(void);
 
 /* ---- helpers ---- */
 
@@ -200,16 +202,61 @@ void buddy_on_tcp_request(const tcp_request_t *req)
     xSemaphoreGiveRecursive(s_mutex);
 }
 
-void buddy_on_tcp_session_end(void)
+/* 清除当前 pending 请求。Caller 必须持有 s_mutex。 */
+static void clear_current_request_locked(void)
 {
-    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
-    ESP_LOGI(TAG, "session_end: state=%d has_request=%d pending='%s'",
-             s_state, s_has_request, s_pending_status);
     s_has_request = false;
     memset(&s_current_request, 0, sizeof(s_current_request));
     if (s_state == BUDDY_ATTENTION) {
         set_state_locked(BUDDY_IDLE);
     }
+}
+
+/* 进入 CELEBRATE 状态并播放开心音效。Caller 必须持有 s_mutex。 */
+static void celebrate_locked(void)
+{
+    set_state_locked(BUDDY_CELEBRATE);
+    sound_service_play(SOUND_BUDDY_HAPPY);
+}
+
+/* 进入 DIZZY 状态并播放伤心音效。Caller 必须持有 s_mutex。 */
+static void dizzy_locked(void)
+{
+    set_state_locked(BUDDY_DIZZY);
+    sound_service_play(SOUND_BUDDY_SAD);
+}
+
+void buddy_on_tcp_session_end(void)
+{
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
+    ESP_LOGI(TAG, "session_end: state=%d has_request=%d pending='%s'",
+             s_state, s_has_request, s_pending_status);
+    clear_current_request_locked();
+    xSemaphoreGiveRecursive(s_mutex);
+}
+
+/* 单请求结束：仅当 id 匹配当前 pending 请求时清除，
+ * 避免旧 done 把刚到达的新请求误清。 */
+void buddy_on_request_done(const char *request_id)
+{
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
+    ESP_LOGI(TAG, "request_done: id=%s current=%s state=%d",
+             request_id ? request_id : "(null)",
+             s_current_request.ccbb_request_id, s_state);
+
+    bool should_clear;
+    if (!request_id || !request_id[0]) {
+        /* 旧版 bridge 未带 id，退化为无条件清除 */
+        should_clear = true;
+    } else if (s_has_request &&
+               strcmp(request_id, s_current_request.ccbb_request_id) == 0) {
+        should_clear = true;
+    } else {
+        ESP_LOGI(TAG, "Stale done for old/unknown request, ignoring");
+        should_clear = false;
+    }
+
+    if (should_clear) clear_current_request_locked();
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -246,8 +293,7 @@ void buddy_on_status(const char *state, const char *message)
             s_pre_random = s_state;
             strncpy(s_pending_status, "idle", sizeof(s_pending_status) - 1);
             s_pending_status[sizeof(s_pending_status) - 1] = '\0';
-            set_state_locked(BUDDY_CELEBRATE);
-            sound_service_play(SOUND_BUDDY_HAPPY);
+            celebrate_locked();
         } else {
             set_state_locked(BUDDY_IDLE);
         }
@@ -262,8 +308,7 @@ void buddy_on_status(const char *state, const char *message)
             s_pre_random = s_state;
             strncpy(s_pending_status, "idle", sizeof(s_pending_status) - 1);
             s_pending_status[sizeof(s_pending_status) - 1] = '\0';
-            set_state_locked(BUDDY_DIZZY);
-            sound_service_play(SOUND_BUDDY_SAD);
+            dizzy_locked();
         }
     } else {
         ESP_LOGW(TAG, "Unknown status: '%s'", state);
@@ -288,8 +333,7 @@ void buddy_approve(void)
     buddy_save_stats();
     ESP_LOGI(TAG, "approved  total=%lu", (unsigned long)s_approved);
     if (s_cbs.on_decision) s_cbs.on_decision(true, &s_current_request);
-    set_state_locked(BUDDY_CELEBRATE);
-    sound_service_play(SOUND_BUDDY_HAPPY);
+    celebrate_locked();
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -307,8 +351,7 @@ void buddy_deny(void)
     buddy_save_stats();
     ESP_LOGI(TAG, "denied  total=%lu", (unsigned long)s_denied);
     if (s_cbs.on_decision) s_cbs.on_decision(false, &s_current_request);
-    set_state_locked(BUDDY_DIZZY);
-    sound_service_play(SOUND_BUDDY_SAD);
+    dizzy_locked();
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -326,9 +369,7 @@ void buddy_submit_answer(void)
     buddy_save_stats();
     ESP_LOGI(TAG, "approved (answer)  total=%lu", (unsigned long)s_approved);
     if (s_cbs.on_decision) s_cbs.on_decision(true, &s_current_request);
-    set_state_locked(BUDDY_CELEBRATE);
-    sound_service_play(SOUND_BUDDY_HAPPY);
-    led_service_play(LED_COLOR_CELEBRATE);
+    celebrate_locked();
     xSemaphoreGiveRecursive(s_mutex);
 }
 

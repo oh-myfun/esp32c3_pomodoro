@@ -66,7 +66,7 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(hint, i18n(STR_PRESSURE_TIP));
     lv_obj_set_style_text_font(hint, &custom_font_14, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -6);
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_press = go_back,

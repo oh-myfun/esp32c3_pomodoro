@@ -133,7 +133,7 @@ lv_obj_t* ui_screen_settings_create(void)
     lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
     lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER));
     lv_obj_set_style_text_font(settings_hint, &custom_font_14, 0);
-    lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = settings_on_encoder_cw,

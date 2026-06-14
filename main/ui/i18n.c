@@ -96,12 +96,11 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SPECIES]     = {"🐾Species",     "🐾物种"},
 
     /* Buddy page */
-    [STR_BUDDY_NAME]  = {"\xf0\x9f\xa4\x96" "Buddy",       "\xf0\x9f\xa4\x96" "\xe4\xbc\x99\xe4\xbc\xb4"},
+    [STR_BUDDY_NAME]  = {"🤖Buddy",       "🤖伙伴"},
     [STR_PERMISSION]  = {"!! PERMISSION !!", "!! 权限请求 !!"},
     [STR_APPROVE]     = {"Approve",     "批准"},
     [STR_APPROVE_REMEMBER] = {"Allow+Remember", "允许并记住"},
     [STR_DENY]        = {"Deny",        "拒绝"},
-    [STR_NEXT_PET]    = {"Next Pet",    "下一只"},
     [STR_TOOL]        = {"Tool:",       "工具:"},
     [STR_FMT_STATE]   = {"State: %s",   "状态: %s"},
     [STR_FMT_TOOL]    = {"Tool: %s",    "工具: %s"},
@@ -172,11 +171,11 @@ static const char *strings[STR_COUNT][2] = {
     [STR_TCP_DISCONN] = {"TCP: Disconnected", "TCP: 未连接"},
 
     /* Buddy settings */
-    [STR_HOST]            = {"\xf0\x9f\x8c\x90Host",            "\xf0\x9f\x8c\x90\xe4\xb8\xbb\xe6\x9c\xba"},
-    [STR_PORT]            = {"\xf0\x9f\x94\x8cPort",            "\xf0\x9f\x94\x8c\xe7\xab\xaf\xe5\x8f\xa3"},
-    [STR_SESSION]         = {"\xf0\x9f\x94\x91Session",         "\xf0\x9f\x94\x91\xe4\xbc\x9a\xe8\xaf\x9d"},
-    [STR_CONNECT_ACTION]  = {"\xf0\x9f\x93\xa1" "Connect",         "\xf0\x9f\x93\xa1" "\xe8\xbf\x9e\xe6\x8e\xa5"},
-    [STR_DISCONNECT]      = {"\xf0\x9f\x93\xb4" "Disconnect",      "\xf0\x9f\x93\xb4" "\xe6\x96\xad\xe5\xbc\x80"},
+    [STR_HOST]            = {"🌐Host",            "🌐主机"},
+    [STR_PORT]            = {"🔌Port",            "🔌端口"},
+    [STR_SESSION]         = {"🔑Session",         "🔑会话"},
+    [STR_CONNECT_ACTION]  = {"📡Connect",         "📡连接"},
+    [STR_DISCONNECT]      = {"📴Disconnect",      "📴断开"},
 
     /* Bridge scan */
     [STR_NO_BRIDGE]       = {"No bridges found",    "未发现Bridge"},
@@ -185,8 +184,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_OK]              = {"OK",                  "OK"},
 
     /* Sensor page */
-    [STR_T_SENSOR]         = {"Sensor",              "传感器"},
-    [STR_T_SENSOR_PAGE]    = {"\xf0\x9f\x8c\xa1Temp Hum Press Alt", "\xf0\x9f\x8c\xa1\xe6\xb8\xa9\xe6\xb9\xbf\xe5\xba\xa6\xe6\xb0\x94\xe5\x8e\x8b\xe6\xb5\xb7\xe6\x8b\x94"},
+    [STR_T_SENSOR_PAGE]    = {"🌡Temp Hum Press Alt", "🌡温湿度气压海拔"},
     [STR_SENSOR_SETTINGS]  = {"Sensor Settings",     "传感器设置"},
     [STR_TEMP_MIN]         = {"Temp Min",            "温度最小"},
     [STR_TEMP_MAX]         = {"Temp Max",            "温度最大"},
@@ -217,21 +215,21 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DEMO_SAD]        = {"Sad",         "悲伤"},
 
     /* Pressure info */
-    [STR_PRESSURE_INFO] = {"\xf0\x9f\x92\xa1" "Pressure Info", "\xf0\x9f\x92\xa1" "\xe6\xb0\x94\xe5\x8e\x8b\xe5\xb0\x8f\xe7\x9f\xa5\xe8\xaf\x86"},
-    [STR_PRESSURE_TIP]   = {"Any key:back",          "\xe4\xbb\xbb\xe6\x84\x8f\xe9\x94\xae:\xe8\xbf\x94\xe5\x9b\x9e"},
-    [STR_PI_HDR]         = {"Weather   -hPa    +m",  "\xe5\xa4\xa9\xe6\xb0\x94     -hPa    +m"},
-    [STR_PI_DAILY]       = {"Daily     1~4    8~33", "\xe6\x97\xa5\xe5\x8f\x98\xe5\x8c\x96    1~4    8~33"},
-    [STR_PI_RAIN]        = {"Rain      5~15   42~126","\xe9\x99\x8d\xe9\x9b\xa8\xe5\x89\x8d    5~15   42~126"},
-    [STR_PI_STORM]       = {"Storm    15~30  126~253","\xe6\x9a\xb4\xe9\xa3\x8e\xe9\x9b\xa8   15~30  126~253"},
-    [STR_PI_TYPHOON]     = {"Typhoon   100+   868+", "\xe5\x8f\xb0\xe9\xa3\x8e      100+   868+"},
-    [STR_PI_NOTE]        = {"Lower pressure =\nhigher altitude.", "\xe6\xb0\x94\xe5\x8e\x8b\xe8\xb6\x8a\xe4\xbd\x8e\n\xe6\xb5\xb7\xe6\x8b\x94\xe8\xb6\x8a\xe9\xab\x98"},
+    [STR_PRESSURE_INFO] = {"💡Pressure Info", "💡气压小知识"},
+    [STR_PRESSURE_TIP]   = {"Any key:back",          "任意键:返回"},
+    [STR_PI_HDR]         = {"Weather   -hPa    +m",  "天气     -hPa    +m"},
+    [STR_PI_DAILY]       = {"Daily     1~4    8~33", "日变化    1~4    8~33"},
+    [STR_PI_RAIN]        = {"Rain      5~15   42~126","降雨前    5~15   42~126"},
+    [STR_PI_STORM]       = {"Storm    15~30  126~253","暴风雨   15~30  126~253"},
+    [STR_PI_TYPHOON]     = {"Typhoon   100+   868+", "台风      100+   868+"},
+    [STR_PI_NOTE]        = {"Lower pressure =\nhigher altitude.", "气压越低\n海拔越高"},
 
     /* Long press hint */
-    [STR_KEY_DUAL]       = {"BOTH", "\xe5\x8f\x8c\xe9\x94\xae"},
-    [STR_ACT_SWITCH_PET] = {"Switch Pet", "\xe5\x88\x87\xe6\x8d\xa2\xe5\xae\xa0\xe7\x89\xa9"},
-    [STR_ACT_DELETE]     = {"Delete",     "\xe5\x88\xa0\xe9\x99\xa4"},
-    [STR_ACT_SWITCH_MODE]= {"Switch Mode","\xe5\x88\x87\xe6\x8d\xa2\xe6\xa8\xa1\xe5\xbc\x8f"},
-    [STR_ACT_RESET]      = {"Screen Reset","\xe5\xb1\x8f\xe5\xb9\x95\xe9\x87\x8d\xe7\xbd\xae"},
+    [STR_KEY_DUAL]       = {"BOTH", "双键"},
+    [STR_ACT_SWITCH_PET] = {"Switch Pet", "切换宠物"},
+    [STR_ACT_DELETE]     = {"Delete",     "删除"},
+    [STR_ACT_SWITCH_MODE]= {"Switch Mode","切换模式"},
+    [STR_ACT_RESET]      = {"Screen Reset","屏幕重置"},
 
     /* Sound settings */
     [STR_T_SOUND]      = {"🔊Sound",      "🔊声音"},
@@ -292,6 +290,10 @@ static const char *strings[STR_COUNT][2] = {
     [STR_PET_RABBIT]   = {"Rabbit",   "兔子"},
     [STR_PET_MUSHROOM] = {"Mushroom", "蘑菇"},
     [STR_PET_CHONK]    = {"Chonk",    "胖墩"},
+
+    /* Debug page */
+    [STR_DEBUG_SYMBOLS] = {"Symbol Preview", "符号预览"},
+    [STR_H_DEBUG_VIEW]  = {"TOP:log|Encoder:scroll|SIDE:back", "顶:日志|编码器:滚动|侧:返回"},
 };
 
 void i18n_init(void)

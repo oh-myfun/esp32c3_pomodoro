@@ -2,6 +2,10 @@
 
 #include "lvgl.h"
 
+/* 底部 hint bar 的 Y 偏移（距屏幕底部的像素数，负值）。
+ * 所有屏幕统一使用此值，确保 hint 高低一致。 */
+#define UI_HINT_BOTTOM_OFFSET  (-8)
+
 typedef enum {
     UI_SCREEN_MAIN = 0,
     UI_SCREEN_POMODORO,

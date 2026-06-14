@@ -385,7 +385,7 @@ lv_obj_t* ui_screen_sensor_create(void)
     hint_label = lv_label_create(screen);
     lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, -4);
+    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     /* ---- Real-time view: 4 quadrants ---- */
     /* Layout: top y=26 h=96, bottom y=122 h=96, left w=120, right w=120 */
@@ -486,6 +486,12 @@ lv_obj_t* ui_screen_sensor_create(void)
 void ui_screen_sensor_update(void)
 {
     if (temp_label == NULL) return;
+
+    /* Refresh i18n-dependent labels: language may have been switched while
+     * away from this screen. lv_label_set_text no-ops when text is unchanged. */
+    if (title_label) lv_label_set_text(title_label, i18n(STR_T_SENSOR_PAGE));
+    if (hint_label)  lv_label_set_text(hint_label,  i18n(STR_H_SENSOR_HINT));
+    if (level_label) lv_label_set_text(level_label, i18n(level_names[current_level]));
 
     if (view_mode == VIEW_REALTIME) {
         update_realtime();

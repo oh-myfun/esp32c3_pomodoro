@@ -369,7 +369,7 @@ static void lp_create(void)
     lp_bg = lv_obj_create(layer);
     lv_obj_remove_style_all(lp_bg);
     lv_obj_set_size(lp_bg, LP_WIDTH, LP_HEIGHT);
-    lv_obj_align(lp_bg, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(lp_bg, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
     lv_obj_set_style_bg_color(lp_bg, lv_color_hex(0x0d0d0d), 0);
     lv_obj_set_style_bg_opa(lp_bg, LV_OPA_COVER, 0);
     lv_obj_clear_flag(lp_bg, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);

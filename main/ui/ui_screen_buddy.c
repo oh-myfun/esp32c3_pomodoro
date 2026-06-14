@@ -516,7 +516,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_obj_set_style_text_color(nav_hint, lv_color_hex(0x666666), 0);
     lv_label_set_text(nav_hint, i18n(STR_H_BUDDY_HINT));
     lv_obj_set_style_text_font(nav_hint, &custom_font_14, 0);
-    lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, -4);
+    lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     /* ---- Switch-pet toast (centered, hidden by default) ---- */
     toast_label = lv_label_create(screen);
