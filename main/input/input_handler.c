@@ -19,10 +19,9 @@
 #define ENCODER_K_GPIO  GPIO_NUM_21
 #define SETTINGS_GPIO   GPIO_NUM_9
 
-/* Acceleration: strict conditions, fast consecutive scrolling only */
-#define ACCEL_FAST_US      100000LL  /* <100ms between ticks = fast */
-#define ACCEL_RAMP         3         /* consecutive fast ticks before accel */
-#define ACCEL_MAX_STEP     10
+/* Acceleration: step scales with scroll speed (inverse of inter-tick dt). */
+#define ACCEL_FAST_US      100000LL  /* <100ms between ticks = accelerated */
+#define ACCEL_MAX_STEP     20
 
 /* Long press hint delay: show progress bar after this delay */
 #define HOLD_HINT_DELAY_US 500000LL  /* 500ms */
@@ -38,25 +37,20 @@ static bool g_reverse_encoder = false;
 
 static volatile int64_t s_last_enc_time = 0;
 static volatile int s_enc_phys_dir = 0;    /* 1=right, -1=left, 0=none */
-static volatile int s_enc_fast_count = 0;
 
 static esp_timer_handle_t s_enc_hold_timer = NULL;
 static esp_timer_handle_t s_set_hold_timer = NULL;
 
+/* 根据两次滚动间隔 dt 计算步进：dt 越小（速度越快）step 越大。
+ * 线性映射 dt ∈ (0, ACCEL_FAST_US) → step ∈ [1, ACCEL_MAX_STEP]。 */
 static int calc_encoder_step(int phys_dir)
 {
     int64_t now = esp_timer_get_time();
     int64_t dt = now - s_last_enc_time;
 
     int step = 1;
-    if (phys_dir == s_enc_phys_dir && dt < ACCEL_FAST_US) {
-        s_enc_fast_count++;
-        if (s_enc_fast_count > ACCEL_RAMP) {
-            step = 1 + (s_enc_fast_count - ACCEL_RAMP);
-            if (step > ACCEL_MAX_STEP) step = ACCEL_MAX_STEP;
-        }
-    } else {
-        s_enc_fast_count = 0;
+    if (phys_dir == s_enc_phys_dir && dt > 0 && dt < ACCEL_FAST_US) {
+        step = 1 + (int)((ACCEL_MAX_STEP - 1) * (ACCEL_FAST_US - dt) / ACCEL_FAST_US);
     }
 
     s_enc_phys_dir = phys_dir;
