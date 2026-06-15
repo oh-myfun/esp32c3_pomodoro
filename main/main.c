@@ -372,9 +372,6 @@ static void service_task(void *arg) {
         // Time service periodic sync
         time_service_tick();
 
-        // BLE maintenance (disabled)
-        // ble_service_tick();
-
         // TCP maintenance is handled by its own task
 
         // Buddy animation tick every 200ms (matches original TICK_MS)
