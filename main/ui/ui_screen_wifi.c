@@ -93,7 +93,7 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     lv_obj_set_style_text_color(wifi_list_title, UI_COLOR_TEXT, 0);
     lv_label_set_text(wifi_list_title, i18n(STR_WIFI_NETWORKS));
     lv_obj_set_style_text_font(wifi_list_title, &custom_font_16, 0);
-    lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, UI_TITLE_Y_OFFSET);
 
     // 创建列表，高度设为刚好显示8个项目 (8 * 22 = 176)
     wifi_list = ui_list_create(screen, 220, 196, 10, 30);

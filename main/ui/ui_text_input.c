@@ -513,7 +513,7 @@ lv_obj_t *ui_text_input_create(void)
     lv_obj_set_style_text_color(title_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(title_label, "");
     lv_obj_set_style_text_font(title_label, &custom_font_16, 0);
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, UI_TITLE_Y_OFFSET);
 
     subtitle_label = lv_label_create(screen);
     lv_obj_set_style_text_color(subtitle_label, UI_COLOR_SUCCESS, 0);
