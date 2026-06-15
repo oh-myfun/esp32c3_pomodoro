@@ -97,11 +97,9 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     wifi_list = ui_list_create(screen, 220, 196, 10, 30);
     ui_list_set_click_callback(wifi_list, wifi_list_item_click);
 
-    wifi_list_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_hint, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(wifi_list_hint, i18n(STR_H_SET_SELECT_PRESS_BACK));
-    lv_obj_set_style_text_font(wifi_list_hint, &custom_font_14, 0);
-    lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    
+    wifi_list_hint = ui_create_hint_label(screen, i18n(STR_H_SET_SELECT_PRESS_BACK));
+
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = wifi_on_encoder_cw,

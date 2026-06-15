@@ -120,11 +120,9 @@ lv_obj_t* ui_screen_settings_alarm_create(void)
     alarm_list = NULL;
     hint_label = NULL;
 
-    lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, i18n(STR_T_ALARM));
-    lv_obj_set_style_text_color(title, UI_COLOR_TEXT, 0);
-    lv_obj_set_style_text_font(title, &custom_font_16, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
+    
+    lv_obj_t *title = ui_create_title_label(screen, i18n(STR_T_ALARM));
+
 
     alarm_list = ui_list_create(screen, 220, 196, 10, 30);
 
@@ -135,11 +133,9 @@ lv_obj_t* ui_screen_settings_alarm_create(void)
     alarm_mode = ALARM_MODE_NAV;
     update_display();
 
-    hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
-    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    
+    hint_label = ui_create_hint_label(screen, i18n(STR_H_SET_EDIT_PRESS_BACK));
+
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = alarm_on_encoder_cw,

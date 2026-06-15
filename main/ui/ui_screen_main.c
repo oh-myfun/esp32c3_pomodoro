@@ -54,11 +54,9 @@ lv_obj_t* ui_screen_main_create(void)
     lv_obj_set_style_text_font(wifi_status_label, &custom_font_16, 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 10);
 
-    hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
-    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    
+    hint_label = ui_create_hint_label(screen, i18n(STR_SET_SYNC));
+
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = main_on_encoder_cw,

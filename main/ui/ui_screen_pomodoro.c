@@ -355,11 +355,9 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_40, 0);
     lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 0);
 
-    hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(hint_label, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
-    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    
+    hint_label = ui_create_hint_label(screen, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
+
 
     update_pomo_display();
     timer_load_total();

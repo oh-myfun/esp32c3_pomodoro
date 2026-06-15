@@ -228,11 +228,9 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
     wifi_list = ui_list_create(screen, 220, 196, 10, 30);
     ui_list_set_value_width_pct(wifi_list, 15);
 
-    hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
-    lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
-    lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    
+    hint_label = ui_create_hint_label(screen, i18n(STR_H_SET_SELECT_PRESS_BACK));
+
 
     mode = SAVED_MODE_LIST;
     update_display();

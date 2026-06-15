@@ -21,11 +21,9 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     }
 
     /* Title: 16px */
-    lv_obj_t *title = lv_label_create(screen);
-    lv_label_set_text(title, i18n(STR_PRESSURE_INFO));
-    lv_obj_set_style_text_color(title, UI_COLOR_TEXT, 0);
-    lv_obj_set_style_text_font(title, &custom_font_16, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
+    
+    lv_obj_t *title = ui_create_title_label(screen, i18n(STR_PRESSURE_INFO));
+
 
     /* Table header: y=32 */
     lv_obj_t *hdr = lv_label_create(screen);
@@ -61,11 +59,9 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     lv_obj_set_pos(note, 8, 164);
 
     /* Hint: 14px */
-    lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, UI_COLOR_TEXT_HINT, 0);
-    lv_label_set_text(hint, i18n(STR_PRESSURE_TIP));
-    lv_obj_set_style_text_font(hint, &custom_font_14, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
+    lv_obj_t *
+    hint = ui_create_hint_label(screen, i18n(STR_PRESSURE_TIP));
+
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_press = go_back,
