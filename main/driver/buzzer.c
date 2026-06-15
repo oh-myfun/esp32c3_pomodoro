@@ -17,15 +17,43 @@ static const char *TAG = "BUZZER";
 #define BUZZER_LEDC_TIMER LEDC_TIMER_0
 #define BUZZER_LEDC_RESOLUTION LEDC_TIMER_8_BIT
 #define BUZZER_DEFAULT_FREQ 2000
+#define BUZZER_DEFAULT_VOLUME 50
 
 static bool buzzer_initialized = false;
 static uint32_t current_freq = BUZZER_DEFAULT_FREQ;
-static uint8_t current_volume = 50;
 
 /* Serializes melody playback across multiple tasks (input/service/tcp/SNTP/ui_update).
  * esp_timer_delete blocks until the running callback returns, so the callback
  * itself never races with a caller that holds this mutex. */
 static SemaphoreHandle_t s_play_mutex = NULL;
+
+static void buzzer_set_frequency(uint32_t freq_hz)
+{
+    if (!buzzer_initialized) {
+        return;
+    }
+    current_freq = freq_hz;
+    ESP_ERROR_CHECK(ledc_set_freq(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER, freq_hz));
+}
+
+static void buzzer_on(void)
+{
+    if (!buzzer_initialized) {
+        return;
+    }
+    uint32_t duty = (BUZZER_DEFAULT_VOLUME * 255) / 100;
+    ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, duty));
+    ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
+}
+
+static void buzzer_off(void)
+{
+    if (!buzzer_initialized) {
+        return;
+    }
+    ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, 0));
+    ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
+}
 
 void buzzer_init(void)
 {
@@ -58,56 +86,6 @@ void buzzer_init(void)
 
     buzzer_initialized = true;
     ESP_LOGI(TAG, "Buzzer initialized on GPIO%d, freq=%dHz", BUZZER_GPIO, current_freq);
-}
-
-void buzzer_set_volume(uint8_t volume)
-{
-    if (!buzzer_initialized) {
-        return;
-    }
-    current_volume = volume;
-    uint32_t duty = (volume * 255) / 100;
-    ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, duty));
-    ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
-}
-
-void buzzer_set_frequency(uint32_t freq_hz)
-{
-    if (!buzzer_initialized) {
-        return;
-    }
-    current_freq = freq_hz;
-    ESP_ERROR_CHECK(ledc_set_freq(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER, freq_hz));
-}
-
-void buzzer_on(void)
-{
-    if (!buzzer_initialized) {
-        return;
-    }
-    uint32_t duty = (current_volume * 255) / 100;
-    ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, duty));
-    ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
-}
-
-void buzzer_off(void)
-{
-    if (!buzzer_initialized) {
-        return;
-    }
-    ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, 0));
-    ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
-}
-
-void buzzer_beep(uint32_t freq_hz, uint32_t duration_ms)
-{
-    if (!buzzer_initialized) {
-        return;
-    }
-    buzzer_set_frequency(freq_hz);
-    buzzer_on();
-    vTaskDelay(pdMS_TO_TICKS(duration_ms));
-    buzzer_off();
 }
 
 static esp_timer_handle_t play_timer = NULL;
