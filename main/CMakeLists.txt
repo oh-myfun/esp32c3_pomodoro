@@ -7,6 +7,7 @@ idf_component_register(SRCS main.c
                           driver/bmp280.c
                           input/input_handler.c
                           ui/ui_manager.c
+                          ui/ui_helpers.c
                           ui/ui_list.c
                           ui/ui_screen_main.c
                           ui/ui_screen_pomodoro.c
