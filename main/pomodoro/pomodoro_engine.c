@@ -146,12 +146,22 @@ pomodoro_settings_t pomodoro_engine_get_settings(void)
     return settings;
 }
 
+static void persist_settings_locked(void)
+{
+    int32_t data[4] = {
+        settings.work_minutes,
+        settings.break_minutes,
+        settings.long_break_minutes,
+        settings.cycles_until_long_break,
+    };
+    storage_save_pomodoro_settings(data);
+}
+
 void pomodoro_engine_set_work_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 60) {
         settings.work_minutes = minutes;
-        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
-        storage_save_pomodoro_settings(data);
+        persist_settings_locked();
         ESP_LOGI(TAG, "Work minutes set to %d", minutes);
     }
 }
@@ -160,8 +170,7 @@ void pomodoro_engine_set_break_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 30) {
         settings.break_minutes = minutes;
-        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
-        storage_save_pomodoro_settings(data);
+        persist_settings_locked();
         ESP_LOGI(TAG, "Break minutes set to %d", minutes);
     }
 }
@@ -170,8 +179,7 @@ void pomodoro_engine_set_long_break_minutes(uint16_t minutes)
 {
     if (minutes >= 1 && minutes <= 60) {
         settings.long_break_minutes = minutes;
-        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
-        storage_save_pomodoro_settings(data);
+        persist_settings_locked();
         ESP_LOGI(TAG, "Long break minutes set to %d", minutes);
     }
 }
@@ -180,8 +188,7 @@ void pomodoro_engine_set_cycles(uint16_t cycles)
 {
     if (cycles >= 1 && cycles <= 10) {
         settings.cycles_until_long_break = cycles;
-        int32_t data[4] = {settings.work_minutes, settings.break_minutes, settings.long_break_minutes, settings.cycles_until_long_break};
-        storage_save_pomodoro_settings(data);
+        persist_settings_locked();
         ESP_LOGI(TAG, "Cycles set to %d", cycles);
     }
 }
