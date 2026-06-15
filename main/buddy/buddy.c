@@ -502,17 +502,12 @@ void buddy_tick(void)
 
     switch (s_state) {
     case BUDDY_CELEBRATE:
-        if (s_tick_count >= CELEBRATE_TICKS) {
-            if (s_pending_status[0]) {
-                apply_pending_status();
-            } else {
-                set_state_locked(s_pre_random);
-            }
-        }
-        break;
-
     case BUDDY_DIZZY:
-        if (s_tick_count >= DIZZY_TICKS) {
+    case BUDDY_HEART: {
+        int threshold = (s_state == BUDDY_CELEBRATE) ? CELEBRATE_TICKS :
+                        (s_state == BUDDY_DIZZY)     ? DIZZY_TICKS :
+                                                       HEART_TICKS;
+        if (s_tick_count >= threshold) {
             if (s_pending_status[0]) {
                 apply_pending_status();
             } else {
@@ -520,16 +515,7 @@ void buddy_tick(void)
             }
         }
         break;
-
-    case BUDDY_HEART:
-        if (s_tick_count >= HEART_TICKS) {
-            if (s_pending_status[0]) {
-                apply_pending_status();
-            } else {
-                set_state_locked(s_pre_random);
-            }
-        }
-        break;
+    }
 
     case BUDDY_ATTENTION:
         led_service_wait(LED_COLOR_ATTENTION, LED_WAIT_BUDDY);
