@@ -72,17 +72,29 @@ void ws2812_set_color(uint8_t r, uint8_t g, uint8_t b) {
     transmit_grb(grb, 3);
 }
 
+/* Stack-allocated GRB buffer for small LED chains (≤16 LEDs).
+ * Avoids malloc/free on every refresh — LED updates can run from animation
+ * tick paths where heap fragmentation is undesirable. */
+#define WS2812_STACK_MAX  16
+
 void ws2812_set_pixels(const rgb_t *pixels, uint8_t count) {
     if (!pixels || count == 0) return;
-    uint8_t *grb = malloc(count * 3);
-    if (!grb) return;
+
+    uint8_t stack_buf[WS2812_STACK_MAX * 3];
+    uint8_t *grb = stack_buf;
+    bool heap = false;
+    if (count > WS2812_STACK_MAX) {
+        grb = malloc(count * 3);
+        if (!grb) return;
+        heap = true;
+    }
     for (int i = 0; i < count; i++) {
         grb[i * 3 + 0] = pixels[i].g;
         grb[i * 3 + 1] = pixels[i].r;
         grb[i * 3 + 2] = pixels[i].b;
     }
     transmit_grb(grb, count * 3);
-    free(grb);
+    if (heap) free(grb);
 }
 
 void ws2812_off(void) {
