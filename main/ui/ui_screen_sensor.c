@@ -82,19 +82,18 @@ static int normalize(float val, float min_val, float max_val)
     return (int)norm;
 }
 
+/* Max points across all sensor levels — used to size the static chart buffer.
+ * Avoids malloc/free on every refresh which would fragment heap. */
+#define MAX_CHART_POINTS  60
+static sensor_sample_t s_chart_samples[MAX_CHART_POINTS];
+static sensor_time_t   s_chart_times[MAX_CHART_POINTS];
+
 static void update_chart(void)
 {
     int pt_count = level_point_counts[current_level];
-    sensor_sample_t *data = malloc(pt_count * sizeof(sensor_sample_t));
-    sensor_time_t *times = malloc(pt_count * sizeof(sensor_time_t));
-    if (!data || !times) {
-        ESP_LOGE(TAG, "Failed to allocate chart buffers");
-        free(data);
-        free(times);
-        return;
-    }
+    if (pt_count > MAX_CHART_POINTS) pt_count = MAX_CHART_POINTS;
 
-    int count = sensor_service_get_chart_data(current_level, data, times, pt_count);
+    int count = sensor_service_get_chart_data(current_level, s_chart_samples, s_chart_times, pt_count);
 
     lv_chart_set_point_count(chart, pt_count);
 
@@ -105,11 +104,11 @@ static void update_chart(void)
 
     for (int i = 0; i < count; i++) {
         lv_chart_set_series_value_by_id(chart, ser_temp, i,
-            data[i].temp_valid ? normalize(data[i].temperature, t_min, t_max) : LV_CHART_POINT_NONE);
+            s_chart_samples[i].temp_valid ? normalize(s_chart_samples[i].temperature, t_min, t_max) : LV_CHART_POINT_NONE);
         lv_chart_set_series_value_by_id(chart, ser_hum, i,
-            data[i].hum_valid ? normalize(data[i].humidity, 0, 100) : LV_CHART_POINT_NONE);
+            s_chart_samples[i].hum_valid ? normalize(s_chart_samples[i].humidity, 0, 100) : LV_CHART_POINT_NONE);
         lv_chart_set_series_value_by_id(chart, ser_press, i,
-            data[i].press_valid ? normalize(data[i].pressure, p_min, p_max) : LV_CHART_POINT_NONE);
+            s_chart_samples[i].press_valid ? normalize(s_chart_samples[i].pressure, p_min, p_max) : LV_CHART_POINT_NONE);
     }
     for (int i = count; i < pt_count; i++) {
         lv_chart_set_series_value_by_id(chart, ser_temp, i, LV_CHART_POINT_NONE);
@@ -121,17 +120,14 @@ static void update_chart(void)
 
     char buf[16];
     if (count > 0) {
-        format_time_label(current_level, &times[0], buf, sizeof(buf));
+        format_time_label(current_level, &s_chart_times[0], buf, sizeof(buf));
         lv_label_set_text(time_left_label, buf);
-        format_time_label(current_level, &times[count - 1], buf, sizeof(buf));
+        format_time_label(current_level, &s_chart_times[count - 1], buf, sizeof(buf));
         lv_label_set_text(time_right_label, buf);
     } else {
         lv_label_set_text(time_left_label, "--");
         lv_label_set_text(time_right_label, "--");
     }
-
-    free(data);
-    free(times);
 }
 
 static void update_values(void)
