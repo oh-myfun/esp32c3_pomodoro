@@ -197,19 +197,3 @@ lv_obj_t* ui_screen_settings_system_create(void)
     ESP_LOGI(TAG, "Settings System screen created");
     return screen;
 }
-
-void ui_screen_settings_system_refresh(void)
-{
-    int32_t val;
-    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_ENC_DIR, &val)) {
-        system_values[0] = (int)val;
-    }
-    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_LANG, &val)) {
-        system_values[1] = (int)val;
-    }
-    if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SLEEP_TIMEOUT, &val) && val >= 0 && val < (int)SLEEP_OPT_COUNT) {
-        system_values[2] = (int)val;
-    }
-    sys_mode = MODE_SELECT;
-    update_display();
-}

@@ -154,8 +154,3 @@ lv_obj_t* ui_screen_settings_alarm_create(void)
     ESP_LOGI(TAG, "Alarm settings screen created");
     return screen;
 }
-
-void ui_screen_settings_alarm_refresh(void)
-{
-    update_display();
-}
