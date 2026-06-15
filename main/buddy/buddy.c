@@ -194,11 +194,19 @@ void buddy_on_tcp_request(const tcp_request_t *req)
 {
     if (!req) return;
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
-    s_pre_random = is_temporary_state(s_state) ? s_pre_random : s_state;
+
+    /* PermissionRequest 意味着 Claude 正在工作（要执行需要权限的操作）。
+     * 即使错过了 UserPromptSubmit 的 "running"（例如设备在 prompt 之后才连接），
+     * 这里把 pre_random 强制设为 BUSY，让审批后的 celebrate 回到 BUSY
+     * 而不是 IDLE。临时状态期间保留原值（避免覆盖更早的 BUSY 上下文）。 */
+    if (!is_temporary_state(s_state)) {
+        s_pre_random = BUDDY_BUSY;
+    }
+
     s_current_request = *req;
     s_has_request = true;
-    ESP_LOGI(TAG, "TCP request: id=%.16s  type=%d  tool=%s",
-             req->ccbb_request_id, req->type, req->tool);
+    ESP_LOGI(TAG, "TCP request: id=%.16s  type=%d  tool=%s  pre_random=%d",
+             req->ccbb_request_id, req->type, req->tool, s_pre_random);
     set_state_locked(BUDDY_ATTENTION);
     xSemaphoreGiveRecursive(s_mutex);
 }
