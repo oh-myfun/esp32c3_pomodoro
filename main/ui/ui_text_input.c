@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_text_input.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -505,9 +506,7 @@ lv_obj_t *ui_text_input_create(void)
 {
     if (screen) return screen;
 
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    screen = ui_create_screen();
 
     title_label = lv_label_create(screen);
     lv_obj_set_style_text_color(title_label, UI_COLOR_TEXT, 0);

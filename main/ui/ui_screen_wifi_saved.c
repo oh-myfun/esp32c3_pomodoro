@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_wifi_saved.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -216,9 +217,7 @@ static void saved_on_settings_press(void)
 
 lv_obj_t* ui_screen_wifi_saved_create(void)
 {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    screen = ui_create_screen();
 
     title_label = lv_label_create(screen);
     lv_label_set_text(title_label, i18n(STR_T_WIFI));

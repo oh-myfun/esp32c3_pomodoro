@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_bridge_scan.h"
 #include "ui_screen_settings_buddy.h"
 #include "i18n.h"
@@ -200,9 +201,7 @@ static void scan_on_settings_press(void)
 lv_obj_t *ui_screen_bridge_scan_create(void)
 {
     if (!screen) {
-        screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-        lv_obj_set_size(screen, 240, 240);
+        screen = ui_create_screen();
     }
 
     memset(row_labels, 0, sizeof(row_labels));

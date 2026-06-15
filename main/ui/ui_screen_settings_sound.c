@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_settings_sound.h"
 #include "custom_font.h"
 #include "i18n.h"
@@ -171,9 +172,7 @@ static void sound_on_settings_press(void)
 lv_obj_t* ui_screen_settings_sound_create(void)
 {
     if (!screen) {
-        screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-        lv_obj_set_size(screen, 240, 240);
+        screen = ui_create_screen();
     }
     sound_list = NULL;
     hint_label = NULL;

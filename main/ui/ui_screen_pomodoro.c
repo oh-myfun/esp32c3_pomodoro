@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_pomodoro.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -314,9 +315,7 @@ static void pomo_on_settings_long_press(void)
 
 lv_obj_t* ui_screen_pomodoro_create(void)
 {
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    lv_obj_t *screen = ui_create_screen();
 
     cycle_label = lv_label_create(screen);
     lv_obj_set_style_text_color(cycle_label, UI_COLOR_TEXT, 0);

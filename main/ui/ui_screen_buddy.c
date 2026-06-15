@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_buddy.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -468,9 +469,7 @@ static const char *state_to_text(buddy_state_t state)
 
 lv_obj_t* ui_screen_buddy_create(void)
 {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    screen = ui_create_screen();
 
     /* ---- Top bar: conn + session (left), state (right) ---- */
     conn_label = lv_label_create(screen);

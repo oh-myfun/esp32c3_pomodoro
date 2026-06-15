@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_wifi.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -84,9 +85,7 @@ static void wifi_list_item_click(int index)
 
 lv_obj_t* ui_screen_wifi_list_create(void)
 {
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    lv_obj_t *screen = ui_create_screen();
 
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, UI_COLOR_TEXT, 0);

@@ -1,3 +1,4 @@
+#include "ui_helpers.h"
 #include "ui_screen_sensor.h"
 #include "i18n.h"
 #include "custom_font.h"
@@ -304,9 +305,7 @@ static void sensor_on_settings_press(void)
  */
 lv_obj_t* ui_screen_sensor_create(void)
 {
-    lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
-    lv_obj_set_size(screen, 240, 240);
+    lv_obj_t *screen = ui_create_screen();
 
     /* Title — same style as other pages */
     title_label = lv_label_create(screen);
