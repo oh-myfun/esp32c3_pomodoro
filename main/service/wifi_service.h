@@ -20,7 +20,6 @@ typedef struct {
     void (*on_connected)(const char *ip);
     void (*on_disconnected)(void);
     void (*on_scan_complete)(int count);
-    void (*on_connect_failed)(void);
 } wifi_callbacks_t;
 
 int  wifi_service_init(void);

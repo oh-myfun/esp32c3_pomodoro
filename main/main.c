@@ -193,11 +193,6 @@ static void on_wifi_scan_complete(int count) {
     ESP_LOGI(TAG, "WiFi scan complete, %d APs found", count);
 }
 
-static void on_wifi_connect_failed(void) {
-    ESP_LOGI(TAG, "WiFi connect failed");
-    sound_service_play(SOUND_WIFI_FAILED);
-}
-
 // TCP callbacks
 static void on_tcp_connected(void) {
     ESP_LOGI(TAG, "TCP bridge connected");
@@ -644,7 +639,6 @@ void app_main(void) {
         .on_connected = on_wifi_connected,
         .on_disconnected = on_wifi_disconnected,
         .on_scan_complete = on_wifi_scan_complete,
-        .on_connect_failed = on_wifi_connect_failed,
     };
     wifi_service_register_callbacks(&wifi_cbs);
 

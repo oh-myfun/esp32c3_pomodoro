@@ -69,13 +69,6 @@ static void invoke_on_scan_complete(int count)
     }
 }
 
-static void invoke_on_connect_failed(void)
-{
-    if (callbacks.on_connect_failed) {
-        callbacks.on_connect_failed();
-    }
-}
-
 static void reconnect_timer_callback(void *arg)
 {
     if (current_state == WIFI_STATE_DISCONNECTED && !user_initiated_disconnect) {
