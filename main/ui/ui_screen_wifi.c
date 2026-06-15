@@ -85,12 +85,12 @@ static void wifi_list_item_click(int index)
 lv_obj_t* ui_screen_wifi_list_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
     lv_obj_set_pos(screen, 0, 0);
 
     wifi_list_title = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(wifi_list_title, UI_COLOR_TEXT, 0);
     lv_label_set_text(wifi_list_title, i18n(STR_WIFI_NETWORKS));
     lv_obj_set_style_text_font(wifi_list_title, &custom_font_16, 0);
     lv_obj_align(wifi_list_title, LV_ALIGN_TOP_MID, 0, 10);
@@ -100,7 +100,7 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     ui_list_set_click_callback(wifi_list, wifi_list_item_click);
 
     wifi_list_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_list_hint, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(wifi_list_hint, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(wifi_list_hint, i18n(STR_H_SET_SELECT_PRESS_BACK));
     lv_obj_set_style_text_font(wifi_list_hint, &custom_font_14, 0);
     lv_obj_align(wifi_list_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

@@ -78,9 +78,9 @@ static void update_display(void)
     if (list_widget) {
         lv_color_t color;
         if (edit_mode == SENSOR_MODE_ADJUST) {
-            color = lv_color_hex(0xFFFF00);
+            color = UI_COLOR_ACCENT;
         } else {
-            color = lv_color_hex(0x00FF00);
+            color = UI_COLOR_SUCCESS;
         }
         ui_list_set_selected_color(list_widget, color);
         ui_list_set_items(list_widget, items, SENSOR_ITEM_COUNT);
@@ -183,7 +183,7 @@ lv_obj_t* ui_screen_settings_sensor_create(void)
 {
     if (!screen) {
         screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
         lv_obj_set_size(screen, 240, 240);
     }
     list_widget = NULL;
@@ -191,7 +191,7 @@ lv_obj_t* ui_screen_settings_sensor_create(void)
 
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_SENSOR_SETTINGS));
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(title, &custom_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
@@ -202,7 +202,7 @@ lv_obj_t* ui_screen_settings_sensor_create(void)
     update_display();
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_EDIT_PRESS_BACK));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

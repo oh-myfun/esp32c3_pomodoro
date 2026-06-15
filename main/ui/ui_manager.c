@@ -385,7 +385,7 @@ static void lp_create(void)
 
     lp_label = lv_label_create(lp_bg);
     lv_label_set_text(lp_label, "");
-    lv_obj_set_style_text_color(lp_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(lp_label, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(lp_label, &custom_font_14, 0);
     lv_obj_align(lp_label, LV_ALIGN_CENTER, 0, 0);
 }

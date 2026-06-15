@@ -17,27 +17,27 @@ lv_obj_t *ui_screen_pressure_info_create(void)
 {
     if (!screen) {
         screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
         lv_obj_set_size(screen, 240, 240);
     }
 
     /* Title: 16px */
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_PRESSURE_INFO));
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(title, &custom_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     /* Table header: y=32 */
     lv_obj_t *hdr = lv_label_create(screen);
-    lv_obj_set_style_text_color(hdr, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_color(hdr, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(hdr, &custom_font_16, 0);
     lv_label_set_text(hdr, i18n(STR_PI_HDR));
     lv_obj_set_pos(hdr, 8, 32);
 
     /* Separator: y=54 */
     lv_obj_t *sep = lv_label_create(screen);
-    lv_obj_set_style_text_color(sep, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_color(sep, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(sep, &custom_font_16, 0);
     lv_label_set_text(sep, "-----------------------");
     lv_obj_set_pos(sep, 8, 54);
@@ -48,7 +48,7 @@ lv_obj_t *ui_screen_pressure_info_create(void)
     };
     for (int i = 0; i < 4; i++) {
         lv_obj_t *row = lv_label_create(screen);
-        lv_obj_set_style_text_color(row, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_text_color(row, UI_COLOR_TEXT, 0);
         lv_obj_set_style_text_font(row, &custom_font_16, 0);
         lv_label_set_text(row, i18n(row_ids[i]));
         lv_obj_set_pos(row, 8, 76 + i * 22);
@@ -56,14 +56,14 @@ lv_obj_t *ui_screen_pressure_info_create(void)
 
     /* Note: y=164 */
     lv_obj_t *note = lv_label_create(screen);
-    lv_obj_set_style_text_color(note, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_color(note, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(note, &custom_font_16, 0);
     lv_label_set_text(note, i18n(STR_PI_NOTE));
     lv_obj_set_pos(note, 8, 164);
 
     /* Hint: 14px */
     lv_obj_t *hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint, i18n(STR_PRESSURE_TIP));
     lv_obj_set_style_text_font(hint, &custom_font_14, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

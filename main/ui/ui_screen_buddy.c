@@ -470,12 +470,12 @@ static const char *state_to_text(buddy_state_t state)
 lv_obj_t* ui_screen_buddy_create(void)
 {
     screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     /* ---- Top bar: conn + session (left), state (right) ---- */
     conn_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(conn_label, lv_color_hex(0x444444), 0);
+    lv_obj_set_style_text_color(conn_label, UI_COLOR_DISABLED, 0);
     lv_label_set_text(conn_label, "\xe2\x9c\x97");
     lv_obj_set_style_text_font(conn_label, &custom_font_14, 0);
     lv_obj_set_pos(conn_label, 8, 6);
@@ -483,7 +483,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     lv_label_set_long_mode(conn_label, LV_LABEL_LONG_DOT);
 
     state_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(state_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(state_label, UI_COLOR_TEXT_HINT, 0);
     char init_buf[40];
     snprintf(init_buf, sizeof(init_buf), i18n(STR_STATE_SLEEP));
     lv_label_set_text(state_label, init_buf);
@@ -506,23 +506,23 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     /* ---- Stats (below heart, always visible) ---- */
     stats_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(stats_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_color(stats_label, UI_COLOR_TEXT_SUB, 0);
     lv_label_set_text(stats_label, "");
     lv_obj_set_style_text_font(stats_label, &custom_font_14, 0);
     lv_obj_align(stats_label, LV_ALIGN_TOP_MID, 0, 182);
 
     /* ---- Navigation hint (bottom center) ---- */
     nav_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(nav_hint, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_text_color(nav_hint, UI_COLOR_TEXT_NAV, 0);
     lv_label_set_text(nav_hint, i18n(STR_H_BUDDY_HINT));
     lv_obj_set_style_text_font(nav_hint, &custom_font_14, 0);
     lv_obj_align(nav_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 
     /* ---- Switch-pet toast (centered, hidden by default) ---- */
     toast_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(toast_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(toast_label, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(toast_label, &custom_font_16, 0);
-    lv_obj_set_style_bg_color(toast_label, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(toast_label, UI_COLOR_BG, 0);
     lv_obj_set_style_bg_opa(toast_label, LV_OPA_80, 0);
     lv_obj_set_style_radius(toast_label, 6, 0);
     lv_obj_set_style_pad_ver(toast_label, 6, 0);
@@ -543,7 +543,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     attn_container = lv_obj_create(screen);
     lv_obj_set_size(attn_container, 236, 236);
     lv_obj_align(attn_container, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_bg_color(attn_container, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(attn_container, UI_COLOR_BG, 0);
     lv_obj_set_style_border_width(attn_container, 2, 0);
     lv_obj_set_style_border_color(attn_container, lv_color_hex(0xFF4444), 0);
     lv_obj_add_flag(attn_container, LV_OBJ_FLAG_HIDDEN);
@@ -552,7 +552,7 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     /* Tool name — 16px, h=22 */
     attn_tool = lv_label_create(attn_container);
-    lv_obj_set_style_text_color(attn_tool, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(attn_tool, UI_COLOR_TEXT, 0);
     lv_label_set_text(attn_tool, "");
     lv_obj_set_style_text_font(attn_tool, &custom_font_16, 0);
     lv_obj_set_pos(attn_tool, 6, 4);
@@ -561,7 +561,7 @@ lv_obj_t* ui_screen_buddy_create(void)
 
     /* Command text — 14px, auto-wrap, left column */
     attn_cmd = lv_label_create(attn_container);
-    lv_obj_set_style_text_color(attn_cmd, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_color(attn_cmd, UI_COLOR_TEXT_SUB, 0);
     lv_label_set_text(attn_cmd, "");
     lv_obj_set_style_text_font(attn_cmd, &custom_font_14, 0);
     lv_obj_set_pos(attn_cmd, 6, 28);
@@ -579,7 +579,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     for (int i = 0; i < OPT_VISIBLE; i++) {
         attn_opt_labels[i] = lv_label_create(attn_container);
         lv_obj_set_style_text_font(attn_opt_labels[i], &custom_font_14, 0);
-        lv_obj_set_style_text_color(attn_opt_labels[i], lv_color_hex(0xCCCCCC), 0);
+        lv_obj_set_style_text_color(attn_opt_labels[i], UI_COLOR_TEXT_SUB, 0);
         lv_label_set_text(attn_opt_labels[i], "");
         lv_obj_set_pos(attn_opt_labels[i], 120, OPT_Y_START + i * OPT_ROW_H);
         lv_obj_set_size(attn_opt_labels[i], 110, OPT_ROW_H);
@@ -590,7 +590,7 @@ lv_obj_t* ui_screen_buddy_create(void)
     /* Scrollbar for options */
     attn_scrollbar = lv_obj_create(attn_container);
     lv_obj_remove_style_all(attn_scrollbar);
-    lv_obj_set_style_bg_color(attn_scrollbar, lv_color_hex(0x555555), 0);
+    lv_obj_set_style_bg_color(attn_scrollbar, UI_COLOR_LIST_ALT, 0);
     lv_obj_set_style_bg_opa(attn_scrollbar, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(attn_scrollbar, 1, 0);
     lv_obj_add_flag(attn_scrollbar, LV_OBJ_FLAG_HIDDEN);
@@ -665,7 +665,7 @@ void ui_screen_buddy_update_state(void)
                 lv_label_set_text(conn_label, "\xe2\x9c\x93");
             }
         } else {
-            lv_obj_set_style_text_color(conn_label, lv_color_hex(0x444444), 0);
+            lv_obj_set_style_text_color(conn_label, UI_COLOR_DISABLED, 0);
             lv_label_set_text(conn_label, "\xe2\x9c\x97");
         }
     }
@@ -821,7 +821,7 @@ void ui_screen_buddy_set_connected(bool connected)
                 lv_label_set_text(conn_label, "\xe2\x9c\x93");
             }
         } else {
-            lv_obj_set_style_text_color(conn_label, lv_color_hex(0x444444), 0);
+            lv_obj_set_style_text_color(conn_label, UI_COLOR_DISABLED, 0);
             lv_label_set_text(conn_label, "\xe2\x9c\x97");
         }
     }

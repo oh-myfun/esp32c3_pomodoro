@@ -87,7 +87,7 @@ static void update_display(void)
     }
 
     if (wifi_list) {
-        ui_list_set_selected_color(wifi_list, lv_color_hex(0x00FF00));
+        ui_list_set_selected_color(wifi_list, UI_COLOR_SUCCESS);
         ui_list_set_items(wifi_list, items, item_count);
         if (selected_item >= item_count) selected_item = 0;
         ui_list_set_selected(wifi_list, selected_item);
@@ -118,7 +118,7 @@ static void update_action_display(void)
     }
 
     if (wifi_list) {
-        ui_list_set_selected_color(wifi_list, lv_color_hex(0xFFFF00));
+        ui_list_set_selected_color(wifi_list, UI_COLOR_ACCENT);
         ui_list_set_items(wifi_list, action_items, ACTION_COUNT);
         if (action_selected >= ACTION_COUNT) action_selected = 0;
         ui_list_set_selected(wifi_list, action_selected);
@@ -217,12 +217,12 @@ static void saved_on_settings_press(void)
 lv_obj_t* ui_screen_wifi_saved_create(void)
 {
     screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     title_label = lv_label_create(screen);
     lv_label_set_text(title_label, i18n(STR_T_WIFI));
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title_label, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(title_label, &custom_font_16, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 6);
 
@@ -230,7 +230,7 @@ lv_obj_t* ui_screen_wifi_saved_create(void)
     ui_list_set_value_width_pct(wifi_list, 15);
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_SELECT_PRESS_BACK));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

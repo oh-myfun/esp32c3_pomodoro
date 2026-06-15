@@ -1,4 +1,5 @@
 #include "ui_list.h"
+#include "ui_theme.h"
 #include "custom_font.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,8 +124,8 @@ static void update_display(lv_obj_t *list)
                 lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_SCROLL);
                 lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_SCROLL);
             } else {
-                lv_obj_set_style_text_color(data->key_labels[i], lv_color_hex(0xFFFFFF), 0);
-                lv_obj_set_style_text_color(data->value_labels[i], lv_color_hex(0xAAAAAA), 0);
+                lv_obj_set_style_text_color(data->key_labels[i], UI_COLOR_TEXT, 0);
+                lv_obj_set_style_text_color(data->value_labels[i], UI_COLOR_TEXT_DIM, 0);
                 lv_label_set_long_mode(data->key_labels[i], LV_LABEL_LONG_DOT);
                 lv_label_set_long_mode(data->value_labels[i], LV_LABEL_LONG_DOT);
             }
@@ -190,7 +191,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     lv_obj_t *list = lv_obj_create(parent);
     lv_obj_set_size(list, width, height);
     lv_obj_set_pos(list, x, y);
-    lv_obj_set_style_bg_color(list, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(list, UI_COLOR_BG, 0);
     lv_obj_set_style_border_width(list, 0, 0);
     lv_obj_set_style_pad_all(list, 0, 0);
     lv_obj_clear_flag(list, LV_OBJ_FLAG_SCROLLABLE);
@@ -206,7 +207,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     data->list_y = y;
     data->visible_count = height / ITEM_HEIGHT;
     data->click_callback = NULL;
-    data->selected_color = lv_color_hex(0x00FF00);
+    data->selected_color = UI_COLOR_SUCCESS;
     data->value_pct = 45;
     lv_obj_set_user_data(list, data);
     
@@ -220,7 +221,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
     data->scrollbar = lv_obj_create(list);
     lv_obj_set_size(data->scrollbar, 3, 15);
     lv_obj_set_pos(data->scrollbar, width - 7, 0);
-    lv_obj_set_style_bg_color(data->scrollbar, lv_color_hex(0x555555), 0);
+    lv_obj_set_style_bg_color(data->scrollbar, UI_COLOR_LIST_ALT, 0);
     lv_obj_set_style_bg_opa(data->scrollbar, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(data->scrollbar, 1, 0);
     lv_obj_set_style_border_width(data->scrollbar, 0, 0);
@@ -228,7 +229,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
 
     data->scroll_up = lv_label_create(list);
     lv_obj_set_style_text_font(data->scroll_up, &custom_font_14, 0);
-    lv_obj_set_style_text_color(data->scroll_up, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(data->scroll_up, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(data->scroll_up, "▲");
     /* 固定宽 11 + 文本居中，让 ▲ label 框中心与 scrollbar 中心对齐
      * (scrollbar x=list_width-7 宽3 → 中心 list_width-5.5；label x=list_width-11 宽11 → 中心 list_width-5.5) */
@@ -239,7 +240,7 @@ lv_obj_t *ui_list_create(lv_obj_t *parent, int width, int height, int x, int y)
 
     data->scroll_down = lv_label_create(list);
     lv_obj_set_style_text_font(data->scroll_down, &custom_font_14, 0);
-    lv_obj_set_style_text_color(data->scroll_down, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(data->scroll_down, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(data->scroll_down, "▼");
     lv_obj_set_width(data->scroll_down, 11);
     lv_obj_set_style_text_align(data->scroll_down, LV_TEXT_ALIGN_CENTER, 0);

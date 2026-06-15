@@ -211,7 +211,7 @@ static void show_log_view(void)
                  uptime_s,
                  (unsigned)uxTaskGetNumberOfTasks());
         lv_label_set_text(title_label, stats);
-        lv_obj_set_style_text_color(title_label, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_text_color(title_label, UI_COLOR_SUCCESS, 0);
     }
 
     /* Fill content with log text */
@@ -304,7 +304,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
 {
     if (!screen) {
         screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
         lv_obj_set_size(screen, 240, 240);
     }
     title_label = NULL;
@@ -316,7 +316,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
     current_view = DEBUG_VIEW_LOG;
 
     title_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(title_label, UI_COLOR_SUCCESS, 0);
     lv_obj_set_style_text_font(title_label, &custom_font_14, 0);
     lv_obj_set_style_text_line_space(title_label, -4, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_LEFT, 4, 2);
@@ -333,7 +333,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
 
     /* Shared content label */
     content_label = lv_label_create(cont);
-    lv_obj_set_style_text_color(content_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_color(content_label, UI_COLOR_TEXT_SUB, 0);
     lv_obj_set_style_text_font(content_label, &custom_font_14, 0);
     lv_obj_set_style_text_line_space(content_label, -4, 0);
     lv_obj_set_width(content_label, 228);
@@ -342,7 +342,7 @@ lv_obj_t* ui_screen_settings_debug_create(void)
     lv_obj_set_pos(content_label, 0, 0);
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_H_ANY_KEY_BACK_ENCODER_SCROLL));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

@@ -33,30 +33,30 @@ static lv_obj_t *hint_label = NULL;
 lv_obj_t* ui_screen_main_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     time_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(time_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(time_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(time_label, "12:00:00");
     lv_obj_set_style_text_font(time_label, &lv_font_montserrat_40, 0);
     lv_obj_set_style_text_letter_space(time_label, 2, 0);
     lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -15);
 
     date_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(date_label, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_color(date_label, UI_COLOR_TEXT_DIM, 0);
     lv_label_set_text(date_label, "2025-01-01 Mon");
     lv_obj_set_style_text_font(date_label, &custom_font_16, 0);
     lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 60);
 
     wifi_status_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(wifi_status_label, UI_COLOR_SUCCESS, 0);
     lv_label_set_text(wifi_status_label, "");
     lv_obj_set_style_text_font(wifi_status_label, &custom_font_16, 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_TOP_MID, 0, 10);
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

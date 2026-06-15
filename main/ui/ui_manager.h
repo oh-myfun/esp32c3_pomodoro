@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lvgl.h"
+#include "ui_theme.h"
 
 /* 底部 hint bar 的 Y 偏移（距屏幕底部的像素数，负值）。
  * 所有屏幕统一使用此值，确保 hint 高低一致。 */

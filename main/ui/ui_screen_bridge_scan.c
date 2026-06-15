@@ -116,11 +116,11 @@ static void update_visible(void)
             lv_obj_set_pos(row_labels[i], x_off, LIST_TOP + i * ROW_HEIGHT);
 
             if (items[idx].is_header) {
-                lv_obj_set_style_text_color(row_labels[i], lv_color_hex(0x888888), 0);
+                lv_obj_set_style_text_color(row_labels[i], UI_COLOR_TEXT_HINT, 0);
             } else if (idx == cursor) {
-                lv_obj_set_style_text_color(row_labels[i], lv_color_hex(0x00FF00), 0);
+                lv_obj_set_style_text_color(row_labels[i], UI_COLOR_SUCCESS, 0);
             } else {
-                lv_obj_set_style_text_color(row_labels[i], lv_color_hex(0xCCCCCC), 0);
+                lv_obj_set_style_text_color(row_labels[i], UI_COLOR_TEXT_SUB, 0);
             }
         } else {
             lv_obj_add_flag(row_labels[i], LV_OBJ_FLAG_HIDDEN);
@@ -201,7 +201,7 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
 {
     if (!screen) {
         screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+        lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
         lv_obj_set_size(screen, 240, 240);
     }
 
@@ -225,7 +225,7 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
     /* Scrollbar */
     scrollbar = lv_obj_create(screen);
     lv_obj_remove_style_all(scrollbar);
-    lv_obj_set_style_bg_color(scrollbar, lv_color_hex(0x555555), 0);
+    lv_obj_set_style_bg_color(scrollbar, UI_COLOR_LIST_ALT, 0);
     lv_obj_set_style_bg_opa(scrollbar, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(scrollbar, 1, 0);
     lv_obj_add_flag(scrollbar, LV_OBJ_FLAG_HIDDEN);
@@ -233,13 +233,13 @@ lv_obj_t *ui_screen_bridge_scan_create(void)
     /* Title (after row_labels so it renders on top) */
     lv_obj_t *title = lv_label_create(screen);
     lv_label_set_text(title, i18n(STR_SCAN));
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(title, &custom_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
 
     /* Hint (after row_labels so it renders on top) */
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_SCANNING));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

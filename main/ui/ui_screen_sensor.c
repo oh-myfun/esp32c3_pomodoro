@@ -305,12 +305,12 @@ static void sensor_on_settings_press(void)
 lv_obj_t* ui_screen_sensor_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     /* Title — same style as other pages */
     title_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title_label, UI_COLOR_TEXT, 0);
     lv_obj_set_style_text_font(title_label, &custom_font_16, 0);
     lv_label_set_text(title_label, i18n(STR_T_SENSOR_PAGE));
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 6);
@@ -336,7 +336,7 @@ lv_obj_t* ui_screen_sensor_create(void)
 
     /* Chart: 3 curves, full Y range 0-100 */
     chart = lv_chart_create(screen);
-    lv_obj_set_style_bg_color(chart, lv_color_hex(0x0a0a0a), 0);
+    lv_obj_set_style_bg_color(chart, UI_COLOR_CARD_BG, 0);
     lv_obj_set_style_border_width(chart, 0, 0);
     lv_obj_set_style_pad_all(chart, 0, 0);
     lv_obj_set_style_line_width(chart, 1, LV_PART_ITEMS);
@@ -370,7 +370,7 @@ lv_obj_t* ui_screen_sensor_create(void)
     lv_obj_set_pos(time_left_label, 2, 188);
 
     level_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(level_label, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_text_color(level_label, UI_COLOR_TEXT_SUB, 0);
     lv_obj_set_style_text_font(level_label, &custom_font_14, 0);
     lv_label_set_text(level_label, "");
     lv_obj_align(level_label, LV_ALIGN_TOP_MID, 0, 188);
@@ -383,7 +383,7 @@ lv_obj_t* ui_screen_sensor_create(void)
 
     /* Bottom: hint */
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
 

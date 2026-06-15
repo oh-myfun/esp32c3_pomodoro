@@ -273,9 +273,9 @@ static void update_display(void)
 
             /* Color: selected = green, else gray */
             if (row == s_sel_row && col == s_sel_col && !is_key_hidden(row, col)) {
-                lv_obj_set_style_text_color(keys[row][col], lv_color_hex(0x00FF00), 0);
+                lv_obj_set_style_text_color(keys[row][col], UI_COLOR_SUCCESS, 0);
             } else {
-                lv_obj_set_style_text_color(keys[row][col], lv_color_hex(0x888888), 0);
+                lv_obj_set_style_text_color(keys[row][col], UI_COLOR_TEXT_HINT, 0);
             }
         }
     }
@@ -506,23 +506,23 @@ lv_obj_t *ui_text_input_create(void)
     if (screen) return screen;
 
     screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     title_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(title_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(title_label, "");
     lv_obj_set_style_text_font(title_label, &custom_font_16, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 5);
 
     subtitle_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(subtitle_label, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(subtitle_label, UI_COLOR_SUCCESS, 0);
     lv_label_set_text(subtitle_label, "");
     lv_obj_set_style_text_font(subtitle_label, &custom_font_16, 0);
     lv_obj_align(subtitle_label, LV_ALIGN_TOP_MID, 0, 28);
 
     display_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(display_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(display_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(display_label, "_");
     lv_obj_set_style_text_font(display_label, &custom_font_16, 0);
     lv_obj_align(display_label, LV_ALIGN_TOP_MID, 0, 50);
@@ -532,7 +532,7 @@ lv_obj_t *ui_text_input_create(void)
         for (int col = 0; col < 10; col++) {
             keys[row][col] = lv_label_create(screen);
             lv_obj_set_style_text_font(keys[row][col], &custom_font_16, 0);
-            lv_obj_set_style_text_color(keys[row][col], lv_color_hex(0x888888), 0);
+            lv_obj_set_style_text_color(keys[row][col], UI_COLOR_TEXT_HINT, 0);
             lv_label_set_text(keys[row][col], "");
             int x = 10 + col * 22;
             int y = 72 + row * 18;
@@ -542,7 +542,7 @@ lv_obj_t *ui_text_input_create(void)
     }
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, "");
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

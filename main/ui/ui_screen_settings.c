@@ -37,9 +37,9 @@ static void update_display(void)
     if (settings_list) {
         lv_color_t color;
         if (settings_mode == SETTINGS_MODE_SELECT) {
-            color = lv_color_hex(0x00FF00);
+            color = UI_COLOR_SUCCESS;
         } else {
-            color = lv_color_hex(0xFFFFFF);
+            color = UI_COLOR_TEXT;
         }
         ui_list_set_selected_color(settings_list, color);
         ui_list_set_items(settings_list, items, SETTINGS_ITEM_COUNT);
@@ -117,11 +117,11 @@ static void settings_on_settings_press(void)
 lv_obj_t* ui_screen_settings_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     settings_title = lv_label_create(screen);
-    lv_obj_set_style_text_color(settings_title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(settings_title, UI_COLOR_TEXT, 0);
     lv_label_set_text(settings_title, i18n(STR_T_SETTINGS));
     lv_obj_set_style_text_font(settings_title, &custom_font_16, 0);
     lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 6);
@@ -130,7 +130,7 @@ lv_obj_t* ui_screen_settings_create(void)
     ui_list_set_value_width_pct(settings_list, 15);
 
     settings_hint = lv_label_create(screen);
-    lv_obj_set_style_text_color(settings_hint, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(settings_hint, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(settings_hint, i18n(STR_H_SET_ENTER));
     lv_obj_set_style_text_font(settings_hint, &custom_font_14, 0);
     lv_obj_align(settings_hint, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);

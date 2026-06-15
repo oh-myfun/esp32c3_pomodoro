@@ -315,17 +315,17 @@ static void pomo_on_settings_long_press(void)
 lv_obj_t* ui_screen_pomodoro_create(void)
 {
     lv_obj_t *screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
 
     cycle_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(cycle_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(cycle_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(cycle_label, "1/4");
     lv_obj_set_style_text_font(cycle_label, &custom_font_16, 0);
     lv_obj_align(cycle_label, LV_ALIGN_TOP_LEFT, 10, 8);
 
     phase_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(phase_label, lv_color_hex(0xFFAA00), 0);
+    lv_obj_set_style_text_color(phase_label, UI_COLOR_WARN, 0);
     lv_label_set_text(phase_label, i18n(STR_PHASE_WORK));
     lv_obj_set_style_text_font(phase_label, &custom_font_16, 0);
     lv_obj_align(phase_label, LV_ALIGN_TOP_MID, 0, 8);
@@ -342,7 +342,7 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_arc_set_bg_angles(progress_arc, 0, 360);
     lv_arc_set_range(progress_arc, 0, 360);
     lv_arc_set_value(progress_arc, 360);
-    lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(progress_arc, UI_COLOR_ARC_BG, LV_PART_MAIN);
     lv_obj_set_style_arc_color(progress_arc, lv_color_hex(0xFF6B6B), LV_PART_INDICATOR);
     lv_obj_set_style_arc_width(progress_arc, 10, LV_PART_MAIN);
     lv_obj_set_style_arc_width(progress_arc, 10, LV_PART_INDICATOR);
@@ -351,13 +351,13 @@ lv_obj_t* ui_screen_pomodoro_create(void)
     lv_obj_align(progress_arc, LV_ALIGN_CENTER, 0, 0);
 
     timer_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(timer_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_color(timer_label, UI_COLOR_TEXT, 0);
     lv_label_set_text(timer_label, "25:00");
     lv_obj_set_style_text_font(timer_label, &lv_font_montserrat_40, 0);
     lv_obj_align(timer_label, LV_ALIGN_CENTER, 0, 0);
 
     hint_label = lv_label_create(screen);
-    lv_obj_set_style_text_color(hint_label, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_color(hint_label, UI_COLOR_TEXT_HINT, 0);
     lv_label_set_text(hint_label, i18n(STR_H_SET_START_PAUSE_PRESS_STOP));
     lv_obj_set_style_text_font(hint_label, &custom_font_14, 0);
     lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0, UI_HINT_BOTTOM_OFFSET);
