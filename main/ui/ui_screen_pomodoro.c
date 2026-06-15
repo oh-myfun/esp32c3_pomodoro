@@ -415,7 +415,17 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
 
     update_time_display(remaining_seconds);
 
-    if (completed_label) {
+    /* Skip redundant label updates — these are called every second but the
+     * underlying values (completed/phase/cycle/arc color) change only on
+     * state transitions. */
+    static uint32_t last_completed = 0xFFFFFFFF;
+    static uint16_t last_cycle = 0xFFFF;
+    static uint8_t  last_phase = 0xFF;
+    static uint32_t last_phase_color = 0;
+    bool color_changed = (color != last_phase_color);
+
+    if (completed_label && completed != last_completed) {
+        last_completed = completed;
         char buf[16];
         snprintf(buf, sizeof(buf), "🍅x%u", (unsigned int)completed);
         lv_label_set_text(completed_label, buf);
@@ -423,16 +433,26 @@ void ui_screen_pomodoro_update_state(uint8_t phase, uint32_t remaining_seconds, 
 
     if (phase_label == NULL) return;
 
-    lv_obj_set_style_text_color(phase_label, lv_color_hex(color), 0);
-    lv_label_set_text(phase_label, phase_text);
-
-    if (cycle_label) {
-        char cycle_buf[20];
-        snprintf(cycle_buf, sizeof(cycle_buf), "%u/%u", (unsigned int)current_cycle, settings.cycles_until_long_break);
-        lv_label_set_text(cycle_label, cycle_buf);
+    if (color_changed) {
+        last_phase_color = color;
+        lv_obj_set_style_text_color(phase_label, lv_color_hex(color), 0);
+    }
+    if (phase != last_phase) {
+        last_phase = phase;
+        lv_label_set_text(phase_label, phase_text);
     }
 
-    if (progress_arc) {
+    if (cycle_label) {
+        if (current_cycle != last_cycle) {
+            last_cycle = current_cycle;
+            char cycle_buf[20];
+            snprintf(cycle_buf, sizeof(cycle_buf), "%u/%u",
+                     (unsigned int)current_cycle, settings.cycles_until_long_break);
+            lv_label_set_text(cycle_label, cycle_buf);
+        }
+    }
+
+    if (progress_arc && color_changed) {
         lv_obj_set_style_arc_color(progress_arc, lv_color_hex(color), LV_PART_INDICATOR);
     }
 }

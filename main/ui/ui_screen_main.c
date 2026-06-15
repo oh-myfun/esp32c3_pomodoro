@@ -7,6 +7,7 @@
 #include "service/wifi_service.h"
 #include "esp_log.h"
 #include <stdio.h>
+#include <string.h>
 
 static const char *TAG = "UI_MAIN";
 
@@ -30,6 +31,10 @@ static lv_obj_t *time_label = NULL;
 static lv_obj_t *date_label = NULL;
 static lv_obj_t *wifi_status_label = NULL;
 static lv_obj_t *hint_label = NULL;
+
+/* Cache last set text to skip redundant lv_label_set_text calls (called every second). */
+static char last_time[16] = {0};
+static char last_date[32] = {0};
 
 lv_obj_t* ui_screen_main_create(void)
 {
@@ -79,13 +84,19 @@ void ui_screen_main_update_time(void)
 
     char time_buf[16];
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &timeinfo);
-    lv_label_set_text(time_label, time_buf);
+    if (strcmp(time_buf, last_time) != 0) {
+        strcpy(last_time, time_buf);
+        lv_label_set_text(time_label, time_buf);
+    }
 
     char date_buf[32];
     snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d %s",
              timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
              i18n_weekday(timeinfo.tm_wday));
-    lv_label_set_text(date_label, date_buf);
+    if (strcmp(date_buf, last_date) != 0) {
+        strcpy(last_date, date_buf);
+        lv_label_set_text(date_label, date_buf);
+    }
 
     if (hint_label) {
         lv_label_set_text(hint_label, i18n(STR_SET_SYNC));
