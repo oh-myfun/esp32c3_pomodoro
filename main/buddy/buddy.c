@@ -319,6 +319,25 @@ void buddy_on_status(const char *state, const char *message)
 
 /* ---- user actions ---- */
 
+/* Internal: assumes caller holds s_mutex and has verified s_state == BUDDY_ATTENTION */
+static void apply_decision_locked(bool approved, const char *source)
+{
+    if (approved) {
+        s_approved++;
+        s_session_approved++;
+        ESP_LOGI(TAG, "approved (%s) total=%lu", source, (unsigned long)s_approved);
+    } else {
+        s_denied++;
+        s_session_denied++;
+        ESP_LOGI(TAG, "denied (%s) total=%lu", source, (unsigned long)s_denied);
+    }
+    s_has_request = false;
+    buddy_save_stats();
+    if (s_cbs.on_decision) s_cbs.on_decision(approved, &s_current_request);
+    if (approved) celebrate_locked();
+    else          dizzy_locked();
+}
+
 void buddy_approve(void)
 {
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
@@ -326,14 +345,7 @@ void buddy_approve(void)
         xSemaphoreGiveRecursive(s_mutex);
         return;
     }
-
-    s_approved++;
-    s_session_approved++;
-    s_has_request = false;
-    buddy_save_stats();
-    ESP_LOGI(TAG, "approved  total=%lu", (unsigned long)s_approved);
-    if (s_cbs.on_decision) s_cbs.on_decision(true, &s_current_request);
-    celebrate_locked();
+    apply_decision_locked(true, "button");
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -344,14 +356,7 @@ void buddy_deny(void)
         xSemaphoreGiveRecursive(s_mutex);
         return;
     }
-
-    s_denied++;
-    s_session_denied++;
-    s_has_request = false;
-    buddy_save_stats();
-    ESP_LOGI(TAG, "denied  total=%lu", (unsigned long)s_denied);
-    if (s_cbs.on_decision) s_cbs.on_decision(false, &s_current_request);
-    dizzy_locked();
+    apply_decision_locked(false, "button");
     xSemaphoreGiveRecursive(s_mutex);
 }
 
@@ -362,14 +367,7 @@ void buddy_submit_answer(void)
         xSemaphoreGiveRecursive(s_mutex);
         return;
     }
-    /* Inline approve logic (already holding mutex) */
-    s_approved++;
-    s_session_approved++;
-    s_has_request = false;
-    buddy_save_stats();
-    ESP_LOGI(TAG, "approved (answer)  total=%lu", (unsigned long)s_approved);
-    if (s_cbs.on_decision) s_cbs.on_decision(true, &s_current_request);
-    celebrate_locked();
+    apply_decision_locked(true, "answer");
     xSemaphoreGiveRecursive(s_mutex);
 }
 
