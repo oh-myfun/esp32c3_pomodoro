@@ -13,6 +13,9 @@ sdkconfig.old
 .idea/
 *.code-workspace
 
+# Claude Code local state
+.claude/
+
 # Dependencies (managed by idf.py)
 managed_components/
 
