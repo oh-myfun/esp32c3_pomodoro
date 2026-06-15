@@ -9,6 +9,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "nvs_flash.h"
 #include <string.h>
 
 static const char *TAG = "buddy";
@@ -551,10 +552,16 @@ int buddy_get_species_index(void)
 
 void buddy_save_stats(void)
 {
-    storage_save_int("buddy", "species",   (int32_t)s_species);
-    storage_save_int("buddy", "approved",  (int32_t)s_approved);
-    storage_save_int("buddy", "denied",    (int32_t)s_denied);
-    storage_save_int("buddy", "heart",     (int32_t)s_heart_level);
+    nvs_handle_t handle;
+    if (nvs_open("buddy", NVS_READWRITE, &handle) != ESP_OK) {
+        return;
+    }
+    nvs_set_i32(handle, "species",  (int32_t)s_species);
+    nvs_set_i32(handle, "approved", (int32_t)s_approved);
+    nvs_set_i32(handle, "denied",   (int32_t)s_denied);
+    nvs_set_i32(handle, "heart",    (int32_t)s_heart_level);
+    nvs_commit(handle);
+    nvs_close(handle);
 }
 
 void buddy_load_stats(void)
