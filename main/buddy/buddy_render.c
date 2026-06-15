@@ -1,6 +1,7 @@
 #include "buddy_render.h"
 #include "lvgl.h"
 #include "ui/custom_font.h"
+#include "ui/ui_theme.h"
 #include <string.h>
 
 /* ---- Configurable rendering state ---- */
@@ -59,7 +60,7 @@ void buddy_render_begin(lv_layer_t *layer)
 
     lv_draw_fill_dsc_t fill_dsc;
     lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.color = lv_color_hex(0x1a1a1a);
+    fill_dsc.color = UI_COLOR_BG;
     lv_area_t area = { 0, 30, 239, 160 };
     lv_draw_fill(s_layer, &fill_dsc, &area);
 }
@@ -77,7 +78,7 @@ void buddy_render_begin_small(lv_layer_t *layer, int cx, int cy, int cw, int ch)
 
     lv_draw_fill_dsc_t fill_dsc;
     lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.color = lv_color_hex(0x1a1a1a);
+    fill_dsc.color = UI_COLOR_BG;
     lv_area_t area = { cx - cw / 2, cy, cx + cw / 2 - 1, cy + ch - 1 };
     lv_draw_fill(s_layer, &fill_dsc, &area);
 }
