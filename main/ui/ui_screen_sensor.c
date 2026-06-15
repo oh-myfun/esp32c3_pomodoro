@@ -393,77 +393,36 @@ lv_obj_t* ui_screen_sensor_create(void)
     #define RT_YT  26
     #define RT_YB  122
 
-    /* Temperature (top-left, red) */
-    rt_containers[0] = lv_obj_create(screen);
-    lv_obj_remove_style_all(rt_containers[0]);
-    lv_obj_set_size(rt_containers[0], RT_QW, RT_QH);
-    lv_obj_set_pos(rt_containers[0], 0, RT_YT);
+    /* 4 quadrants: temp/hum/press/alt. Same layout, different color + unit + value label. */
+    struct {
+        lv_obj_t **value_label;
+        lv_color_t color;
+        const char *unit;
+        int x, y;
+    } quads[4] = {
+        {&rt_temp_val,  COLOR_TEMP,  "\xc2\xb0""C", 0,      RT_YT},
+        {&rt_hum_val,   COLOR_HUM,   "%RH",         RT_QW,  RT_YT},
+        {&rt_press_val, COLOR_PRESS, "hPa",         0,      RT_YB},
+        {&rt_alt_val,   COLOR_ALT,   "m",           RT_QW,  RT_YB},
+    };
+    for (int i = 0; i < 4; i++) {
+        rt_containers[i] = lv_obj_create(screen);
+        lv_obj_remove_style_all(rt_containers[i]);
+        lv_obj_set_size(rt_containers[i], RT_QW, RT_QH);
+        lv_obj_set_pos(rt_containers[i], quads[i].x, quads[i].y);
 
-    rt_temp_val = lv_label_create(rt_containers[0]);
-    lv_obj_set_style_text_font(rt_temp_val, &lv_font_montserrat_40, 0);
-    lv_obj_set_style_text_color(rt_temp_val, COLOR_TEMP, 0);
-    lv_label_set_text(rt_temp_val, "--");
-    lv_obj_align(rt_temp_val, LV_ALIGN_CENTER, 0, -12);
+        *quads[i].value_label = lv_label_create(rt_containers[i]);
+        lv_obj_set_style_text_font(*quads[i].value_label, &lv_font_montserrat_40, 0);
+        lv_obj_set_style_text_color(*quads[i].value_label, quads[i].color, 0);
+        lv_label_set_text(*quads[i].value_label, "--");
+        lv_obj_align(*quads[i].value_label, LV_ALIGN_CENTER, 0, -12);
 
-    lv_obj_t *rt_temp_unit = lv_label_create(rt_containers[0]);
-    lv_obj_set_style_text_font(rt_temp_unit, &custom_font_16, 0);
-    lv_obj_set_style_text_color(rt_temp_unit, COLOR_TEMP, 0);
-    lv_label_set_text(rt_temp_unit, "\xc2\xb0""C");
-    lv_obj_align(rt_temp_unit, LV_ALIGN_CENTER, 0, 24);
-
-    /* Humidity (top-right, blue) */
-    rt_containers[1] = lv_obj_create(screen);
-    lv_obj_remove_style_all(rt_containers[1]);
-    lv_obj_set_size(rt_containers[1], RT_QW, RT_QH);
-    lv_obj_set_pos(rt_containers[1], RT_QW, RT_YT);
-
-    rt_hum_val = lv_label_create(rt_containers[1]);
-    lv_obj_set_style_text_font(rt_hum_val, &lv_font_montserrat_40, 0);
-    lv_obj_set_style_text_color(rt_hum_val, COLOR_HUM, 0);
-    lv_label_set_text(rt_hum_val, "--");
-    lv_obj_align(rt_hum_val, LV_ALIGN_CENTER, 0, -12);
-
-    lv_obj_t *rt_hum_unit = lv_label_create(rt_containers[1]);
-    lv_obj_set_style_text_font(rt_hum_unit, &custom_font_16, 0);
-    lv_obj_set_style_text_color(rt_hum_unit, COLOR_HUM, 0);
-    lv_label_set_text(rt_hum_unit, "%RH");
-    lv_obj_align(rt_hum_unit, LV_ALIGN_CENTER, 0, 24);
-
-    /* Pressure (bottom-left, green) */
-    rt_containers[2] = lv_obj_create(screen);
-    lv_obj_remove_style_all(rt_containers[2]);
-    lv_obj_set_size(rt_containers[2], RT_QW, RT_QH);
-    lv_obj_set_pos(rt_containers[2], 0, RT_YB);
-
-    rt_press_val = lv_label_create(rt_containers[2]);
-    lv_obj_set_style_text_font(rt_press_val, &lv_font_montserrat_40, 0);
-    lv_obj_set_style_text_color(rt_press_val, COLOR_PRESS, 0);
-    lv_label_set_text(rt_press_val, "--");
-    lv_obj_align(rt_press_val, LV_ALIGN_CENTER, 0, -12);
-
-    lv_obj_t *rt_press_unit = lv_label_create(rt_containers[2]);
-    lv_obj_set_style_text_font(rt_press_unit, &custom_font_16, 0);
-    lv_obj_set_style_text_color(rt_press_unit, COLOR_PRESS, 0);
-    lv_label_set_text(rt_press_unit, "hPa");
-    lv_obj_align(rt_press_unit, LV_ALIGN_CENTER, 0, 24);
-
-    /* Altitude (bottom-right, orange) */
-    rt_containers[3] = lv_obj_create(screen);
-    lv_obj_remove_style_all(rt_containers[3]);
-    lv_obj_set_size(rt_containers[3], RT_QW, RT_QH);
-    lv_obj_set_pos(rt_containers[3], RT_QW, RT_YB);
-
-    rt_alt_val = lv_label_create(rt_containers[3]);
-    lv_obj_set_style_text_font(rt_alt_val, &lv_font_montserrat_40, 0);
-    lv_obj_set_style_text_color(rt_alt_val, COLOR_ALT, 0);
-    lv_label_set_text(rt_alt_val, "--");
-    lv_obj_align(rt_alt_val, LV_ALIGN_CENTER, 0, -12);
-
-    lv_obj_t *rt_alt_unit = lv_label_create(rt_containers[3]);
-    lv_obj_set_style_text_font(rt_alt_unit, &custom_font_16, 0);
-    lv_obj_set_style_text_color(rt_alt_unit, COLOR_ALT, 0);
-    lv_label_set_text(rt_alt_unit, "m");
-    lv_obj_align(rt_alt_unit, LV_ALIGN_CENTER, 0, 24);
+        lv_obj_t *unit = lv_label_create(rt_containers[i]);
+        lv_obj_set_style_text_font(unit, &custom_font_16, 0);
+        lv_obj_set_style_text_color(unit, quads[i].color, 0);
+        lv_label_set_text(unit, quads[i].unit);
+        lv_obj_align(unit, LV_ALIGN_CENTER, 0, 24);
+    }
 
     static const ui_input_callbacks_t cbs = {
         .on_encoder_cw = sensor_on_encoder_cw,
