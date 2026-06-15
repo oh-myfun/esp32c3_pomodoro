@@ -87,7 +87,6 @@ lv_obj_t* ui_screen_wifi_list_create(void)
     lv_obj_t *screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(screen, UI_COLOR_BG, 0);
     lv_obj_set_size(screen, 240, 240);
-    lv_obj_set_pos(screen, 0, 0);
 
     wifi_list_title = lv_label_create(screen);
     lv_obj_set_style_text_color(wifi_list_title, UI_COLOR_TEXT, 0);

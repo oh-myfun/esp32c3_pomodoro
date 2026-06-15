@@ -119,30 +119,6 @@ void lvgl_init(void)
     ESP_LOGI(TAG, "LVGL initialized");
 }
 
-void lvgl_deinit(void)
-{
-    if (lvgl_tick_timer) {
-        esp_timer_stop(lvgl_tick_timer);
-        esp_timer_delete(lvgl_tick_timer);
-        lvgl_tick_timer = NULL;
-    }
-
-    if (display) {
-        lv_display_delete(display);
-        display = NULL;
-    }
-
-    if (buf1) {
-        free(buf1);
-        buf1 = NULL;
-    }
-
-    if (buf2) {
-        free(buf2);
-        buf2 = NULL;
-    }
-}
-
 static void lvgl_port_task(void *arg)
 {
     ESP_LOGI(TAG, "LVGL task started");

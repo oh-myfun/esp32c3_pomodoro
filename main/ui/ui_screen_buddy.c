@@ -62,7 +62,6 @@ static lv_obj_t *attn_desc     = NULL;
  * Module state
  * ---------------------------------------------------------------- */
 static buddy_display_mode_t display_mode = MODE_NORMAL;
-static bool tcp_connected = false;
 
 /* ATTENTION mode state */
 static int  s_req_type       = 0;
@@ -802,8 +801,6 @@ void ui_screen_buddy_clear_request(void)
 
 void ui_screen_buddy_set_connected(bool connected)
 {
-    tcp_connected = connected;
-
     lvgl_lock();
     if (conn_label) {
         if (connected) {
