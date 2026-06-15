@@ -176,6 +176,7 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SESSION]         = {"🔑Session",         "🔑会话"},
     [STR_CONNECT_ACTION]  = {"📡Connect",         "📡连接"},
     [STR_DISCONNECT]      = {"📴Disconnect",      "📴断开"},
+    [STR_KEEP_AWAKE]      = {"⚡Keep Awake",      "⚡工作时不休眠"},
 
     /* Bridge scan */
     [STR_NO_BRIDGE]       = {"No bridges found",    "未发现Bridge"},

@@ -57,6 +57,7 @@ static lv_display_t *display = NULL;
 /* negative = seconds, positive = minutes */
 static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
 int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
+bool keep_awake_on_busy = false;  /* buddy BUSY 时阻止休眠，由伙伴设置子屏更新 */
 static bool is_sleeping = false;
 static int64_t s_last_activity_us = 0;
 static uint8_t s_saved_brightness = 10;
@@ -372,15 +373,19 @@ static void ui_update_task(void *arg) {
 
         // Idle sleep check
         if (!is_sleeping && sleep_minutes[sleep_timeout_idx] != 0) {
-            int64_t idle_ms = (esp_timer_get_time() - s_last_activity_us) / 1000;
-            int val = sleep_minutes[sleep_timeout_idx];
-            int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
-            if (idle_ms >= threshold_ms) {
-                is_sleeping = true;
-                s_saved_brightness = backlight_get_brightness();
-                backlight_set_brightness(1);
-                if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
-                ESP_LOGI(TAG, "Sleep (idle %llds)", idle_ms / 1000);
+            /* buddy 工作时（Claude 正在执行任务）可选择阻止休眠 */
+            bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
+            if (!(keep_awake_on_busy && buddy_busy)) {
+                int64_t idle_ms = (esp_timer_get_time() - s_last_activity_us) / 1000;
+                int val = sleep_minutes[sleep_timeout_idx];
+                int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
+                if (idle_ms >= threshold_ms) {
+                    is_sleeping = true;
+                    s_saved_brightness = backlight_get_brightness();
+                    backlight_set_brightness(1);
+                    if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
+                    ESP_LOGI(TAG, "Sleep (idle %llds)", idle_ms / 1000);
+                }
             }
         }
 
@@ -579,6 +584,14 @@ void app_main(void) {
             sleep_timeout_idx = (int)val;
         }
         ESP_LOGI(TAG, "Sleep timeout: %d", sleep_minutes[sleep_timeout_idx]);
+    }
+    // 2.7. Load keep-awake-on-buddy-busy setting
+    {
+        int32_t val = 0;
+        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_KEEP_AWAKE_BUSY, &val)) {
+            keep_awake_on_busy = (val != 0);
+        }
+        ESP_LOGI(TAG, "Keep awake on busy: %d", keep_awake_on_busy);
     }
     s_last_activity_us = esp_timer_get_time();
 
