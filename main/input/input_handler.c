@@ -97,22 +97,24 @@ static void send_event(input_event_t *e)
     }
 }
 
-static void encoder_hold_timer_cb(void *arg)
+static void dispatch_hold_event(uint8_t type)
 {
-    (void)arg;
-    input_event_t e = { .type = INPUT_EVENT_ENCODER_HOLD, .step = 1 };
+    input_event_t e = { .type = type, .step = 1 };
     if (g_event_queue) {
         xQueueSend(g_event_queue, &e, 0);
     }
 }
 
+static void encoder_hold_timer_cb(void *arg)
+{
+    (void)arg;
+    dispatch_hold_event(INPUT_EVENT_ENCODER_HOLD);
+}
+
 static void settings_hold_timer_cb(void *arg)
 {
     (void)arg;
-    input_event_t e = { .type = INPUT_EVENT_SETTINGS_HOLD, .step = 1 };
-    if (g_event_queue) {
-        xQueueSend(g_event_queue, &e, 0);
-    }
+    dispatch_hold_event(INPUT_EVENT_SETTINGS_HOLD);
 }
 
 static void encoder_btn_cb(void *arg, void *data)
