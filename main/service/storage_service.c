@@ -122,13 +122,20 @@ bool storage_save_pomodoro_settings(void *settings_ptr)
 {
     if (!settings_ptr) return false;
     int32_t *data = (int32_t *)settings_ptr;
-    
-    bool result = true;
-    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_WORK_MIN, data[0]);
-    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_BREAK_MIN, data[1]);
-    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_LONG_BREAK, data[2]);
-    result &= storage_save_int(STORAGE_NAMESPACE_POMODORO, KEY_CYCLES, data[3]);
-    return result;
+
+    nvs_handle_t handle;
+    if (nvs_open(STORAGE_NAMESPACE_POMODORO, NVS_READWRITE, &handle) != ESP_OK) {
+        return false;
+    }
+
+    bool ok = true;
+    ok &= nvs_set_i32(handle, KEY_WORK_MIN,   data[0]) == ESP_OK;
+    ok &= nvs_set_i32(handle, KEY_BREAK_MIN,  data[1]) == ESP_OK;
+    ok &= nvs_set_i32(handle, KEY_LONG_BREAK, data[2]) == ESP_OK;
+    ok &= nvs_set_i32(handle, KEY_CYCLES,     data[3]) == ESP_OK;
+    ok &= nvs_commit(handle) == ESP_OK;
+    nvs_close(handle);
+    return ok;
 }
 
 bool storage_load_pomodoro_settings(void *settings_ptr)
