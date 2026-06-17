@@ -207,6 +207,7 @@ static const char *strings[STR_COUNT][2] = {
 
     /* Sleep timeout */
     [STR_SLEEP_TIMEOUT] = {"💤Sleep",      "💤休眠"},
+    [STR_DEEP_SLEEP_TIMEOUT] = {"🛌Deep Sleep", "🛌深度休眠"},
 
     /* Demo colors */
     [STR_DEMO_WORK]       = {"Work",        "工作"},

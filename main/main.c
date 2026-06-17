@@ -3,11 +3,14 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_pm.h"
+#include "esp_sleep.h"
+#include "driver/gpio.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdio.h>
 #include <sys/param.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "lvgl.h"
@@ -54,23 +57,41 @@ static lv_display_t *display = NULL;
 
 /* ---- Idle / Sleep ---- */
 #define SLEEP_OPTIONS_COUNT  7
+#define DEEP_SLEEP_OPTIONS_COUNT  5
 /* negative = seconds, positive = minutes */
 static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
+static const int deep_sleep_minutes[DEEP_SLEEP_OPTIONS_COUNT] = {0, 1, 2, 5, 10};  /* minutes; 0=off */
 int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
+int deep_sleep_timeout_idx = 0;  /* default: off */
 bool keep_awake_on_busy = false;  /* buddy BUSY 时阻止休眠，由伙伴设置子屏更新 */
-static bool is_sleeping = false;
+
+typedef enum {
+    STAGE_AWAKE = 0,
+    STAGE_LIGHT,    /* normal sleep: backlight=1, PM lock released */
+    STAGE_DEEP,     /* light sleep via esp_light_sleep_start */
+} sleep_stage_t;
+
+static sleep_stage_t s_sleep_stage = STAGE_AWAKE;
 static int64_t s_last_activity_us = 0;
+static int64_t s_light_sleep_enter_us = 0;  /* when LIGHT_SLEEP stage began */
 static uint8_t s_saved_brightness = 10;
 static esp_pm_lock_handle_t s_pm_lock = NULL;
+
+/* GPIO wake sources (must match input_handler.c pinout) */
+#define WAKE_ENC_A    GPIO_NUM_4
+#define WAKE_ENC_B    GPIO_NUM_5
+#define WAKE_SET_KEY  GPIO_NUM_9
+#define WAKE_ENC_KEY  GPIO_NUM_21
 
 bool activity_touch(void)
 {
     s_last_activity_us = esp_timer_get_time();
-    if (is_sleeping) {
-        is_sleeping = false;
+    if (s_sleep_stage != STAGE_AWAKE) {
+        sleep_stage_t prev = s_sleep_stage;
+        s_sleep_stage = STAGE_AWAKE;
         backlight_set_brightness(s_saved_brightness);
         if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
-        ESP_LOGI(TAG, "Wake up");
+        ESP_LOGI(TAG, "Wake up (from stage %d)", (int)prev);
         return true;
     }
     return false;
@@ -79,6 +100,89 @@ bool activity_touch(void)
 int get_sleep_timeout_minutes(void)
 {
     return sleep_minutes[sleep_timeout_idx];
+}
+
+/* Compute adaptive timer wakeup so we never miss a pomodoro or chime event.
+ * Returns microseconds until next wake; floored at 1s, capped at 5min. */
+static uint64_t compute_next_wakeup_us(void)
+{
+    uint64_t wake_us = 5ULL * 60 * 1000000;  /* hard cap */
+
+    pomodoro_state_t pomo = pomodoro_engine_get_state();
+    if (pomo.phase != POMODORO_PHASE_IDLE && pomo.phase != POMODORO_PHASE_PAUSED) {
+        uint64_t pomo_us = (uint64_t)pomo.remaining_seconds * 1000000ULL;
+        if (pomo_us > 500000) pomo_us -= 500000;  /* wake 0.5s early */
+        if (pomo_us < wake_us) wake_us = pomo_us;
+    }
+
+    time_t now = time(NULL);
+    if (now > 0) {
+        struct tm t;
+        localtime_r(&now, &t);
+        int min = t.tm_min;
+        int minutes_to_next = (min < 30) ? (30 - min) : (60 - min);
+        int64_t secs_to_next = (int64_t)minutes_to_next * 60 - t.tm_sec;
+        int64_t chime_us = secs_to_next * 1000000LL - 500000;
+        if (chime_us > 0 && (uint64_t)chime_us < wake_us) wake_us = (uint64_t)chime_us;
+    }
+
+    if (wake_us < 1000000) wake_us = 1000000;
+    return wake_us;
+}
+
+static void enter_deep_sleep(void)
+{
+    if (keep_awake_on_busy && buddy_get_info().state == BUDDY_BUSY) {
+        ESP_LOGI(TAG, "Skip deep sleep: buddy busy");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Enter deep sleep");
+    pomodoro_engine_on_deep_sleep_enter();
+
+    ws2812_off();
+    st7789_lcd_sleep();
+
+    /* GPIO wake sources: keys active-low (level), encoder edges */
+    gpio_wakeup_enable(WAKE_SET_KEY, GPIO_INTR_LOW_LEVEL);
+    gpio_wakeup_enable(WAKE_ENC_KEY, GPIO_INTR_LOW_LEVEL);
+    gpio_wakeup_enable(WAKE_ENC_A,   GPIO_INTR_ANYEDGE);
+    gpio_wakeup_enable(WAKE_ENC_B,   GPIO_INTR_ANYEDGE);
+    esp_sleep_enable_gpio_wakeup();
+
+    uint64_t wake_us = compute_next_wakeup_us();
+    esp_sleep_enable_timer_wakeup(wake_us);
+
+    s_sleep_stage = STAGE_DEEP;
+    int64_t sleep_start = esp_timer_get_time();
+    ESP_LOGI(TAG, "Light sleep for %llu us", (unsigned long long)wake_us);
+
+    esp_err_t err = esp_light_sleep_start();
+    int64_t slept_us = esp_timer_get_time() - sleep_start;
+
+    gpio_wakeup_disable(WAKE_SET_KEY);
+    gpio_wakeup_disable(WAKE_ENC_KEY);
+    gpio_wakeup_disable(WAKE_ENC_A);
+    gpio_wakeup_disable(WAKE_ENC_B);
+
+    st7789_lcd_wakeup();
+    pomodoro_engine_on_deep_sleep_exit();
+
+    esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+    ESP_LOGI(TAG, "Woke after %llu us, cause=%d, err=%s",
+             (unsigned long long)slept_us, (int)cause, esp_err_to_name(err));
+
+    if (cause == ESP_SLEEP_WAKEUP_TIMER) {
+        /* Planned wake: drop into LIGHT_SLEEP, let normal tick handle events */
+        s_sleep_stage = STAGE_LIGHT;
+        s_light_sleep_enter_us = esp_timer_get_time();
+    } else {
+        /* GPIO wake: user interaction, fully restore */
+        s_sleep_stage = STAGE_AWAKE;
+        s_last_activity_us = esp_timer_get_time();
+        backlight_set_brightness(s_saved_brightness);
+        if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
+    }
 }
 static esp_timer_handle_t lvgl_tick_timer = NULL;
 
@@ -371,8 +475,8 @@ static void ui_update_task(void *arg) {
         int64_t now = esp_timer_get_time() / 1000;
         ui_screen_id_t current_screen = ui_get_current_screen();
 
-        // Idle sleep check
-        if (!is_sleeping && sleep_minutes[sleep_timeout_idx] != 0) {
+        // Sleep state machine
+        if (s_sleep_stage == STAGE_AWAKE && sleep_minutes[sleep_timeout_idx] != 0) {
             /* buddy 工作时（Claude 正在执行任务）可选择阻止休眠 */
             bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
             if (!(keep_awake_on_busy && buddy_busy)) {
@@ -380,14 +484,28 @@ static void ui_update_task(void *arg) {
                 int val = sleep_minutes[sleep_timeout_idx];
                 int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
                 if (idle_ms >= threshold_ms) {
-                    is_sleeping = true;
+                    s_sleep_stage = STAGE_LIGHT;
+                    s_light_sleep_enter_us = esp_timer_get_time();
                     s_saved_brightness = backlight_get_brightness();
                     backlight_set_brightness(1);
                     if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
-                    ESP_LOGI(TAG, "Sleep (idle %llds)", idle_ms / 1000);
+                    ESP_LOGI(TAG, "Light sleep (idle %llds)", idle_ms / 1000);
+                }
+            }
+        } else if (s_sleep_stage == STAGE_LIGHT && deep_sleep_minutes[deep_sleep_timeout_idx] != 0) {
+            /* After LIGHT_SLEEP timeout, escalate to DEEP_SLEEP (light sleep).
+             * Skip if buddy is busy and keep_awake_on_busy is set. */
+            bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
+            if (!(keep_awake_on_busy && buddy_busy)) {
+                int64_t light_ms = (esp_timer_get_time() - s_light_sleep_enter_us) / 1000;
+                int64_t threshold_ms = (int64_t)deep_sleep_minutes[deep_sleep_timeout_idx] * 60000LL;
+                if (light_ms >= threshold_ms) {
+                    enter_deep_sleep();  /* returns after wake, stage set inside */
                 }
             }
         }
+        /* STAGE_DEEP: ui_update_task is frozen during esp_light_sleep_start;
+         * this branch never runs while asleep. */
 
         // Pomodoro tick every 1 second
         if (now - last_pomodoro_tick >= 1000) {
@@ -584,6 +702,14 @@ void app_main(void) {
             sleep_timeout_idx = (int)val;
         }
         ESP_LOGI(TAG, "Sleep timeout: %d", sleep_minutes[sleep_timeout_idx]);
+    }
+    // 2.6.1 Load deep-sleep timeout setting
+    {
+        int32_t val = 0;
+        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_DEEP_SLEEP_TIMEOUT, &val) && val >= 0 && val < DEEP_SLEEP_OPTIONS_COUNT) {
+            deep_sleep_timeout_idx = (int)val;
+        }
+        ESP_LOGI(TAG, "Deep sleep timeout: %d min", deep_sleep_minutes[deep_sleep_timeout_idx]);
     }
     // 2.7. Load keep-awake-on-buddy-busy setting
     {

@@ -203,6 +203,7 @@ typedef enum {
 
     /* Sleep timeout */
     STR_SLEEP_TIMEOUT,
+    STR_DEEP_SLEEP_TIMEOUT,
 
     /* Demo colors */
     STR_DEMO_WORK,

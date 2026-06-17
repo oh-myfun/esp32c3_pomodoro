@@ -230,3 +230,34 @@ bool pomodoro_engine_get_manual_mode(void)
 {
     return manual_mode;
 }
+
+/* ---- Deep-sleep compensation ----
+ * Light sleep freezes FreeRTOS tick, so pomodoro_engine_tick() is not called.
+ * On sleep entry we snapshot remaining_seconds + wall-clock time; on exit we
+ * subtract the elapsed seconds directly. The next tick() call then naturally
+ * hits 0 and triggers phase transition if appropriate. */
+static uint32_t s_sleep_remain_at_enter = 0;
+static int64_t  s_sleep_time_at_enter   = 0;
+
+void pomodoro_engine_on_deep_sleep_enter(void)
+{
+    s_sleep_remain_at_enter = current_state.remaining_seconds;
+    s_sleep_time_at_enter   = esp_timer_get_time();
+}
+
+void pomodoro_engine_on_deep_sleep_exit(void)
+{
+    if (current_state.phase == POMODORO_PHASE_IDLE ||
+        current_state.phase == POMODORO_PHASE_PAUSED) {
+        return;  /* no running timer to compensate */
+    }
+    int64_t elapsed_us = esp_timer_get_time() - s_sleep_time_at_enter;
+    uint32_t elapsed_s = (uint32_t)(elapsed_us / 1000000);
+    if (elapsed_s >= current_state.remaining_seconds) {
+        current_state.remaining_seconds = 0;  /* next tick() will transition */
+    } else {
+        current_state.remaining_seconds -= elapsed_s;
+    }
+    ESP_LOGI(TAG, "Deep-sleep compensated: elapsed=%lus remain=%lu",
+             (unsigned long)elapsed_s, (unsigned long)current_state.remaining_seconds);
+}

@@ -36,6 +36,7 @@
 #define KEY_LED_ANIM     "led_anim"
 #define KEY_SLEEP_TIMEOUT "sleep_timeout"
 #define KEY_KEEP_AWAKE_BUSY "keep_awake_busy"
+#define KEY_DEEP_SLEEP_TIMEOUT "deep_sleep_to"
 
 // NVS key migration (call once at startup)
 void storage_migrate_settings_keys(void);

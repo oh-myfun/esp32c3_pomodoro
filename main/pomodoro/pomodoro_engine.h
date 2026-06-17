@@ -64,3 +64,8 @@ bool pomodoro_engine_get_manual_mode(void);
 void pomodoro_engine_save_state(void);
 
 void pomodoro_engine_load_state(void);
+
+/* Deep-sleep hooks: record remaining time on sleep entry, compensate by
+ * wall-clock elapsed on exit so the timer stays accurate across light sleep. */
+void pomodoro_engine_on_deep_sleep_enter(void);
+void pomodoro_engine_on_deep_sleep_exit(void);
