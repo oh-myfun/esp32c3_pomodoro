@@ -82,6 +82,15 @@ static esp_pm_lock_handle_t s_pm_lock = NULL;
 #define WAKE_SET_KEY  GPIO_NUM_9
 #define WAKE_ENC_KEY  GPIO_NUM_21
 
+/* Pomodoro / chime ticks use wall-clock seconds so they remain correct after
+ * deep sleep wake even if esp_timer doesn't include sleep duration. The force
+ * flags trigger an immediate tick on the next ui_update_task loop, so phase
+ * transition / hour chime fires right after wake instead of waiting 1s. */
+static time_t s_last_pomodoro_sec = 0;
+static time_t s_last_chime_sec = 0;
+static bool s_force_pomodoro_tick = false;
+static bool s_force_chime_tick = false;
+
 bool activity_touch(void)
 {
     s_last_activity_us = esp_timer_get_time();
@@ -167,6 +176,11 @@ static void enter_deep_sleep(void)
 
     st7789_lcd_wakeup();
     pomodoro_engine_on_deep_sleep_exit();
+
+    /* Force pomodoro + chime tick on next ui_update_task loop so phase
+     * transition / hour chime fires immediately, independent of esp_timer. */
+    s_force_pomodoro_tick = true;
+    s_force_chime_tick = true;
 
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
     ESP_LOGI(TAG, "Woke after %llu us, cause=%d, err=%s",
@@ -462,14 +476,12 @@ static void service_task(void *arg) {
 
 static void ui_update_task(void *arg) {
     ESP_LOGI(TAG, "UI update task started");
-    int64_t last_pomodoro_tick = 0;
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
     int64_t last_debug_tick = 0;
     /* Track synced state transitions so a NTP sync event triggers an immediate
      * UI refresh instead of waiting up to 1s for the next wifi_ui tick. */
     bool prev_main_synced = false;
-    int64_t last_chime_tick = 0;
 
     while (1) {
         int64_t now = esp_timer_get_time() / 1000;
@@ -508,8 +520,14 @@ static void ui_update_task(void *arg) {
         /* STAGE_DEEP: ui_update_task is frozen during esp_light_sleep_start;
          * this branch never runs while asleep. */
 
-        // Pomodoro tick every 1 second
-        if (now - last_pomodoro_tick >= 1000) {
+        // Pomodoro tick: fire every wall-clock second, or immediately when
+        // forced (after deep sleep wake). Using time() avoids esp_timer
+        // jitter across light sleep.
+        time_t now_sec = time(NULL);
+        bool pomo_due = s_force_pomodoro_tick || now_sec != s_last_pomodoro_sec;
+        s_force_pomodoro_tick = false;
+        if (pomo_due) {
+            s_last_pomodoro_sec = now_sec;
             pomodoro_state_t prev = pomodoro_engine_get_state();
             pomodoro_engine_tick();
             pomodoro_state_t state = pomodoro_engine_get_state();
@@ -547,7 +565,6 @@ static void ui_update_task(void *arg) {
             ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count, state.current_cycle);
             ui_screen_pomodoro_timer_tick();
             lvgl_unlock();
-            last_pomodoro_tick = now;
         }
 
         // Main screen: time update every tick
@@ -639,10 +656,11 @@ static void ui_update_task(void *arg) {
             last_chart_tick = now;
         }
 
-        // Chime service: check hour/half-hour boundary every 1 second
-        if (now - last_chime_tick >= 1000) {
+        // Chime service: same wall-clock basis as pomodoro (also forced on wake)
+        if (s_force_chime_tick || now_sec != s_last_chime_sec) {
+            s_force_chime_tick = false;
+            s_last_chime_sec = now_sec;
             chime_service_tick();
-            last_chime_tick = now;
         }
 
         // Memory monitor every 30 seconds
