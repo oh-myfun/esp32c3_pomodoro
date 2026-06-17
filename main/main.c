@@ -103,7 +103,8 @@ int get_sleep_timeout_minutes(void)
 }
 
 /* Compute adaptive timer wakeup so we never miss a pomodoro or chime event.
- * Returns microseconds until next wake; floored at 1s, capped at 5min. */
+ * Returns microseconds until next wake; floored at 1s, capped at 5min.
+ * Wake 1s before each event so the LIGHT_SLEEP tick has time to fire sound/UI. */
 static uint64_t compute_next_wakeup_us(void)
 {
     uint64_t wake_us = 5ULL * 60 * 1000000;  /* hard cap */
@@ -111,7 +112,7 @@ static uint64_t compute_next_wakeup_us(void)
     pomodoro_state_t pomo = pomodoro_engine_get_state();
     if (pomo.phase != POMODORO_PHASE_IDLE && pomo.phase != POMODORO_PHASE_PAUSED) {
         uint64_t pomo_us = (uint64_t)pomo.remaining_seconds * 1000000ULL;
-        if (pomo_us > 500000) pomo_us -= 500000;  /* wake 0.5s early */
+        if (pomo_us > 1000000) pomo_us -= 1000000;  /* wake 1s early */
         if (pomo_us < wake_us) wake_us = pomo_us;
     }
 
@@ -122,7 +123,7 @@ static uint64_t compute_next_wakeup_us(void)
         int min = t.tm_min;
         int minutes_to_next = (min < 30) ? (30 - min) : (60 - min);
         int64_t secs_to_next = (int64_t)minutes_to_next * 60 - t.tm_sec;
-        int64_t chime_us = secs_to_next * 1000000LL - 500000;
+        int64_t chime_us = secs_to_next * 1000000LL - 1000000;  /* 1s early */
         if (chime_us > 0 && (uint64_t)chime_us < wake_us) wake_us = (uint64_t)chime_us;
     }
 
