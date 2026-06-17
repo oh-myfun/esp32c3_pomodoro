@@ -57,10 +57,9 @@ static lv_display_t *display = NULL;
 
 /* ---- Idle / Sleep ---- */
 #define SLEEP_OPTIONS_COUNT  7
-#define DEEP_SLEEP_OPTIONS_COUNT  6
-/* negative = seconds, positive = minutes */
+#define DEEP_SLEEP_OPTIONS_COUNT  SLEEP_OPTIONS_COUNT
+/* negative = seconds, positive = minutes; shared with deep sleep */
 static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
-static const int deep_sleep_minutes[DEEP_SLEEP_OPTIONS_COUNT] = {0, -10, 1, 2, 5, 10};
 int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
 int deep_sleep_timeout_idx = 0;  /* default: off */
 bool keep_awake_on_busy = false;  /* buddy BUSY 时阻止休眠，由伙伴设置子屏更新 */
@@ -493,13 +492,13 @@ static void ui_update_task(void *arg) {
                     ESP_LOGI(TAG, "Light sleep (idle %llds)", idle_ms / 1000);
                 }
             }
-        } else if (s_sleep_stage == STAGE_LIGHT && deep_sleep_minutes[deep_sleep_timeout_idx] != 0) {
+        } else if (s_sleep_stage == STAGE_LIGHT && sleep_minutes[deep_sleep_timeout_idx] != 0) {
             /* After LIGHT_SLEEP timeout, escalate to DEEP_SLEEP (light sleep).
              * Skip if buddy is busy and keep_awake_on_busy is set. */
             bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
             if (!(keep_awake_on_busy && buddy_busy)) {
                 int64_t light_ms = (esp_timer_get_time() - s_light_sleep_enter_us) / 1000;
-                int deep_val = deep_sleep_minutes[deep_sleep_timeout_idx];
+                int deep_val = sleep_minutes[deep_sleep_timeout_idx];
                 int64_t threshold_ms = (deep_val < 0) ? (int64_t)(-deep_val) * 1000LL : (int64_t)deep_val * 60000LL;
                 if (light_ms >= threshold_ms) {
                     enter_deep_sleep();  /* returns after wake, stage set inside */
@@ -711,7 +710,7 @@ void app_main(void) {
         if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_DEEP_SLEEP_TIMEOUT, &val) && val >= 0 && val < DEEP_SLEEP_OPTIONS_COUNT) {
             deep_sleep_timeout_idx = (int)val;
         }
-        ESP_LOGI(TAG, "Deep sleep timeout: %d min", deep_sleep_minutes[deep_sleep_timeout_idx]);
+        ESP_LOGI(TAG, "Deep sleep timeout: %d", sleep_minutes[deep_sleep_timeout_idx]);
     }
     // 2.7. Load keep-awake-on-buddy-busy setting
     {

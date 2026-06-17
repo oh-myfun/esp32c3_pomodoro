@@ -19,10 +19,9 @@ static sys_mode_t sys_mode = MODE_SELECT;
 static int system_selected_item = 0;
 /* system_values[0..3]: dir, lang, sleep_idx, deep_sleep_idx */
 static int system_values[SYSTEM_ITEM_COUNT] = {0, 0, 1, 0};
-static const int sleep_mins[] = {0, -10, -30, 1, 2, 5, 10};  /* negative = seconds */
+static const int sleep_mins[] = {0, -10, -30, 1, 2, 5, 10};  /* negative = seconds; shared with deep sleep */
 #define SLEEP_OPT_COUNT (sizeof(sleep_mins) / sizeof(sleep_mins[0]))
-static const int deep_sleep_mins[] = {0, -10, 1, 2, 5, 10};  /* negative=seconds; 0=off */
-#define DEEP_SLEEP_OPT_COUNT (sizeof(deep_sleep_mins) / sizeof(deep_sleep_mins[0]))
+#define DEEP_SLEEP_OPT_COUNT SLEEP_OPT_COUNT
 
 static lv_obj_t *screen = NULL;
 static lv_obj_t *system_list = NULL;
@@ -59,7 +58,7 @@ static void update_display(void)
     snprintf(item_keys[3], sizeof(item_keys[3]), "%s", i18n(STR_DEEP_SLEEP_TIMEOUT));
     {
         int idx = system_values[3] % DEEP_SLEEP_OPT_COUNT;
-        int val = deep_sleep_mins[idx];
+        int val = sleep_mins[idx];
         if (val == 0) {
             snprintf(item_values[3], sizeof(item_values[3]), "%s", i18n(STR_OFF_VAL));
         } else if (val < 0) {
