@@ -124,6 +124,14 @@ static uint64_t compute_next_wakeup_us(void)
         if (pomo_us < wake_us) wake_us = pomo_us;
     }
 
+    /* Countdown timer (separate from pomodoro) */
+    if (ui_screen_pomodoro_timer_is_running()) {
+        uint32_t t_rem = ui_screen_pomodoro_timer_get_remaining();
+        uint64_t t_us = (uint64_t)t_rem * 1000000ULL;
+        if (t_us > 1000000) t_us -= 1000000;
+        if (t_us < wake_us) wake_us = t_us;
+    }
+
     time_t now = time(NULL);
     if (now > 0) {
         struct tm t;
@@ -148,6 +156,7 @@ static void enter_deep_sleep(void)
 
     ESP_LOGI(TAG, "Enter deep sleep");
     pomodoro_engine_on_deep_sleep_enter();
+    ui_screen_pomodoro_timer_on_deep_sleep_enter();
 
     ws2812_off();
     st7789_lcd_sleep();
@@ -176,6 +185,7 @@ static void enter_deep_sleep(void)
 
     st7789_lcd_wakeup();
     pomodoro_engine_on_deep_sleep_exit();
+    ui_screen_pomodoro_timer_on_deep_sleep_exit();
 
     /* Force pomodoro + chime tick on next ui_update_task loop so phase
      * transition / hour chime fires immediately, independent of esp_timer. */
