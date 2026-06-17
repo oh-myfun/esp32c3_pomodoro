@@ -21,7 +21,7 @@ static int system_selected_item = 0;
 static int system_values[SYSTEM_ITEM_COUNT] = {0, 0, 1, 0};
 static const int sleep_mins[] = {0, -10, -30, 1, 2, 5, 10};  /* negative = seconds */
 #define SLEEP_OPT_COUNT (sizeof(sleep_mins) / sizeof(sleep_mins[0]))
-static const int deep_sleep_mins[] = {0, 1, 2, 5, 10};  /* minutes; 0=off */
+static const int deep_sleep_mins[] = {0, -10, 1, 2, 5, 10};  /* negative=seconds; 0=off */
 #define DEEP_SLEEP_OPT_COUNT (sizeof(deep_sleep_mins) / sizeof(deep_sleep_mins[0]))
 
 static lv_obj_t *screen = NULL;
@@ -62,6 +62,8 @@ static void update_display(void)
         int val = deep_sleep_mins[idx];
         if (val == 0) {
             snprintf(item_values[3], sizeof(item_values[3]), "%s", i18n(STR_OFF_VAL));
+        } else if (val < 0) {
+            snprintf(item_values[3], sizeof(item_values[3]), i18n(STR_FMT_SEC), -val);
         } else {
             snprintf(item_values[3], sizeof(item_values[3]), i18n(STR_FMT_MIN), val);
         }
