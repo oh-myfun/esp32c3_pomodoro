@@ -183,8 +183,24 @@ static void enter_deep_sleep(void)
     s_force_chime_tick = true;
 
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-    ESP_LOGI(TAG, "Woke after %llu us, cause=%d, err=%s",
-             (unsigned long long)slept_us, (int)cause, esp_err_to_name(err));
+    const char *cause_str = "?";
+    switch (cause) {
+        case ESP_SLEEP_WAKEUP_TIMER:    cause_str = "TIMER"; break;
+        case ESP_SLEEP_WAKEUP_GPIO:     cause_str = "GPIO"; break;
+        case ESP_SLEEP_WAKEUP_UART:     cause_str = "UART"; break;
+        case ESP_SLEEP_WAKEUP_TOUCHPAD: cause_str = "TOUCH"; break;
+        case ESP_SLEEP_WAKEUP_EXT0:     cause_str = "EXT0"; break;
+        case ESP_SLEEP_WAKEUP_EXT1:     cause_str = "EXT1"; break;
+        case ESP_SLEEP_WAKEUP_ULP:      cause_str = "ULP"; break;
+        case ESP_SLEEP_WAKEUP_COCPU:    cause_str = "COCPU"; break;
+        case ESP_SLEEP_WAKEUP_BT:       cause_str = "BT"; break;
+        case ESP_SLEEP_WAKEUP_UNDEFINED:cause_str = "UNDEF"; break;
+        default: break;
+    }
+    ESP_LOGI(TAG, "Woke after %llums (expected %llums), cause=%s, err=%s",
+             (unsigned long long)slept_us / 1000,
+             (unsigned long long)wake_us / 1000,
+             cause_str, esp_err_to_name(err));
 
     if (cause == ESP_SLEEP_WAKEUP_TIMER) {
         /* Planned wake: drop into LIGHT_SLEEP, let normal tick handle events */
