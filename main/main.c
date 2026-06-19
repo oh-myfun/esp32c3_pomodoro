@@ -116,12 +116,13 @@ int get_sleep_timeout_minutes(void)
 static uint64_t compute_next_wakeup_us(void)
 {
     uint64_t wake_us = 5ULL * 60 * 1000000;  /* hard cap */
+    const char *reason = "cap5m";
 
     pomodoro_state_t pomo = pomodoro_engine_get_state();
     if (pomo.phase != POMODORO_PHASE_IDLE && pomo.phase != POMODORO_PHASE_PAUSED) {
         uint64_t pomo_us = (uint64_t)pomo.remaining_seconds * 1000000ULL;
         if (pomo_us > 1000000) pomo_us -= 1000000;  /* wake 1s early */
-        if (pomo_us < wake_us) wake_us = pomo_us;
+        if (pomo_us < wake_us) { wake_us = pomo_us; reason = "pomo"; }
     }
 
     /* Countdown timer (separate from pomodoro) */
@@ -129,7 +130,7 @@ static uint64_t compute_next_wakeup_us(void)
         uint32_t t_rem = ui_screen_pomodoro_timer_get_remaining();
         uint64_t t_us = (uint64_t)t_rem * 1000000ULL;
         if (t_us > 1000000) t_us -= 1000000;
-        if (t_us < wake_us) wake_us = t_us;
+        if (t_us < wake_us) { wake_us = t_us; reason = "timer"; }
     }
 
     time_t now = time(NULL);
@@ -140,7 +141,18 @@ static uint64_t compute_next_wakeup_us(void)
         int minutes_to_next = (min < 30) ? (30 - min) : (60 - min);
         int64_t secs_to_next = (int64_t)minutes_to_next * 60 - t.tm_sec;
         int64_t chime_us = secs_to_next * 1000000LL - 1000000;  /* 1s early */
-        if (chime_us > 0 && (uint64_t)chime_us < wake_us) wake_us = (uint64_t)chime_us;
+        if (chime_us > 0 && (uint64_t)chime_us < wake_us) {
+            wake_us = (uint64_t)chime_us;
+            reason = (min < 30) ? "chime:30" : "chime:00";
+        }
+        ESP_LOGI(TAG, "Wake reason=%s wake_us=%llums (now=%02d:%02d:%02d pomo_rem=%lu timer_rem=%u)",
+                 reason, (unsigned long long)wake_us / 1000,
+                 t.tm_hour, t.tm_min, t.tm_sec,
+                 (unsigned long)pomo.remaining_seconds,
+                 ui_screen_pomodoro_timer_is_running() ? ui_screen_pomodoro_timer_get_remaining() : 0);
+    } else {
+        ESP_LOGI(TAG, "Wake reason=%s wake_us=%llums (time not synced)",
+                 reason, (unsigned long long)wake_us / 1000);
     }
 
     if (wake_us < 1000000) wake_us = 1000000;
