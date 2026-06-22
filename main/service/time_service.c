@@ -37,7 +37,11 @@ static int8_t tz_hours = 8;
 static char ntp_server[64] = TIME_SERVICE_DEFAULT_NTP_SERVER;
 static uint16_t sync_interval = TIME_SERVICE_DEFAULT_SYNC_INTERVAL_MIN;
 static bool auto_sync = true;
-static time_t last_sync_time = 0;
+/* Last unix-minute-id at which time_service_tick fired a sync request.
+ * Used for dedup so the same aligned minute never triggers twice, while
+ * still allowing the next aligned boundary to fire even if a non-aligned
+ * sync (e.g. WiFi-connect triggered) happened in between. */
+static long s_last_triggered_mid = -1;
 
 static const uint16_t interval_options[TIME_SERVICE_INTERVAL_COUNT] = {
     5, 10, 30, 60, 120, 240, 480, 1440
@@ -49,7 +53,6 @@ static void time_sync_notification(struct timeval *tv)
     synced = true;
     time_t now = time(NULL);
     storage_save_time((uint64_t)now);
-    last_sync_time = now;
     sound_service_play(SOUND_SYNC_DONE);
 }
 
@@ -112,7 +115,7 @@ bool time_service_is_synced(void)
 void time_service_set_sync_interval(uint16_t minutes)
 {
     sync_interval = minutes;
-    last_sync_time = 0; /* reset so next aligned boundary triggers promptly */
+    s_last_triggered_mid = -1; /* force next aligned boundary to trigger */
     storage_save_int(STORAGE_NAMESPACE_SETTINGS, "ntp_interval", minutes);
     ESP_LOGI(TAG, "Sync interval set to %d minutes", minutes);
 }
@@ -148,27 +151,28 @@ void time_service_tick(void)
     if (!auto_sync || sync_interval == 0) return;
 
     time_t now = time(NULL);
-    if (last_sync_time == 0) {
-        last_sync_time = now;
-        return;
-    }
-
-    /* Align sync to exact minute boundaries:
-     * Check if current minute is a multiple of sync_interval */
     struct tm t;
     localtime_r(&now, &t);
+
+    /* 时间合理性 */
+    if (t.tm_year + 1900 < 2024) return;
+
+    /* 只在每分钟第 0 秒检查（ui_update_task 1Hz 调用） */
+    if (t.tm_sec != 0) return;
+
+    /* 整数倍对齐检查：当前分钟必须是 sync_interval 的整数倍 */
     int total_min = t.tm_hour * 60 + t.tm_min;
+    if (total_min % sync_interval != 0) return;
 
-    if (t.tm_sec != 0) return;                         /* only check at second 0 */
-    if (total_min % sync_interval != 0) return;        /* not aligned */
-
-    /* Avoid re-triggering within the same aligned minute */
-    double elapsed = difftime(now, last_sync_time);
-    if (elapsed < (double)sync_interval * 60.0 - 30.0) return;
+    /* 去重：同一对齐分钟只触发一次。
+     * 用 mid（unix 分钟 ID）而不是 "距上次同步的时长" 去重 —— 后者会
+     * 因为 WiFi 连接等非对齐同步错误地跳过下一个对齐点。 */
+    long mid = (long)(now / 60);
+    if (mid == s_last_triggered_mid) return;
+    s_last_triggered_mid = mid;
 
     ESP_LOGI(TAG, "Aligned re-sync at %02d:%02d (interval=%d min)",
              t.tm_hour, t.tm_min, sync_interval);
-    last_sync_time = now;
     time_service_request_sync();
 }
 
