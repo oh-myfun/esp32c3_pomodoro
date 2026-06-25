@@ -13,9 +13,6 @@ static const char *TAG = "UI_SETTINGS_SYSTEM";
 
 #define SYSTEM_ITEM_COUNT 2
 
-typedef enum { MODE_SELECT, MODE_ADJUST } sys_mode_t;
-
-static sys_mode_t sys_mode = MODE_SELECT;
 static int system_selected_item = 0;
 /* system_values[0..1]: dir, lang */
 static int system_values[SYSTEM_ITEM_COUNT] = {0, 0};
@@ -36,7 +33,7 @@ static void update_display(void)
     snprintf(item_keys[0], sizeof(item_keys[0]), "%s", i18n(STR_DIRECTION));
     snprintf(item_values[0], sizeof(item_values[0]), "%s", dir_opts[system_values[0] % 2]);
 
-    snprintf(item_keys[1], sizeof(item_values[1]), "%s", i18n(STR_LANGUAGE));
+    snprintf(item_keys[1], sizeof(item_keys[1]), "%s", i18n(STR_LANGUAGE));
     snprintf(item_values[1], sizeof(item_values[1]), "%s", lang_opts[system_values[1] % 2]);
 
     for (int i = 0; i < SYSTEM_ITEM_COUNT; i++) {
@@ -45,8 +42,7 @@ static void update_display(void)
     }
 
     if (system_list) {
-        ui_list_set_selected_color(system_list,
-            sys_mode == MODE_ADJUST ? UI_COLOR_ACCENT : UI_COLOR_SUCCESS);
+        ui_list_set_selected_color(system_list, UI_COLOR_SUCCESS);
         ui_list_set_items(system_list, items, SYSTEM_ITEM_COUNT);
         ui_list_set_selected(system_list, system_selected_item);
     }
@@ -96,7 +92,6 @@ lv_obj_t* ui_screen_settings_system_create(void)
     }
     system_list = NULL;
     hint_label = NULL;
-    sys_mode = MODE_SELECT;
 
 
     lv_obj_t *title = ui_create_title_label(screen, i18n(STR_T_SYSTEM));
