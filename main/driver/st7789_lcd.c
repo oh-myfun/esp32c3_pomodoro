@@ -235,23 +235,6 @@ void st7789_lcd_reinit(void)
     ESP_LOGI(TAG, "=== LCD reinit complete ===");
 }
 
-void st7789_lcd_sleep(void)
-{
-    /* SLPIN (0x10): enter sleep mode. Display turns off, panel draws <1mA.
-     * Safe to call with SPI still alive; we only stop driving pixels. */
-    lcd_write_cmd(0x10);
-    ESP_LOGI(TAG, "LCD sleep (SLPIN)");
-}
-
-void st7789_lcd_wakeup(void)
-{
-    /* SLPOUT (0x11): exit sleep mode. Datasheet requires >=5ms; we use 120ms
-     * to be safe across voltage/temp variations. */
-    lcd_write_cmd(0x11);
-    vTaskDelay(pdMS_TO_TICKS(120));
-    ESP_LOGI(TAG, "LCD wakeup (SLPOUT)");
-}
-
 static void lcd_set_window(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
 {
     lcd_write_cmd(0x2A);

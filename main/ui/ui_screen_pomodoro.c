@@ -9,7 +9,6 @@
 #include "service/storage_service.h"
 #include "esp_log.h"
 #include <stdio.h>
-#include <time.h>
 
 static const char *TAG = "UI_POMODORO";
 
@@ -477,45 +476,6 @@ void ui_screen_pomodoro_timer_tick(void)
             ESP_LOGI(TAG, "Timer alarm!");
         }
     }
-}
-
-/* ---- Deep-sleep hooks for countdown timer ----
- * Same wall-clock based compensation pattern as pomodoro_engine. */
-static time_t s_timer_sleep_time_at_enter = 0;
-
-bool ui_screen_pomodoro_timer_is_running(void)
-{
-    return s_timer_mode && s_timer_state == TIMER_RUNNING;
-}
-
-uint32_t ui_screen_pomodoro_timer_get_remaining(void)
-{
-    return s_timer_remaining;
-}
-
-void ui_screen_pomodoro_timer_on_deep_sleep_enter(void)
-{
-    time(&s_timer_sleep_time_at_enter);
-}
-
-void ui_screen_pomodoro_timer_on_deep_sleep_exit(void)
-{
-    if (!ui_screen_pomodoro_timer_is_running()) return;
-    time_t now;
-    time(&now);
-    double elapsed = difftime(now, s_timer_sleep_time_at_enter);
-    if (elapsed <= 0) return;
-    uint32_t elapsed_s = (uint32_t)elapsed;
-    if (elapsed_s >= s_timer_remaining) {
-        s_timer_remaining = 0;
-        /* Force alarm on next tick; tick is forced by main.c on wake */
-        ESP_LOGI(TAG, "Timer compensated to 0 (alarm pending)");
-    } else {
-        s_timer_remaining -= elapsed_s;
-        ESP_LOGI(TAG, "Timer compensated: elapsed=%us remain=%u",
-                 (unsigned)elapsed_s, (unsigned)s_timer_remaining);
-    }
-    update_timer_display();
 }
 
 void ui_screen_pomodoro_refresh(void)

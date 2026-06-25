@@ -3,7 +3,6 @@
 #include "esp_timer.h"
 #include "service/storage_service.h"
 #include <string.h>
-#include <time.h>
 
 static const char *TAG = "POMODORO";
 
@@ -230,40 +229,4 @@ void pomodoro_engine_set_manual_mode(bool manual)
 bool pomodoro_engine_get_manual_mode(void)
 {
     return manual_mode;
-}
-
-/* ---- Deep-sleep compensation ----
- * Light sleep freezes FreeRTOS tick, so pomodoro_engine_tick() is not called.
- * On sleep entry we snapshot wall-clock time (time() is based on RTC, which
- * keeps running in light sleep); on exit we subtract the elapsed seconds
- * directly. The next tick() call then naturally hits 0 and triggers phase
- * transition if appropriate.
- *
- * NB: esp_timer_get_time() does NOT include time spent in light sleep, which
- * is why we use time() / difftime() instead. */
-static time_t s_sleep_time_at_enter = 0;
-
-void pomodoro_engine_on_deep_sleep_enter(void)
-{
-    time(&s_sleep_time_at_enter);
-}
-
-void pomodoro_engine_on_deep_sleep_exit(void)
-{
-    if (current_state.phase == POMODORO_PHASE_IDLE ||
-        current_state.phase == POMODORO_PHASE_PAUSED) {
-        return;  /* no running timer to compensate */
-    }
-    time_t now;
-    time(&now);
-    double elapsed = difftime(now, s_sleep_time_at_enter);
-    if (elapsed <= 0) return;
-    uint32_t elapsed_s = (uint32_t)elapsed;
-    if (elapsed_s >= current_state.remaining_seconds) {
-        current_state.remaining_seconds = 0;  /* next tick() will transition */
-    } else {
-        current_state.remaining_seconds -= elapsed_s;
-    }
-    ESP_LOGI(TAG, "Deep-sleep compensated: elapsed=%us remain=%lu",
-             (unsigned)elapsed_s, (unsigned long)current_state.remaining_seconds);
 }

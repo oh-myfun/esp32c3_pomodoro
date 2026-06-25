@@ -172,7 +172,6 @@ typedef enum {
     STR_SESSION,
     STR_CONNECT_ACTION,
     STR_DISCONNECT,
-    STR_KEEP_AWAKE,       /* "Keep Awake" / "工作时不休眠" */
 
     /* Bridge scan */
     STR_NO_BRIDGE,       /* "No bridges found" / "未发现Bridge" */
@@ -200,10 +199,6 @@ typedef enum {
     STR_DAY_LEVEL,         /* "Day" / "天级" */
     STR_H_SENSOR_HINT,     /* "TOP:View SIDE:Set" / "顶:切换 侧:设置" */
     STR_H_SENSOR_EDIT,     /* "TOP:Save Enc:Adj" / "顶:保存 编码器:调节" */
-
-    /* Sleep timeout */
-    STR_SLEEP_TIMEOUT,
-    STR_DEEP_SLEEP_TIMEOUT,
 
     /* Demo colors */
     STR_DEMO_WORK,

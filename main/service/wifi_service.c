@@ -294,12 +294,6 @@ int wifi_service_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    /* Enable Wi-Fi power save so the chip can enter light sleep between
-     * beacons. Without this, esp_light_sleep_start() can't progress and
-     * timer-based wakeup never fires (only GPIO wakes work). */
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));
-    ESP_LOGI(TAG, "Wi-Fi PS = MIN_MODEM");
-
     // Migrate old config and load saved profiles
     storage_migrate_wifi_config();
     wifi_service_load_profiles();

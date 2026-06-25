@@ -3,14 +3,11 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_pm.h"
-#include "esp_sleep.h"
-#include "driver/gpio.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdio.h>
 #include <sys/param.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "lvgl.h"
@@ -55,187 +52,10 @@ static const char *TAG = "MAIN";
 
 static lv_display_t *display = NULL;
 
-/* ---- Idle / Sleep ---- */
-#define SLEEP_OPTIONS_COUNT  7
-#define DEEP_SLEEP_OPTIONS_COUNT  SLEEP_OPTIONS_COUNT
-/* negative = seconds, positive = minutes; shared with deep sleep */
-static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
-int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
-int deep_sleep_timeout_idx = 0;  /* default: off */
-bool keep_awake_on_busy = false;  /* buddy BUSY 时阻止休眠，由伙伴设置子屏更新 */
-
-typedef enum {
-    STAGE_AWAKE = 0,
-    STAGE_LIGHT,    /* normal sleep: backlight=1, PM lock released */
-    STAGE_DEEP,     /* light sleep via esp_light_sleep_start */
-} sleep_stage_t;
-
-static sleep_stage_t s_sleep_stage = STAGE_AWAKE;
-static int64_t s_last_activity_us = 0;
-static int64_t s_light_sleep_enter_us = 0;  /* when LIGHT_SLEEP stage began */
-static uint8_t s_saved_brightness = 10;
+/* Power management: DFS auto-lowers CPU frequency when idle. Lock is held
+ * while the UI is active to keep latency low. */
 static esp_pm_lock_handle_t s_pm_lock = NULL;
 
-/* GPIO wake sources (must match input_handler.c pinout) */
-#define WAKE_ENC_A    GPIO_NUM_4
-#define WAKE_ENC_B    GPIO_NUM_5
-#define WAKE_SET_KEY  GPIO_NUM_9
-#define WAKE_ENC_KEY  GPIO_NUM_21
-
-/* Pomodoro / chime ticks use wall-clock seconds so they remain correct after
- * deep sleep wake even if esp_timer doesn't include sleep duration. The force
- * flags trigger an immediate tick on the next ui_update_task loop, so phase
- * transition / hour chime fires right after wake instead of waiting 1s. */
-static time_t s_last_pomodoro_sec = 0;
-static time_t s_last_chime_sec = 0;
-static bool s_force_pomodoro_tick = false;
-static bool s_force_chime_tick = false;
-
-bool activity_touch(void)
-{
-    s_last_activity_us = esp_timer_get_time();
-    if (s_sleep_stage != STAGE_AWAKE) {
-        sleep_stage_t prev = s_sleep_stage;
-        s_sleep_stage = STAGE_AWAKE;
-        backlight_set_brightness(s_saved_brightness);
-        if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
-        ESP_LOGI(TAG, "Wake up (from stage %d)", (int)prev);
-        return true;
-    }
-    return false;
-}
-
-int get_sleep_timeout_minutes(void)
-{
-    return sleep_minutes[sleep_timeout_idx];
-}
-
-/* Compute adaptive timer wakeup so we never miss a pomodoro or chime event.
- * Returns microseconds until next wake; floored at 1s, capped at 5min.
- * Wake 1s before each event so the LIGHT_SLEEP tick has time to fire sound/UI. */
-static uint64_t compute_next_wakeup_us(void)
-{
-    uint64_t wake_us = 5ULL * 60 * 1000000;  /* hard cap */
-    const char *reason = "cap5m";
-
-    pomodoro_state_t pomo = pomodoro_engine_get_state();
-    if (pomo.phase != POMODORO_PHASE_IDLE && pomo.phase != POMODORO_PHASE_PAUSED) {
-        uint64_t pomo_us = (uint64_t)pomo.remaining_seconds * 1000000ULL;
-        if (pomo_us > 1000000) pomo_us -= 1000000;  /* wake 1s early */
-        if (pomo_us < wake_us) { wake_us = pomo_us; reason = "pomo"; }
-    }
-
-    /* Countdown timer (separate from pomodoro) */
-    if (ui_screen_pomodoro_timer_is_running()) {
-        uint32_t t_rem = ui_screen_pomodoro_timer_get_remaining();
-        uint64_t t_us = (uint64_t)t_rem * 1000000ULL;
-        if (t_us > 1000000) t_us -= 1000000;
-        if (t_us < wake_us) { wake_us = t_us; reason = "timer"; }
-    }
-
-    time_t now = time(NULL);
-    if (now > 0) {
-        struct tm t;
-        localtime_r(&now, &t);
-        int min = t.tm_min;
-        int minutes_to_next = (min < 30) ? (30 - min) : (60 - min);
-        int64_t secs_to_next = (int64_t)minutes_to_next * 60 - t.tm_sec;
-        int64_t chime_us = secs_to_next * 1000000LL - 1000000;  /* 1s early */
-        if (chime_us > 0 && (uint64_t)chime_us < wake_us) {
-            wake_us = (uint64_t)chime_us;
-            reason = (min < 30) ? "chime:30" : "chime:00";
-        }
-        ESP_LOGI(TAG, "Wake reason=%s wake_us=%llums (now=%02d:%02d:%02d pomo_rem=%lu timer_rem=%u)",
-                 reason, (unsigned long long)wake_us / 1000,
-                 t.tm_hour, t.tm_min, t.tm_sec,
-                 (unsigned long)pomo.remaining_seconds,
-                 ui_screen_pomodoro_timer_is_running() ? ui_screen_pomodoro_timer_get_remaining() : 0);
-    } else {
-        ESP_LOGI(TAG, "Wake reason=%s wake_us=%llums (time not synced)",
-                 reason, (unsigned long long)wake_us / 1000);
-    }
-
-    if (wake_us < 1000000) wake_us = 1000000;
-    return wake_us;
-}
-
-static void enter_deep_sleep(void)
-{
-    if (keep_awake_on_busy && buddy_get_info().state == BUDDY_BUSY) {
-        ESP_LOGI(TAG, "Skip deep sleep: buddy busy");
-        return;
-    }
-
-    ESP_LOGI(TAG, "Enter deep sleep");
-    pomodoro_engine_on_deep_sleep_enter();
-    ui_screen_pomodoro_timer_on_deep_sleep_enter();
-
-    ws2812_off();
-    st7789_lcd_sleep();
-
-    /* GPIO wake sources: keys active-low (level), encoder edges */
-    gpio_wakeup_enable(WAKE_SET_KEY, GPIO_INTR_LOW_LEVEL);
-    gpio_wakeup_enable(WAKE_ENC_KEY, GPIO_INTR_LOW_LEVEL);
-    gpio_wakeup_enable(WAKE_ENC_A,   GPIO_INTR_ANYEDGE);
-    gpio_wakeup_enable(WAKE_ENC_B,   GPIO_INTR_ANYEDGE);
-    esp_sleep_enable_gpio_wakeup();
-
-    uint64_t wake_us = compute_next_wakeup_us();
-    esp_sleep_enable_timer_wakeup(wake_us);
-
-    s_sleep_stage = STAGE_DEEP;
-    int64_t sleep_start = esp_timer_get_time();
-    ESP_LOGI(TAG, "Light sleep for %llu us", (unsigned long long)wake_us);
-
-    esp_err_t err = esp_light_sleep_start();
-    int64_t slept_us = esp_timer_get_time() - sleep_start;
-
-    gpio_wakeup_disable(WAKE_SET_KEY);
-    gpio_wakeup_disable(WAKE_ENC_KEY);
-    gpio_wakeup_disable(WAKE_ENC_A);
-    gpio_wakeup_disable(WAKE_ENC_B);
-
-    st7789_lcd_wakeup();
-    pomodoro_engine_on_deep_sleep_exit();
-    ui_screen_pomodoro_timer_on_deep_sleep_exit();
-
-    /* Force pomodoro + chime tick on next ui_update_task loop so phase
-     * transition / hour chime fires immediately, independent of esp_timer. */
-    s_force_pomodoro_tick = true;
-    s_force_chime_tick = true;
-
-    esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-    const char *cause_str = "?";
-    switch (cause) {
-        case ESP_SLEEP_WAKEUP_TIMER:    cause_str = "TIMER"; break;
-        case ESP_SLEEP_WAKEUP_GPIO:     cause_str = "GPIO"; break;
-        case ESP_SLEEP_WAKEUP_UART:     cause_str = "UART"; break;
-        case ESP_SLEEP_WAKEUP_TOUCHPAD: cause_str = "TOUCH"; break;
-        case ESP_SLEEP_WAKEUP_EXT0:     cause_str = "EXT0"; break;
-        case ESP_SLEEP_WAKEUP_EXT1:     cause_str = "EXT1"; break;
-        case ESP_SLEEP_WAKEUP_ULP:      cause_str = "ULP"; break;
-        case ESP_SLEEP_WAKEUP_COCPU:    cause_str = "COCPU"; break;
-        case ESP_SLEEP_WAKEUP_BT:       cause_str = "BT"; break;
-        case ESP_SLEEP_WAKEUP_UNDEFINED:cause_str = "UNDEF"; break;
-        default: break;
-    }
-    ESP_LOGI(TAG, "Woke after %llums (expected %llums), cause=%s, err=%s",
-             (unsigned long long)slept_us / 1000,
-             (unsigned long long)wake_us / 1000,
-             cause_str, esp_err_to_name(err));
-
-    if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-        /* Planned wake: drop into LIGHT_SLEEP, let normal tick handle events */
-        s_sleep_stage = STAGE_LIGHT;
-        s_light_sleep_enter_us = esp_timer_get_time();
-    } else {
-        /* GPIO wake: user interaction, fully restore */
-        s_sleep_stage = STAGE_AWAKE;
-        s_last_activity_us = esp_timer_get_time();
-        backlight_set_brightness(s_saved_brightness);
-        if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
-    }
-}
 static esp_timer_handle_t lvgl_tick_timer = NULL;
 
 static lv_color_t *buf1 = NULL;
@@ -345,7 +165,6 @@ static void on_tcp_disconnected(void) {
 
 static void on_tcp_request(const tcp_request_t *req) {
     ESP_LOGI(TAG, "TCP request: tool=%s type=%d", req->tool, req->type);
-    activity_touch();
     buddy_on_tcp_request(req);
 
     /* Build option labels + descriptions for the UI */
@@ -379,13 +198,11 @@ static void on_tcp_request_done(const char *request_id) {
 
 static void on_tcp_status(const char *state, const char *message) {
     ESP_LOGI(TAG, "TCP status: %s", state);
-    activity_touch();
     buddy_on_status(state, message);
 }
 
 static void on_tcp_paired(void) {
     ESP_LOGI(TAG, "TCP paired, updating UI");
-    activity_touch();
     lvgl_lock();
     ui_screen_buddy_set_connected(true);
     lvgl_unlock();
@@ -514,9 +331,11 @@ static void service_task(void *arg) {
 
 static void ui_update_task(void *arg) {
     ESP_LOGI(TAG, "UI update task started");
+    int64_t last_pomodoro_tick = 0;
     int64_t last_wifi_ui_tick = 0;
     int64_t last_mem_tick = 0;
     int64_t last_debug_tick = 0;
+    int64_t last_chime_tick = 0;
     /* Track synced state transitions so a NTP sync event triggers an immediate
      * UI refresh instead of waiting up to 1s for the next wifi_ui tick. */
     bool prev_main_synced = false;
@@ -525,47 +344,8 @@ static void ui_update_task(void *arg) {
         int64_t now = esp_timer_get_time() / 1000;
         ui_screen_id_t current_screen = ui_get_current_screen();
 
-        // Sleep state machine
-        if (s_sleep_stage == STAGE_AWAKE && sleep_minutes[sleep_timeout_idx] != 0) {
-            /* buddy 工作时（Claude 正在执行任务）可选择阻止休眠 */
-            bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
-            if (!(keep_awake_on_busy && buddy_busy)) {
-                int64_t idle_ms = (esp_timer_get_time() - s_last_activity_us) / 1000;
-                int val = sleep_minutes[sleep_timeout_idx];
-                int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
-                if (idle_ms >= threshold_ms) {
-                    s_sleep_stage = STAGE_LIGHT;
-                    s_light_sleep_enter_us = esp_timer_get_time();
-                    s_saved_brightness = backlight_get_brightness();
-                    backlight_set_brightness(1);
-                    if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
-                    ESP_LOGI(TAG, "Light sleep (idle %llds)", idle_ms / 1000);
-                }
-            }
-        } else if (s_sleep_stage == STAGE_LIGHT && sleep_minutes[deep_sleep_timeout_idx] != 0) {
-            /* After LIGHT_SLEEP timeout, escalate to DEEP_SLEEP (light sleep).
-             * Skip if buddy is busy and keep_awake_on_busy is set. */
-            bool buddy_busy = (buddy_get_info().state == BUDDY_BUSY);
-            if (!(keep_awake_on_busy && buddy_busy)) {
-                int64_t light_ms = (esp_timer_get_time() - s_light_sleep_enter_us) / 1000;
-                int deep_val = sleep_minutes[deep_sleep_timeout_idx];
-                int64_t threshold_ms = (deep_val < 0) ? (int64_t)(-deep_val) * 1000LL : (int64_t)deep_val * 60000LL;
-                if (light_ms >= threshold_ms) {
-                    enter_deep_sleep();  /* returns after wake, stage set inside */
-                }
-            }
-        }
-        /* STAGE_DEEP: ui_update_task is frozen during esp_light_sleep_start;
-         * this branch never runs while asleep. */
-
-        // Pomodoro tick: fire every wall-clock second, or immediately when
-        // forced (after deep sleep wake). Using time() avoids esp_timer
-        // jitter across light sleep.
-        time_t now_sec = time(NULL);
-        bool pomo_due = s_force_pomodoro_tick || now_sec != s_last_pomodoro_sec;
-        s_force_pomodoro_tick = false;
-        if (pomo_due) {
-            s_last_pomodoro_sec = now_sec;
+        // Pomodoro tick every 1 second
+        if (now - last_pomodoro_tick >= 1000) {
             pomodoro_state_t prev = pomodoro_engine_get_state();
             pomodoro_engine_tick();
             pomodoro_state_t state = pomodoro_engine_get_state();
@@ -603,6 +383,7 @@ static void ui_update_task(void *arg) {
             ui_screen_pomodoro_update_state(state.phase, state.remaining_seconds, state.completed_count, state.current_cycle);
             ui_screen_pomodoro_timer_tick();
             lvgl_unlock();
+            last_pomodoro_tick = now;
         }
 
         // Main screen: time update every tick
@@ -694,11 +475,10 @@ static void ui_update_task(void *arg) {
             last_chart_tick = now;
         }
 
-        // Chime service: same wall-clock basis as pomodoro (also forced on wake)
-        if (s_force_chime_tick || now_sec != s_last_chime_sec) {
-            s_force_chime_tick = false;
-            s_last_chime_sec = now_sec;
+        // Chime service: check hour/half-hour boundary every 1 second
+        if (now - last_chime_tick >= 1000) {
             chime_service_tick();
+            last_chime_tick = now;
         }
 
         // Memory monitor every 30 seconds
@@ -751,32 +531,6 @@ void app_main(void) {
         esp_pm_lock_acquire(s_pm_lock);
         ESP_LOGI(TAG, "PM: DFS enabled 160/40 MHz");
     }
-
-    // 2.6. Load sleep timeout setting
-    {
-        int32_t val;
-        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SLEEP_TIMEOUT, &val) && val >= 0 && val < SLEEP_OPTIONS_COUNT) {
-            sleep_timeout_idx = (int)val;
-        }
-        ESP_LOGI(TAG, "Sleep timeout: %d", sleep_minutes[sleep_timeout_idx]);
-    }
-    // 2.6.1 Load deep-sleep timeout setting
-    {
-        int32_t val = 0;
-        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_DEEP_SLEEP_TIMEOUT, &val) && val >= 0 && val < DEEP_SLEEP_OPTIONS_COUNT) {
-            deep_sleep_timeout_idx = (int)val;
-        }
-        ESP_LOGI(TAG, "Deep sleep timeout: %d", sleep_minutes[deep_sleep_timeout_idx]);
-    }
-    // 2.7. Load keep-awake-on-buddy-busy setting
-    {
-        int32_t val = 0;
-        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_KEEP_AWAKE_BUSY, &val)) {
-            keep_awake_on_busy = (val != 0);
-        }
-        ESP_LOGI(TAG, "Keep awake on busy: %d", keep_awake_on_busy);
-    }
-    s_last_activity_us = esp_timer_get_time();
 
     st7789_lcd_init();
     aht20_init();

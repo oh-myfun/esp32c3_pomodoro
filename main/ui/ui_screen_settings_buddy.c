@@ -20,10 +20,9 @@ enum {
     ITEM_HOST,
     ITEM_PORT,
     ITEM_SESSION,
-    ITEM_KEEP_AWAKE,  /* buddy BUSY 时阻止休眠 */
     ITEM_CONNECT,
     ITEM_SCAN,     /* scan 放到最后 */
-    ITEM_COUNT   /* = 7 */
+    ITEM_COUNT   /* = 6 */
 };
 
 typedef enum {
@@ -40,9 +39,6 @@ static int selected_item = 0;
 
 /* Species */
 static int species_index = 0;
-
-/* Keep awake on buddy busy (extern in main.c) */
-extern bool keep_awake_on_busy;
 
 /* Bridge config */
 static char cfg_host[48] = "";
@@ -116,15 +112,11 @@ static void update_display(void)
     snprintf(item_keys[ITEM_SESSION], sizeof(item_keys[ITEM_SESSION]), "%s", i18n(STR_SESSION));
     snprintf(item_values[ITEM_SESSION], sizeof(item_values[ITEM_SESSION]), "%s", cfg_session[0] ? cfg_session : "---");
 
-    /* Item 4: Keep awake on busy */
-    snprintf(item_keys[ITEM_KEEP_AWAKE], sizeof(item_keys[ITEM_KEEP_AWAKE]), "%s", i18n(STR_KEEP_AWAKE));
-    snprintf(item_values[ITEM_KEEP_AWAKE], sizeof(item_values[ITEM_KEEP_AWAKE]), "%s", keep_awake_on_busy ? i18n(STR_ON) : i18n(STR_OFF));
-
-    /* Item 5: Scan */
+    /* Item 4: Scan */
     snprintf(item_keys[ITEM_SCAN], sizeof(item_keys[ITEM_SCAN]), "%s", i18n(STR_SCAN));
     snprintf(item_values[ITEM_SCAN], sizeof(item_values[ITEM_SCAN]), "%s", ">>");
 
-    /* Item 6: Connect/Disconnect */
+    /* Item 5: Connect/Disconnect */
     snprintf(item_keys[ITEM_CONNECT], sizeof(item_keys[ITEM_CONNECT]), "%s", tcp_service_is_connected() ? i18n(STR_DISCONNECT) : i18n(STR_CONNECT_ACTION));
     snprintf(item_values[ITEM_CONNECT], sizeof(item_values[ITEM_CONNECT]), "%s", tcp_service_is_connected() ? i18n(STR_ON) : i18n(STR_OFF));
 #pragma GCC diagnostic pop
@@ -218,11 +210,6 @@ static void buddy_on_settings_press(void)
         case ITEM_SESSION:
             ui_text_input_configure(i18n(STR_SESSION), cfg_session, TEXT_INPUT_ALPHANUM, 8, on_session_result);
             ui_switch_screen(UI_SCREEN_TEXT_INPUT);
-            break;
-        case ITEM_KEEP_AWAKE:
-            keep_awake_on_busy = !keep_awake_on_busy;
-            storage_save_int(STORAGE_NAMESPACE_SETTINGS, KEY_KEEP_AWAKE_BUSY, keep_awake_on_busy ? 1 : 0);
-            update_display();
             break;
         case ITEM_SCAN:
             ui_switch_screen(UI_SCREEN_BRIDGE_SCAN);

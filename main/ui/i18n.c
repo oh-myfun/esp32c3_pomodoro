@@ -176,7 +176,6 @@ static const char *strings[STR_COUNT][2] = {
     [STR_SESSION]         = {"🔑Session",         "🔑会话"},
     [STR_CONNECT_ACTION]  = {"📡Connect",         "📡连接"},
     [STR_DISCONNECT]      = {"📴Disconnect",      "📴断开"},
-    [STR_KEEP_AWAKE]      = {"⚡Keep Awake",      "⚡工作时不休眠"},
 
     /* Bridge scan */
     [STR_NO_BRIDGE]       = {"No bridges found",    "未发现Bridge"},
@@ -204,10 +203,6 @@ static const char *strings[STR_COUNT][2] = {
     [STR_DAY_LEVEL]        = {"Day",                 "日级"},
     [STR_H_SENSOR_HINT]    = {"TOP:View SIDE:Set", "顶:切换 侧:设置"},
     [STR_H_SENSOR_EDIT]    = {"TOP:Save Enc:Adj",    "顶:保存 编码器:调节"},
-
-    /* Sleep timeout */
-    [STR_SLEEP_TIMEOUT] = {"💤Sleep",      "💤休眠"},
-    [STR_DEEP_SLEEP_TIMEOUT] = {"🛌Deep Sleep", "🛌深度休眠"},
 
     /* Demo colors */
     [STR_DEMO_WORK]       = {"Work",        "工作"},
