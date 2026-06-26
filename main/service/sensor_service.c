@@ -45,6 +45,15 @@ static SemaphoreHandle_t mutex = NULL;
 static bool running = false;
 static bool aht20_available = false;
 static bool bmp280_available = false;
+static volatile bool s_idle_mode = false;
+
+#define IDLE_SAMPLE_INTERVAL_SEC  60
+
+void sensor_service_set_idle_mode(bool idle)
+{
+    s_idle_mode = idle;
+    ESP_LOGI(TAG, "Idle mode %s", idle ? "on (60s)" : "off");
+}
 
 /* Default settings */
 #define DEF_TEMP_MIN   ((int32_t)-100)   /* -10.0°C */
@@ -377,7 +386,7 @@ static void sensor_task(void *arg)
 
         xSemaphoreGive(mutex);
 
-        int32_t interval = settings.sample_interval;
+        int32_t interval = s_idle_mode ? IDLE_SAMPLE_INTERVAL_SEC : settings.sample_interval;
         if (interval < 1) interval = 1;
         if (interval > 60) interval = 60;
         vTaskDelay(pdMS_TO_TICKS(interval * 1000));

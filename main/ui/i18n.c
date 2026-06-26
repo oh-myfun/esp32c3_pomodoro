@@ -204,6 +204,9 @@ static const char *strings[STR_COUNT][2] = {
     [STR_H_SENSOR_HINT]    = {"TOP:View SIDE:Set", "顶:切换 侧:设置"},
     [STR_H_SENSOR_EDIT]    = {"TOP:Save Enc:Adj",    "顶:保存 编码器:调节"},
 
+    /* Sleep timeout */
+    [STR_SLEEP_TIMEOUT]   = {"💤Sleep",      "💤休眠"},
+
     /* Demo colors */
     [STR_DEMO_WORK]       = {"Work",        "工作"},
     [STR_DEMO_BREAK]      = {"Break",       "休息"},

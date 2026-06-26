@@ -278,6 +278,9 @@ void input_handler_task(void *arg)
 
     while (1) {
         if (xQueueReceive(g_event_queue, &event, portMAX_DELAY) == pdTRUE) {
+            extern bool activity_touch(void);
+            if (activity_touch()) continue;
+
             lvgl_lock();
 
             if (event.type != INPUT_EVENT_ENCODER_HOLD &&

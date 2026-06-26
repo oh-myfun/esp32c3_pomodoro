@@ -53,17 +53,79 @@ static const char *TAG = "MAIN";
 static lv_display_t *display = NULL;
 
 /* Power management: DFS auto-lowers CPU frequency when idle. Lock is held
- * while the UI is active to keep latency low. */
+ * while the UI is active to keep latency low; released in normal sleep. */
 static esp_pm_lock_handle_t s_pm_lock = NULL;
 
+/* ---- Normal sleep state machine ----
+ * AWAKE: full brightness, LVGL tick 1ms, sensors at user interval.
+ * LIGHT: backlight at minimum, PM lock released (DFS→40MHz), LVGL tick
+ *        100ms, sensors at 60s. Wakes on any input event. */
+#define SLEEP_OPTIONS_COUNT  7
+/* negative = seconds, positive = minutes */
+static const int sleep_minutes[SLEEP_OPTIONS_COUNT] = {0, -10, -30, 1, 2, 5, 10};
+int sleep_timeout_idx = 3;   /* default: 1 min, accessed by settings UI */
+
+typedef enum {
+    STAGE_AWAKE = 0,
+    STAGE_LIGHT,    /* normal sleep */
+} sleep_stage_t;
+
+static sleep_stage_t s_sleep_stage = STAGE_AWAKE;
+static int64_t s_last_activity_us = 0;
+static uint8_t s_saved_brightness = 10;
+
+/* Forward decl: defined later, after lvgl_tick_timer is created. */
+static void lvgl_set_idle_tick(bool idle);
+
+bool activity_touch(void)
+{
+    s_last_activity_us = esp_timer_get_time();
+    if (s_sleep_stage != STAGE_AWAKE) {
+        ESP_LOGI(TAG, "Wake up");
+        s_sleep_stage = STAGE_AWAKE;
+        backlight_set_brightness(s_saved_brightness);
+        if (s_pm_lock) esp_pm_lock_acquire(s_pm_lock);
+        lvgl_set_idle_tick(false);
+        sensor_service_set_idle_mode(false);
+        return true;
+    }
+    return false;
+}
+
+static void enter_light_sleep(void)
+{
+    ESP_LOGI(TAG, "Enter light sleep (idle %llds)",
+             (esp_timer_get_time() - s_last_activity_us) / 1000000);
+    s_sleep_stage = STAGE_LIGHT;
+    s_saved_brightness = backlight_get_brightness();
+    backlight_set_brightness(1);
+    if (s_pm_lock) esp_pm_lock_release(s_pm_lock);
+    lvgl_set_idle_tick(true);
+    sensor_service_set_idle_mode(true);
+}
+
 static esp_timer_handle_t lvgl_tick_timer = NULL;
+
+/* Tick period switches between active (1ms) and idle (100ms) when asleep. */
+#define LVGL_TICK_IDLE_PERIOD_MS  100
+static volatile uint32_t s_lvgl_tick_period_ms = LVGL_TICK_PERIOD_MS;
 
 static lv_color_t *buf1 = NULL;
 static lv_color_t *buf2 = NULL;
 
 static void increase_lvgl_tick(void *arg)
 {
-    lv_tick_inc(LVGL_TICK_PERIOD_MS);
+    lv_tick_inc(s_lvgl_tick_period_ms);
+}
+
+/* Slow down / speed up the LVGL tick timer. Called with the active period. */
+static void lvgl_set_idle_tick(bool idle)
+{
+    uint32_t new_period = idle ? LVGL_TICK_IDLE_PERIOD_MS : LVGL_TICK_PERIOD_MS;
+    if (new_period == s_lvgl_tick_period_ms) return;
+    s_lvgl_tick_period_ms = new_period;
+    esp_timer_stop(lvgl_tick_timer);
+    esp_timer_start_periodic(lvgl_tick_timer, new_period * 1000);
 }
 
 void lvgl_init(void)
@@ -344,6 +406,16 @@ static void ui_update_task(void *arg) {
         int64_t now = esp_timer_get_time() / 1000;
         ui_screen_id_t current_screen = ui_get_current_screen();
 
+        // Sleep state machine
+        if (s_sleep_stage == STAGE_AWAKE && sleep_minutes[sleep_timeout_idx] != 0) {
+            int64_t idle_ms = (esp_timer_get_time() - s_last_activity_us) / 1000;
+            int val = sleep_minutes[sleep_timeout_idx];
+            int64_t threshold_ms = (val < 0) ? (int64_t)(-val) * 1000LL : (int64_t)val * 60000LL;
+            if (idle_ms >= threshold_ms) {
+                enter_light_sleep();
+            }
+        }
+
         // Pomodoro tick every 1 second
         if (now - last_pomodoro_tick >= 1000) {
             pomodoro_state_t prev = pomodoro_engine_get_state();
@@ -531,6 +603,16 @@ void app_main(void) {
         esp_pm_lock_acquire(s_pm_lock);
         ESP_LOGI(TAG, "PM: DFS enabled 160/40 MHz");
     }
+
+    // 2.6. Load sleep timeout setting
+    {
+        int32_t val;
+        if (storage_load_int(STORAGE_NAMESPACE_SETTINGS, KEY_SLEEP_TIMEOUT, &val) && val >= 0 && val < SLEEP_OPTIONS_COUNT) {
+            sleep_timeout_idx = (int)val;
+        }
+        ESP_LOGI(TAG, "Sleep timeout: %d", sleep_minutes[sleep_timeout_idx]);
+    }
+    s_last_activity_us = esp_timer_get_time();
 
     st7789_lcd_init();
     aht20_init();

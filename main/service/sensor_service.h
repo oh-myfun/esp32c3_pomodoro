@@ -53,3 +53,7 @@ int sensor_service_get_chart_data(sensor_level_t level, sensor_sample_t *buf, se
 void sensor_service_get_settings(sensor_settings_t *out);
 void sensor_service_set_settings(const sensor_settings_t *in);
 void sensor_service_reset_settings(void);
+
+/* Idle mode: when true, sampling interval becomes 60s regardless of settings
+ * (used during normal sleep to save power). Cleared on wake. */
+void sensor_service_set_idle_mode(bool idle);
