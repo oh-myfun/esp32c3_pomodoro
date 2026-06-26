@@ -23,8 +23,15 @@ static void main_on_encoder_ccw(void)
 
 static void main_on_settings_press(void)
 {
-    time_service_request_sync();
-    ESP_LOGI(TAG, "Manual time sync triggered");
+    if (wifi_service_is_connected()) {
+        /* Already connected: refresh time only. */
+        time_service_request_sync();
+        ESP_LOGI(TAG, "Manual time sync triggered");
+    } else {
+        /* Not connected: trigger scan + connect to saved networks. */
+        wifi_service_scan_and_connect();
+        ESP_LOGI(TAG, "Scan+connect triggered");
+    }
 }
 
 static lv_obj_t *time_label = NULL;

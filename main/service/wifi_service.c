@@ -16,11 +16,23 @@ static const char *TAG = "WIFI";
 #define MAX_SCAN_RESULTS 20
 #define RECONNECT_DELAY_INITIAL_MS 2000
 #define RECONNECT_DELAY_MAX_MS 60000
+#define WIFI_MAX_RECONNECT_ATTEMPTS 10
 
 static wifi_state_t current_state = WIFI_STATE_DISCONNECTED;
 static char connected_ssid[33] = {0};
 static char ip_address[16] = {0};
 static bool user_initiated_disconnect = false;
+
+/* Last SSID we successfully connected to. Used as the reconnect target when
+ * the link drops unexpectedly. Cleared on user-initiated disconnect. */
+static char s_last_connected_ssid[33] = {0};
+
+/* Scan+connect state: scan results are tried in RSSI order. */
+static bool s_auto_connect_active = false;
+static int  s_auto_connect_try_idx = -1;
+
+/* Reconnect state: exponential backoff, gives up after MAX attempts. */
+static int s_reconnect_attempts = 0;
 
 static wifi_ap_info_t scan_results[MAX_SCAN_RESULTS];
 static int scan_count = 0;
@@ -47,6 +59,7 @@ static bool auto_connect_pending = false;
 static void start_reconnect_timer(void);
 static void stop_reconnect_timer(void);
 static void wifi_service_load_profiles(void);
+static void try_next_auto_connect(void);
 
 static void invoke_on_connected(void)
 {
@@ -71,11 +84,27 @@ static void invoke_on_scan_complete(int count)
 
 static void reconnect_timer_callback(void *arg)
 {
-    if (current_state == WIFI_STATE_DISCONNECTED && !user_initiated_disconnect) {
-        ESP_LOGI(TAG, "Auto-reconnect attempt (delay was %d ms)", reconnect_delay_ms);
-        esp_wifi_connect();
-        current_state = WIFI_STATE_CONNECTING;
+    if (current_state != WIFI_STATE_DISCONNECTED) return;
+    if (user_initiated_disconnect) return;
+    if (saved_count == 0) return;
+    if (s_last_connected_ssid[0] == '\0') return;
+    if (s_reconnect_attempts >= WIFI_MAX_RECONNECT_ATTEMPTS) {
+        ESP_LOGW(TAG, "Reconnect gave up after %d attempts", s_reconnect_attempts);
+        return;
     }
+
+    s_reconnect_attempts++;
+    ESP_LOGI(TAG, "Reconnect attempt %d/%d to %s (delay was %d ms)",
+             s_reconnect_attempts, WIFI_MAX_RECONNECT_ATTEMPTS,
+             s_last_connected_ssid, reconnect_delay_ms);
+
+    /* Reconnect to the exact same SSID we lost. esp_wifi keeps the config
+     * from the last set_config call, so just re-issue connect. */
+    esp_wifi_connect();
+    current_state = WIFI_STATE_CONNECTING;
+
+    /* Schedule next backoff tick in case this also fails. */
+    start_reconnect_timer();
 }
 
 static void start_reconnect_timer(void)
@@ -108,7 +137,67 @@ static void stop_reconnect_timer(void)
 static void reset_reconnect_delay(void)
 {
     reconnect_delay_ms = RECONNECT_DELAY_INITIAL_MS;
+    s_reconnect_attempts = 0;
     stop_reconnect_timer();
+}
+
+/* Try the next saved network from the latest scan results, in RSSI order.
+ * Called after scan completes, and after a connect attempt fails.
+ * scan_results are pre-sorted by RSSI descending (esp_wifi default). */
+static void try_next_auto_connect(void)
+{
+    if (!s_auto_connect_active) return;
+
+    int next_idx = -1;
+    for (int i = s_auto_connect_try_idx + 1; i < scan_count; i++) {
+        if (wifi_service_is_saved(scan_results[i].ssid)) {
+            next_idx = i;
+            break;
+        }
+    }
+
+    if (next_idx < 0) {
+        ESP_LOGW(TAG, "Auto-connect: all saved networks exhausted");
+        s_auto_connect_active = false;
+        return;
+    }
+
+    s_auto_connect_try_idx = next_idx;
+    const char *ssid = scan_results[next_idx].ssid;
+    for (int i = 0; i < saved_count; i++) {
+        if (strcmp(saved_profiles[i].ssid, ssid) == 0) {
+            ESP_LOGI(TAG, "Auto-connect trying: %s (rssi %d, try %d)",
+                     ssid, scan_results[next_idx].rssi, s_auto_connect_try_idx + 1);
+            wifi_config_t wifi_config = {0};
+            strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
+            strncpy((char*)wifi_config.sta.password, saved_profiles[i].password, sizeof(wifi_config.sta.password) - 1);
+            esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+            current_state = WIFI_STATE_CONNECTING;
+            strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
+            ip_address[0] = '\0';
+            esp_wifi_connect();
+            return;
+        }
+    }
+}
+
+void wifi_service_scan_and_connect(void)
+{
+    if (saved_count == 0) {
+        ESP_LOGI(TAG, "No saved networks, skipping scan+connect");
+        return;
+    }
+    if (current_state == WIFI_STATE_CONNECTED) {
+        ESP_LOGI(TAG, "Already connected, skipping scan+connect");
+        return;
+    }
+    ESP_LOGI(TAG, "Scan+connect requested");
+    s_auto_connect_active = true;
+    s_auto_connect_try_idx = -1;
+    s_reconnect_attempts = 0;
+    stop_reconnect_timer();
+    auto_connect_pending = true;
+    wifi_service_scan();
 }
 
 // WiFi event handler
@@ -125,22 +214,30 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 ESP_LOGI(TAG, "WiFi disconnected");
                 {
                     bool was_connecting = (current_state == WIFI_STATE_CONNECTING);
+                    bool was_auto_connecting = s_auto_connect_active;
                     current_state = WIFI_STATE_DISCONNECTED;
                     ip_address[0] = '\0';
 
                     if (was_connecting) {
-                        // Expected disconnect during manual connect — don't clear ssid or reconnect
+                        /* Connect attempt failed:
+                         * - If a scan+connect sequence is in flight, try the next
+                         *   candidate (next strongest saved network).
+                         * - Otherwise this was a manual connect or a reconnect
+                         *   attempt; just give up silently. */
+                        if (was_auto_connecting) {
+                            try_next_auto_connect();
+                        }
                     } else {
+                        /* Unexpected disconnect: link was up, now it's down.
+                         * Reconnect to the same SSID with exponential backoff,
+                         * up to WIFI_MAX_RECONNECT_ATTEMPTS times. */
                         connected_ssid[0] = '\0';
                         invoke_on_disconnected();
 
-                        if (!user_initiated_disconnect) {
-                            if (saved_count > 0 && !auto_connect_pending) {
-                                auto_connect_pending = true;
-                                wifi_service_scan();
-                            } else if (saved_count == 0) {
-                                start_reconnect_timer();
-                            }
+                        if (!user_initiated_disconnect &&
+                            saved_count > 0 &&
+                            s_last_connected_ssid[0] != '\0') {
+                            start_reconnect_timer();
                         }
                     }
                 }
@@ -168,40 +265,17 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                     ESP_LOGI(TAG, "Scan done, found %d APs", scan_count);
                     invoke_on_scan_complete(scan_count);
 
-                    // Auto-connect: find strongest saved network from scan results
-                    if (auto_connect_pending && scan_count > 0) {
+                    /* scan_results are sorted by RSSI descending by default.
+                     * If a scan+connect sequence is active, kick off the first
+                     * attempt; failures are handled in STA_DISCONNECTED via
+                     * try_next_auto_connect. */
+                    if (auto_connect_pending) {
                         auto_connect_pending = false;
-                        int best_idx = -1;
-                        int best_rssi = -128;
-
-                        for (int i = 0; i < scan_count; i++) {
-                            if (wifi_service_is_saved(scan_results[i].ssid)) {
-                                if (scan_results[i].rssi > best_rssi) {
-                                    best_rssi = scan_results[i].rssi;
-                                    best_idx = i;
-                                }
-                            }
-                        }
-
-                        if (best_idx >= 0) {
-                            const char *ssid = scan_results[best_idx].ssid;
-                            for (int i = 0; i < saved_count; i++) {
-                                if (strcmp(saved_profiles[i].ssid, ssid) == 0) {
-                                    ESP_LOGI(TAG, "Auto-connecting to saved network: %s (rssi %d)", ssid, best_rssi);
-                                    // Direct connect — we're already disconnected, no need for disconnect+delay
-                                    wifi_config_t wifi_config = {0};
-                                    strncpy((char*)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
-                                    strncpy((char*)wifi_config.sta.password, saved_profiles[i].password, sizeof(wifi_config.sta.password) - 1);
-                                    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-                                    current_state = WIFI_STATE_CONNECTING;
-                                    strncpy(connected_ssid, ssid, sizeof(connected_ssid) - 1);
-                                    ip_address[0] = '\0';
-                                    esp_wifi_connect();
-                                    break;
-                                }
-                            }
-                        } else {
-                            ESP_LOGI(TAG, "No saved networks found in scan results");
+                        if (s_auto_connect_active && scan_count > 0) {
+                            try_next_auto_connect();
+                        } else if (s_auto_connect_active) {
+                            ESP_LOGW(TAG, "Auto-connect: scan returned no results");
+                            s_auto_connect_active = false;
                         }
                     }
                 }
@@ -218,11 +292,13 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             esp_wifi_get_config(WIFI_IF_STA, &cfg);
             if (strlen((char*)cfg.sta.ssid) > 0) {
                 strncpy(connected_ssid, (char*)cfg.sta.ssid, sizeof(connected_ssid) - 1);
+                strncpy(s_last_connected_ssid, (char*)cfg.sta.ssid, sizeof(s_last_connected_ssid) - 1);
             }
 
             ESP_LOGI(TAG, "Got IP: %s (ssid: %s)", ip_address, connected_ssid);
 
-            // Reset reconnect backoff on successful connection
+            /* Successful connection: stop any reconnect timer and clear state. */
+            s_auto_connect_active = false;
             reset_reconnect_delay();
 
             // Save WiFi credentials to profile storage
@@ -298,9 +374,11 @@ int wifi_service_init(void)
     storage_migrate_wifi_config();
     wifi_service_load_profiles();
 
-    // Auto-connect: scan first, then connect to strongest saved network
+    // Auto-connect on boot: scan, then try saved networks in RSSI order
     if (saved_count > 0) {
-        ESP_LOGI(TAG, "%d saved WiFi profiles, starting auto-connect scan", saved_count);
+        ESP_LOGI(TAG, "%d saved WiFi profiles, starting scan+connect", saved_count);
+        s_auto_connect_active = true;
+        s_auto_connect_try_idx = -1;
         auto_connect_pending = true;
         wifi_service_scan();
     }
@@ -381,6 +459,8 @@ void wifi_service_connect(const char *ssid, const char *password)
 void wifi_service_disconnect(void)
 {
     user_initiated_disconnect = true;
+    s_auto_connect_active = false;
+    s_last_connected_ssid[0] = '\0';
     stop_reconnect_timer();
     reset_reconnect_delay();
 

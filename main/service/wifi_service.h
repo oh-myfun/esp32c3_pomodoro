@@ -33,6 +33,11 @@ bool wifi_service_is_connected(void);
 const char* wifi_service_get_connected_ssid(void);
 wifi_state_t wifi_service_get_state(void);
 
+/* Trigger a scan + auto-connect sequence: scan results are tried in RSSI
+ * order, strongest saved network first. If a candidate fails, the next one
+ * is tried. No-op if already connected or no saved networks. */
+void wifi_service_scan_and_connect(void);
+
 // Saved profile management
 int         wifi_service_get_saved_count(void);
 const char* wifi_service_get_saved_ssid(int index);
