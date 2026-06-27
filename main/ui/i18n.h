@@ -172,6 +172,7 @@ typedef enum {
     STR_SESSION,
     STR_CONNECT_ACTION,
     STR_DISCONNECT,
+    STR_KEEP_AWAKE,       /* "Keep Awake" / "工作时不休眠" */
 
     /* Bridge scan */
     STR_NO_BRIDGE,       /* "No bridges found" / "未发现Bridge" */
