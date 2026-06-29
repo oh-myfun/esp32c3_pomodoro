@@ -41,3 +41,6 @@ fonts/*.zip
 fonts/*_symbols.txt
 fonts/*_conflicts.json
 package-lock.json
+
+# LVGL simulator artifacts
+tools/simulator/output/
