@@ -33,6 +33,8 @@
 #include "ui/ui_manager.h"
 #include "ui/i18n.h"
 #include "ui/ui_screen_main.h"
+#include "buddy/buddy.h"
+#include "buddy/buddy_render.h"
 
 #include "stb_image_write.h"
 
@@ -186,6 +188,35 @@ static void capture(const char *fname, ui_screen_id_t sid, int settle_ms) {
     }
 }
 
+/* Capture N frames of the buddy screen in CELEBRATE state for GIF assembly.
+ * Each frame advances the animation by ~250ms (same as device's service_task). */
+static void capture_buddy_gif(const char *dir, int frames) {
+    printf("Capturing buddy CELEBRATE gif (%d frames)...\n", frames);
+    sim_set_buddy_state(BUDDY_CELEBRATE);
+    ui_switch_screen(UI_SCREEN_BUDDY);
+    sim_advance_ms(400);
+    char path[256];
+    for (int i = 0; i < frames; i++) {
+        /* advance animation: buddy_tick normally fires every 200ms */
+        buddy_tick();
+        buddy_tick();
+        buddy_tick();
+        buddy_tick();
+        buddy_tick();  /* ~1s of device time per frame */
+
+        reset_framebuffer();
+        lv_obj_invalidate(lv_screen_active());
+        sim_advance_ms(80);
+
+        snprintf(path, sizeof(path), "%s/gif_%03d.png", dir, i);
+        if (!stbi_write_png(path, SCREEN_W, SCREEN_H, 3, s_framebuffer, SCREEN_W * 3)) {
+            fprintf(stderr, "  failed to write %s\n", path);
+        }
+    }
+    printf("  -> %s/gif_*.png (%d frames)\n", dir, frames);
+    sim_set_buddy_state(BUDDY_IDLE);
+}
+
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
 
@@ -209,7 +240,7 @@ int main(int argc, char **argv) {
 
     /* Populate runtime data on main screen (time + WiFi status) so the
      * capture isn't just empty labels. */
-    ui_screen_main_update_wifi_status("● Connected", 0x00FF00);
+    ui_screen_main_update_wifi_status(i18n(STR_WIFI_CONNECTED), 0x00FF00);
     ui_screen_main_update_time();
 
     const char *out_dir = "tools/simulator/output";
@@ -234,6 +265,11 @@ int main(int argc, char **argv) {
 
     snprintf(path, sizeof(path), "%s/06-settings-system.png", out_dir);
     capture(path, UI_SCREEN_SETTINGS_SYSTEM, 300);
+
+    /* buddy CELEBRATE animation frames for GIF */
+    snprintf(path, sizeof(path), "%s/gif_frames", out_dir);
+    SIM_MKDIR(path);
+    capture_buddy_gif(path, 16);
 
     printf("Done.\n");
     return 0;

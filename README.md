@@ -31,6 +31,14 @@
 
 > 截图由 `tools/simulator/` 的 PC LVGL 模拟器（MinGW GCC + LVGL v9.5 离屏渲染）生成，与设备显示一致。生成方法见 [PC 模拟器](#pc-模拟器)。
 
+### Buddy 庆祝动画
+
+任务批准后 Buddy 会切换到 CELEBRATE 状态做庆祝动作（不同物种有不同动画）：
+
+<p align="center">
+  <img src="docs/images/buddy-celebrate.gif" alt="Buddy 庆祝动画" width="240"/>
+</p>
+
 ## 功能特性
 
 ### 番茄钟

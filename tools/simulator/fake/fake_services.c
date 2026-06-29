@@ -66,9 +66,18 @@ bool storage_load_string(const char *ns, const char *key, char *value, size_t le
     return false;
 }
 
-bool storage_save_int(const char *ns, const char *key, int32_t value) { (void)ns; (void)key; (void)value; return true; }
+bool storage_save_int(const char *ns, const char *key, int32_t value) {
+    (void)ns; (void)key; (void)value;
+    return true;
+}
+
 bool storage_load_int(const char *ns, const char *key, int32_t *value) {
-    (void)ns; (void)key;
+    (void)ns;
+    /* Default to Chinese for screenshot generation */
+    if (strcmp(key, KEY_LANG) == 0) {
+        if (value) *value = 1;  /* LANG_ZH */
+        return true;
+    }
     if (value) *value = 0;
     return false;
 }
