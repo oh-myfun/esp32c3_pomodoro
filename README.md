@@ -1,6 +1,6 @@
 # Pomodoro Buddy
 
-基于 ESP32-C3 的番茄钟与 AI Buddy 伴侣设备，通过 TCP 连接 [Claude Code Buddy Bridge](https://github.com/oh-myfun/ccbb) 实时审批 Claude 工具调用权限，配 ASCII 像素宠物陪伴你专注。
+基于 ESP32-C3 的番茄钟与 AI Buddy 伴侣设备，通过 TCP 连接 [Claude Code Buddy Bridge](https://github.com/oh-myfun/claude-code-buddy-bridge) 实时审批 Claude 工具调用权限，配 ASCII 像素宠物陪伴你专注。
 
 240×240 ST7789 LCD 显示，EC11 编码器 + 顶键输入，WS2812 RGB LED 指示，PWM 蜂鸣器反馈。
 
