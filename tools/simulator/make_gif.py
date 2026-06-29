@@ -12,8 +12,8 @@ FRAMES_DIR = os.path.join(ROOT, "tools", "simulator", "output", "gif_frames")
 OUT_GIF = os.path.join(ROOT, "docs", "images", "buddy-celebrate.gif")
 
 FRAME_COUNT = 16
-DURATION_MS = 200
-SCALE = 2  # 240 -> 480 for clearer preview
+DURATION_MS = 200   # matches device buddy_tick cadence
+SCALE = 1           # keep native 240x240
 
 
 def main():

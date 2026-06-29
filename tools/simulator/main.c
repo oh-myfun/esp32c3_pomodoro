@@ -33,6 +33,7 @@
 #include "ui/ui_manager.h"
 #include "ui/i18n.h"
 #include "ui/ui_screen_main.h"
+#include "ui/ui_screen_buddy.h"
 #include "buddy/buddy.h"
 #include "buddy/buddy_render.h"
 
@@ -177,7 +178,11 @@ static void capture(const char *fname, ui_screen_id_t sid, int settle_ms) {
     reset_framebuffer();
     ui_switch_screen(sid);
     sim_advance_ms(settle_ms);
-    /* force an extra redraw pass to ensure framebuffer fully populated */
+    /* Force a state refresh so the buddy screen's right-corner label matches
+     * the rendered buddy state (otherwise it stays at the init default). */
+    if (sid == UI_SCREEN_BUDDY) {
+        ui_screen_buddy_update_state();
+    }
     lv_obj_invalidate(lv_screen_active());
     sim_advance_ms(120);
     printf("  flush called %d times\n", s_flush_count);
@@ -189,24 +194,23 @@ static void capture(const char *fname, ui_screen_id_t sid, int settle_ms) {
 }
 
 /* Capture N frames of the buddy screen in CELEBRATE state for GIF assembly.
- * Each frame advances the animation by ~250ms (same as device's service_task). */
+ * Each frame advances buddy_tick once (= 200ms on device). GIF frame duration
+ * is set to match the device's actual animation cadence. */
 static void capture_buddy_gif(const char *dir, int frames) {
     printf("Capturing buddy CELEBRATE gif (%d frames)...\n", frames);
     sim_set_buddy_state(BUDDY_CELEBRATE);
     ui_switch_screen(UI_SCREEN_BUDDY);
     sim_advance_ms(400);
+    ui_screen_buddy_update_state();
     char path[256];
     for (int i = 0; i < frames; i++) {
-        /* advance animation: buddy_tick normally fires every 200ms */
+        /* One buddy_tick = one device animation step (200ms on real service_task). */
         buddy_tick();
-        buddy_tick();
-        buddy_tick();
-        buddy_tick();
-        buddy_tick();  /* ~1s of device time per frame */
+        ui_screen_buddy_update_state();
 
         reset_framebuffer();
         lv_obj_invalidate(lv_screen_active());
-        sim_advance_ms(80);
+        sim_advance_ms(50);
 
         snprintf(path, sizeof(path), "%s/gif_%03d.png", dir, i);
         if (!stbi_write_png(path, SCREEN_W, SCREEN_H, 3, s_framebuffer, SCREEN_W * 3)) {
