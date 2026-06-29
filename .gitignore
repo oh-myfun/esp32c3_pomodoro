@@ -44,3 +44,6 @@ package-lock.json
 
 # LVGL simulator artifacts
 tools/simulator/output/
+
+# Release artifacts (binaries + zips)
+dist/
